@@ -6,6 +6,7 @@ import { Sidebar } from '../sidebar/sidebar';
 import { Navbar } from '../navbar/navbar';
 import { NotificationService } from '../../services/notification.service';
 import { Icon } from '../../../shared/components/icon/icon';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-layout',
@@ -17,6 +18,7 @@ import { Icon } from '../../../shared/components/icon/icon';
 export class AppLayout {
   protected readonly notifications = inject(NotificationService);
   protected readonly menuAbierto = signal(false);
+  protected readonly usaMocks = environment.useMocks;
 
   constructor() {
     // En pantallas pequeñas el menú se cierra al navegar.

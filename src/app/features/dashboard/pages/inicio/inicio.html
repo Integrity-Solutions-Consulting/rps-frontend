@@ -121,6 +121,9 @@
       </header>
 
       @if (datos(); as d) {
+        @if (d.cortes.length === 0) {
+          <p class="pad muted">Todavía no hay liquidaciones calculadas para {{ nombrePeriodo() }}.</p>
+        } @else {
         <div class="table-wrap">
           <table class="tbl">
             <thead>
@@ -142,7 +145,6 @@
                   <td>
                     @if (c.versionExportada) {
                       <app-estado-chip tono="ok">Exportado v{{ c.versionExportada }}</app-estado-chip>
-                      @if (c.fechaExportacion) { <span class="muted small">{{ c.fechaExportacion | date: 'dd MMM' }}</span> }
                     } @else {
                       <app-estado-chip tono="neutral">Sin exportar</app-estado-chip>
                     }
@@ -156,6 +158,7 @@
           <app-icon name="info" [size]="15" />
           Exportar no marca el pago como realizado; la transferencia ocurre fuera de RPS.
         </p>
+        }
       } @else if (resumen().estado === 'cargando') {
         <div class="pad"><div class="skeleton" style="height: 96px"></div></div>
       } @else {

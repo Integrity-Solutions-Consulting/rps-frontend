@@ -7,7 +7,9 @@
     <main class="shell__content">
       <router-outlet />
     </main>
-    <footer class="shell__footer">Propuesta visual · Datos ficticios mientras no exista el backend</footer>
+    @if (usaMocks) {
+      <footer class="shell__footer">Datos de ejemplo · no vienen del backend</footer>
+    }
   </div>
 </div>
 

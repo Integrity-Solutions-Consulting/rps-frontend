@@ -9,10 +9,16 @@ function haceDias(dias: number): string {
   return d.toISOString();
 }
 
+/** Fecha local yyyy-MM-dd. No usa toISOString() porque esa da la fecha en UTC
+ *  y en Ecuador, después de las 19:00, ya sería el día siguiente. */
+function fechaLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function fechaEnDias(dias: number): { fecha: string; dias: number } {
   const d = new Date();
   d.setDate(d.getDate() + dias);
-  return { fecha: d.toISOString().slice(0, 10), dias };
+  return { fecha: fechaLocal(d), dias };
 }
 
 function nombreMes(periodo: string): string {
@@ -21,8 +27,6 @@ function nombreMes(periodo: string): string {
 }
 
 export function mockResumen(periodo: string): DashboardResumen {
-  // Enero 2026 simula TMR sin respuesta, para probar la advertencia RC 05.
-  const tmrCaido = periodo === '2026-01';
   return {
     periodo,
     netoConsolidado: 21480,
@@ -37,7 +41,7 @@ export function mockResumen(periodo: string): DashboardResumen {
       { corte: 'FinDeMes', base: 10739.99, descuentoAnticipos: 300, valorPreparado: 10439.99, colaboradores: 18,
         versionExportada: null, fechaExportacion: null },
     ],
-    origenTmr: { disponible: !tmrCaido, ultimaConsulta: tmrCaido ? haceDias(3) : haceDias(0) },
+    origenTmr: { disponible: true, ultimaConsulta: haceDias(0) },
   };
 }
 

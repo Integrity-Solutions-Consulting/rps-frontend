@@ -1,5 +1,5 @@
 import { HttpErrorResponse, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
-import { delay, mergeMap, of, throwError, timer } from 'rxjs';
+import { delay, of, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response';
 import { mockAlertas, mockResumen, mockVencimientos } from '../mocks/dashboard.mock';
@@ -21,14 +21,6 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
       url: req.url,
       body: { success: true, statusCode: 200, message: 'OK', data },
     })).pipe(delay(350));
-
-  // Diciembre 2026 simula que el endpoint de alertas falla, para probar el error por sección.
-  if (ruta === '/dashboard/alertas' && periodo === '2026-12') {
-    return timer(350).pipe(mergeMap(() => throwError(() => new HttpErrorResponse({
-      status: 500, url: req.url,
-      error: { success: false, statusCode: 500, message: 'Error simulado al consultar alertas.', data: null },
-    }))));
-  }
 
   switch (ruta) {
     case '/dashboard/resumen': return responder(mockResumen(periodo));
