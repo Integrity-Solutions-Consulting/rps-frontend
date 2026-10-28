@@ -1,0 +1,32 @@
+:host { display: block; }
+
+.sidebar {
+  height: 100%; display: flex; flex-direction: column; gap: 22px;
+  padding: 22px 12px 20px; background: var(--rps-navy); color: var(--rps-navy-text);
+  overflow-y: auto;
+}
+
+.sidebar__logo {
+  padding: 0 12px; color: #fff; text-decoration: none;
+  font-size: 30px; font-weight: 700; letter-spacing: .02em;
+}
+
+.sidebar__menu { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+
+.sidebar__item {
+  display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px;
+  border-radius: 8px; color: var(--rps-navy-text); text-decoration: none; font-weight: 500;
+  &:hover { background: var(--rps-navy-700); color: #fff; }
+  &.is-active { background: var(--rps-teal); color: #fff; }
+  span:not(.sidebar__badge) { flex: 1; }
+}
+
+.sidebar__badge {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 4px; background: rgba(255, 255, 255, .08); color: #9fb3c6;
+}
+
+.sidebar__foot {
+  margin-top: auto; padding: 0 12px; display: grid; gap: 2px; font-size: 12px; color: #9fb3c6;
+  strong { color: #fff; font-size: 16px; }
+}

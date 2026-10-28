@@ -1,0 +1,24 @@
+<div class="shell" [class.shell--menu]="menuAbierto()">
+  <app-sidebar class="shell__sidebar" />
+  <button class="shell__scrim" type="button" aria-label="Cerrar menú" (click)="menuAbierto.set(false)"></button>
+
+  <div class="shell__main">
+    <app-navbar (toggleMenu)="menuAbierto.set(!menuAbierto())" />
+    <main class="shell__content">
+      <router-outlet />
+    </main>
+    <footer class="shell__footer">Propuesta visual · Datos ficticios mientras no exista el backend</footer>
+  </div>
+</div>
+
+<div class="toasts" aria-live="polite">
+  @for (aviso of notifications.avisos(); track aviso.id) {
+    <div class="toast" [class]="'toast toast--' + aviso.tipo" role="status">
+      <app-icon [name]="aviso.tipo === 'error' ? 'alert' : aviso.tipo === 'ok' ? 'check' : 'info'" [size]="18" />
+      <span>{{ aviso.mensaje }}</span>
+      <button type="button" class="toast__close" aria-label="Cerrar" (click)="notifications.cerrar(aviso.id)">
+        <app-icon name="x" [size]="16" />
+      </button>
+    </div>
+  }
+</div>

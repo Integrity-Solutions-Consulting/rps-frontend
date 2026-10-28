@@ -1,0 +1,276 @@
+<header class="head">
+  <div class="head__title">
+    <h1>Inicio</h1>
+    <p>Resumen de {{ nombrePeriodo() }} para Contabilidad.</p>
+  </div>
+
+  <div class="head__actions">
+    <label class="periodo" for="periodo">
+      <span>Período</span>
+      <span class="periodo__field">
+        <app-icon name="calendar" [size]="18" />
+        <input id="periodo" type="month" [value]="periodo()"
+               (change)="cambiarPeriodo($any($event.target).value)" />
+      </span>
+    </label>
+    <button type="button" class="btn" (click)="actualizar()" [disabled]="cargando()">
+      <app-icon name="refresh" [size]="17" [class.spin]="cargando()" />
+      Actualizar
+    </button>
+  </div>
+</header>
+
+<!-- RC 05: si TMR no responde, se avisa y no se interpretan los datos como cero -->
+@if (datos(); as d) {
+  @if (!d.origenTmr.disponible) {
+    <div class="banner banner--danger" role="alert">
+      <app-icon name="alert" [size]="20" />
+      <div>
+        <strong>No se pudo verificar la información de TMR.</strong>
+        Los valores mostrados son de la última consulta
+        @if (d.origenTmr.ultimaConsulta) { ({{ d.origenTmr.ultimaConsulta | date: 'dd MMM yyyy, HH:mm' }}) }
+        y no se asume que falten proyectos ni honorarios.
+      </div>
+    </div>
+  }
+}
+
+<!-- ── Indicadores ─────────────────────────────────────────────── -->
+@switch (resumen().estado) {
+  @case ('cargando') {
+    <section class="kpis" aria-busy="true" aria-label="Cargando indicadores">
+      @for (i of [1, 2, 3, 4, 5]; track i) {
+        <div class="card kpi"><div class="skeleton" style="height: 74px"></div></div>
+      }
+    </section>
+  }
+  @case ('error') {
+    <div class="banner banner--danger" role="alert">
+      <app-icon name="alert" [size]="20" />
+      <div><strong>No se pudo cargar el resumen.</strong> {{ $any(resumen()).mensaje }}</div>
+      <button type="button" class="btn btn--sm" (click)="actualizar()">Reintentar</button>
+    </div>
+  }
+}
+
+@if (datos(); as d) {
+  <section class="kpis" aria-label="Indicadores del período">
+    <article class="card kpi">
+      <span class="kpi__icon kpi__icon--teal"><app-icon name="cash" [size]="22" /></span>
+      <div class="kpi__body">
+        <span class="kpi__label">Neto consolidado</span>
+        <strong class="kpi__value num">{{ d.netoConsolidado | currency: 'USD' : 'symbol' : '1.2-2' }}</strong>
+        <span class="kpi__hint">{{ d.colaboradoresActivos }} colaboradores · antes de anticipos</span>
+      </div>
+    </article>
+
+    <article class="card kpi">
+      <span class="kpi__icon kpi__icon--info"><app-icon name="check" [size]="22" /></span>
+      <div class="kpi__body">
+        <span class="kpi__label">Revisado para envío</span>
+        <strong class="kpi__value num">{{ d.liquidaciones.revisadas }} <small>de {{ d.liquidaciones.total }}</small></strong>
+        <span class="bar" role="progressbar" [attr.aria-valuenow]="avanceRevision()" aria-valuemin="0" aria-valuemax="100">
+          <span class="bar__fill" [style.width.%]="avanceRevision()"></span>
+        </span>
+        <span class="kpi__hint">
+          {{ d.liquidaciones.pendientesRevision }} pendientes
+          @if (d.liquidaciones.requierenRecalculo > 0) { · <b class="t-danger">{{ d.liquidaciones.requierenRecalculo }} por recalcular</b> }
+        </span>
+      </div>
+    </article>
+
+    <article class="card kpi">
+      <span class="kpi__icon kpi__icon--warn"><app-icon name="clock" [size]="22" /></span>
+      <div class="kpi__body">
+        <span class="kpi__label">Contratos por vencer</span>
+        <strong class="kpi__value num">{{ porVencer() }}</strong>
+        <span class="kpi__hint">
+          @if (vencidos() > 0) { <b class="t-danger">{{ vencidos() }} vencido{{ vencidos() === 1 ? '' : 's' }}</b> · }
+          próximos 30 días
+        </span>
+      </div>
+    </article>
+
+    <article class="card kpi">
+      <span class="kpi__icon kpi__icon--warn"><app-icon name="file" [size]="22" /></span>
+      <div class="kpi__body">
+        <span class="kpi__label">Documentos faltantes</span>
+        <strong class="kpi__value num">{{ d.documentosFaltantes }}</strong>
+        <span class="kpi__hint">No bloquean la exportación</span>
+      </div>
+    </article>
+
+    <article class="card kpi">
+      <span class="kpi__icon kpi__icon--danger"><app-icon name="sliders" [size]="22" /></span>
+      <div class="kpi__body">
+        <span class="kpi__label">Pendientes de configuración</span>
+        <strong class="kpi__value num">{{ d.pendientesConfiguracion }}</strong>
+        <span class="kpi__hint">Proyectos sin contrato u honorario</span>
+      </div>
+    </article>
+  </section>
+}
+
+<div class="grid">
+  <div class="col">
+    <!-- ── Cortes ─────────────────────────────────────────────── -->
+    <section class="card panel">
+      <header class="panel__head">
+        <h2>Cortes del período</h2>
+        <span class="panel__sub">Distribución del neto y descuentos de anticipos adicionales</span>
+      </header>
+
+      @if (datos(); as d) {
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Corte</th>
+                <th class="r">Base</th>
+                <th class="r">Desc. anticipos</th>
+                <th class="r">Valor preparado</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of d.cortes; track c.corte) {
+                <tr>
+                  <td><strong>{{ etiquetaCorte(c) }}</strong><br /><span class="muted">{{ c.colaboradores }} colaboradores</span></td>
+                  <td class="r num">{{ c.base | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                  <td class="r num">{{ c.descuentoAnticipos | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                  <td class="r num"><strong>{{ c.valorPreparado | currency: 'USD' : 'symbol' : '1.2-2' }}</strong></td>
+                  <td>
+                    @if (c.versionExportada) {
+                      <app-estado-chip tono="ok">Exportado v{{ c.versionExportada }}</app-estado-chip>
+                      @if (c.fechaExportacion) { <span class="muted small">{{ c.fechaExportacion | date: 'dd MMM' }}</span> }
+                    } @else {
+                      <app-estado-chip tono="neutral">Sin exportar</app-estado-chip>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="panel__note">
+          <app-icon name="info" [size]="15" />
+          Exportar no marca el pago como realizado; la transferencia ocurre fuera de RPS.
+        </p>
+      } @else if (resumen().estado === 'cargando') {
+        <div class="pad"><div class="skeleton" style="height: 96px"></div></div>
+      } @else {
+        <p class="pad muted">Sin datos del resumen.</p>
+      }
+    </section>
+
+    <!-- ── Vencimientos ───────────────────────────────────────── -->
+    <section class="card panel">
+      <header class="panel__head">
+        <h2>Vencimientos de contratos</h2>
+        <span class="panel__sub">Alertas a 30, 15 y 7 días. El vencimiento no bloquea la liquidación.</span>
+      </header>
+
+      @switch (vencimientos().estado) {
+        @case ('cargando') { <div class="pad"><div class="skeleton" style="height: 140px"></div></div> }
+        @case ('error') {
+          <div class="pad error">
+            <app-icon name="alert" [size]="18" /> {{ $any(vencimientos()).mensaje }}
+          </div>
+        }
+        @case ('ok') {
+          @if (listaVencimientos().length === 0) {
+            <p class="pad muted">No hay contratos por vencer en los próximos 30 días.</p>
+          } @else {
+            <div class="table-wrap">
+              <table class="tbl">
+                <thead>
+                  <tr><th>Colaborador</th><th>Proyecto</th><th>Fin vigente</th><th>Plazo</th><th></th></tr>
+                </thead>
+                <tbody>
+                  @for (v of listaVencimientos(); track v.contratoId) {
+                    <tr>
+                      <td><strong>{{ v.colaborador }}</strong></td>
+                      <td>{{ v.proyecto }}</td>
+                      <td class="num">{{ v.fechaFinVigente | date: 'dd MMM yyyy' }}</td>
+                      <td><app-estado-chip [tono]="tonoVencimiento(v)">{{ textoVencimiento(v) }}</app-estado-chip></td>
+                      <td class="muted small">
+                        @if (v.diasRestantes < 0 && v.asignacionActiva) { Asignación activa: requiere revisión }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      }
+    </section>
+  </div>
+
+  <!-- ── Alertas ───────────────────────────────────────────────── -->
+  <section class="card panel alertas">
+    <header class="panel__head">
+      <h2>Alertas <span class="count">{{ totalAlertas() }}</span></h2>
+      <span class="panel__sub">Asignaciones, documentación, datos incompletos y cambios de TMR</span>
+    </header>
+
+    @switch (alertas().estado) {
+      @case ('cargando') {
+        <div class="pad stack">
+          @for (i of [1, 2, 3]; track i) { <div class="skeleton" style="height: 64px"></div> }
+        </div>
+      }
+      @case ('error') {
+        <div class="pad error">
+          <app-icon name="alert" [size]="18" /> {{ $any(alertas()).mensaje }}
+          <button type="button" class="btn btn--sm" (click)="actualizar()">Reintentar</button>
+        </div>
+      }
+      @case ('ok') {
+        @if (totalAlertas() === 0) {
+          <p class="pad muted">Sin alertas para {{ nombrePeriodo() }}.</p>
+        } @else {
+          <div class="filtros" role="group" aria-label="Filtrar alertas">
+            <button type="button" class="filtro" [class.is-on]="filtroAlerta() === 'Todas'"
+                    (click)="filtroAlerta.set('Todas')">Todas · {{ totalAlertas() }}</button>
+            @for (t of conteoAlertas(); track t.tipo) {
+              <button type="button" class="filtro" [class.is-on]="filtroAlerta() === t.tipo"
+                      (click)="filtroAlerta.set(t.tipo)">{{ t.etiqueta }} · {{ t.total }}</button>
+            }
+          </div>
+
+          <ul class="lista">
+            @for (a of alertasFiltradas(); track a.id) {
+              <li class="alerta" [class]="'alerta alerta--' + a.severidad">
+                <span class="alerta__icon"><app-icon [name]="tiposAlerta[a.tipo].icono" [size]="18" /></span>
+                <div class="alerta__body">
+                  <div class="alerta__top">
+                    <strong>{{ a.colaborador ?? 'General' }}</strong>
+                    @if (a.proyecto) { <span class="muted">· {{ a.proyecto }}</span> }
+                    <app-estado-chip [tono]="tonoSeveridad(a.severidad)">{{ tiposAlerta[a.tipo].etiqueta }}</app-estado-chip>
+                  </div>
+                  <p>{{ a.mensaje }}</p>
+                  <span class="muted small">Detectado {{ a.fechaDeteccion | date: 'dd MMM yyyy' }}</span>
+                </div>
+                @if (a.ruta) {
+                  <a class="alerta__go" [routerLink]="a.ruta" aria-label="Revisar">
+                    <app-icon name="chevronRight" [size]="18" />
+                  </a>
+                }
+              </li>
+            }
+          </ul>
+        }
+      }
+    }
+  </section>
+</div>
+
+@if (datos(); as d) {
+  <p class="origen">
+    <app-icon name="sync" [size]="14" />
+    Origen TMR: {{ d.origenTmr.disponible ? 'disponible' : 'sin respuesta' }}
+    @if (d.origenTmr.ultimaConsulta) { · última consulta {{ d.origenTmr.ultimaConsulta | date: 'dd MMM yyyy, HH:mm' }} }
+    @if (d.avisosTmrPendientes > 0) { · {{ d.avisosTmrPendientes | number }} cambio(s) sin revisar }
+  </p>
+}

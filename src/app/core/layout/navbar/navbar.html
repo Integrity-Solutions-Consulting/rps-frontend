@@ -1,0 +1,18 @@
+<header class="navbar">
+  <button type="button" class="navbar__menu" aria-label="Abrir menú" (click)="toggleMenu.emit()">
+    <app-icon name="menu" [size]="22" />
+  </button>
+
+  @if (usaMocks) {
+    <span class="navbar__mock" title="Las respuestas vienen de core/mocks, no del backend">
+      <app-icon name="info" [size]="16" /> Datos de ejemplo
+    </span>
+  }
+
+  <div class="navbar__right">
+    <span class="navbar__area">{{ session.usuario().area }}</span>
+    <span class="navbar__sep" aria-hidden="true"></span>
+    <span class="navbar__avatar" [attr.aria-label]="session.usuario().nombre">{{ session.usuario().iniciales }}</span>
+    <app-icon name="chevronDown" [size]="18" />
+  </div>
+</header>

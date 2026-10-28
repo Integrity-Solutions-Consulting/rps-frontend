@@ -1,0 +1,23 @@
+<aside class="sidebar">
+  <a routerLink="/inicio" class="sidebar__logo" aria-label="RPS, ir a Inicio">RPS</a>
+
+  <nav aria-label="Menú principal">
+    <ul class="sidebar__menu">
+      @for (item of menu; track item.ruta) {
+        <li>
+          <a class="sidebar__item" [routerLink]="'/' + item.ruta" routerLinkActive="is-active"
+             [attr.title]="item.disponible ? null : 'En construcción'">
+            <app-icon [name]="item.icono" [size]="20" />
+            <span>{{ item.titulo }}</span>
+            @if (!item.disponible) { <span class="sidebar__badge">Pronto</span> }
+          </a>
+        </li>
+      }
+    </ul>
+  </nav>
+
+  <div class="sidebar__foot">
+    <strong>RPS</strong>
+    <span>Gestión de honorarios para un equipo que avanza</span>
+  </div>
+</aside>
