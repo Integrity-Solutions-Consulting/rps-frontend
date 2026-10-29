@@ -62,13 +62,24 @@ export interface FiltrosColaboradores {
 
 /** Movimiento del historial del colaborador (RN 48, sección 12 "Historial por colaborador"). */
 export type TipoEvento =
-  | 'Vinculación' | 'Clasificación' | 'Frecuencia' | 'Cuenta bancaria' | 'Estado' | 'Contrato' | 'Adenda' | 'Honorario';
+  | 'Vinculación' | 'Clasificación' | 'Frecuencia' | 'Cuenta bancaria' | 'Estado' | 'Contrato' | 'Adenda' | 'Honorario'
+  | 'Liquidación' | 'Anticipo' | 'Documento' | 'Exportación';
 
 export interface EventoHistorial {
   fecha: string;
   tipo: TipoEvento;
   descripcion: string;
   usuario: string;
+  /** Mes "yyyy-MM" al que corresponde el movimiento, si aplica. */
+  periodo?: string | null;
+  importe?: number | null;
+  /**
+   * Lo que pasó, con palabras exactas: "Calculada", "Exportado v1", "Programado"…
+   * Un cambio de honorario no se etiqueta como exportación, ni una exportación como pago (sección 12).
+   */
+  estado?: string | null;
+  /** Pantalla donde se ve el detalle del movimiento. */
+  enlace?: { texto: string; ruta: string; query?: Record<string, string> } | null;
 }
 
 // ── Textos para pantalla ─────────────────────────────────────────────

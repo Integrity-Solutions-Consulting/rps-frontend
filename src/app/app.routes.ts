@@ -29,6 +29,26 @@ export const routes: Routes = [
         path: 'contratos',
         loadChildren: () => import('./features/contratos/contratos.routes').then((r) => r.CONTRATOS_ROUTES),
       },
+      {
+        path: 'anticipos',
+        loadChildren: () => import('./features/anticipos/anticipos.routes').then((r) => r.ANTICIPOS_ROUTES),
+      },
+      {
+        path: 'liquidaciones',
+        loadChildren: () => import('./features/liquidaciones/liquidaciones.routes').then((r) => r.LIQUIDACIONES_ROUTES),
+      },
+      {
+        path: 'documentos',
+        loadChildren: () => import('./features/documentos/documentos.routes').then((r) => r.DOCUMENTOS_ROUTES),
+      },
+      {
+        path: 'exportaciones',
+        loadChildren: () => import('./features/exportaciones/exportaciones.routes').then((r) => r.EXPORTACIONES_ROUTES),
+      },
+      {
+        path: 'configuracion',
+        loadChildren: () => import('./features/configuracion/configuracion.routes').then((r) => r.CONFIGURACION_ROUTES),
+      },
       ...pendientes,
     ],
   },

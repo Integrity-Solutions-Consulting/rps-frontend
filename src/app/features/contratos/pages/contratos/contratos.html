@@ -140,7 +140,7 @@
                 <tr><th>Colaborador · proyecto</th><th>Inicio</th><th>Fin vigente</th><th>Estado</th><th><span class="sr-only">Ver</span></th></tr>
               </thead>
               <tbody>
-                @for (c of filas(); track c.id) {
+                @for (c of filasPagina(); track c.id) {
                   <tr class="fila" [class.is-sel]="seleccionadoId() === c.id" tabindex="0"
                       (click)="seleccionadoId.set(c.id)" (keydown.enter)="seleccionadoId.set(c.id)">
                     <td>
@@ -161,7 +161,19 @@
               </tbody>
             </table>
           </div>
-          <p class="pie">{{ filas().length }} {{ filas().length === 1 ? 'contrato' : 'contratos' }}</p>
+          <div class="pie">
+            <span>Mostrando {{ rango().desde }} a {{ rango().hasta }} de {{ filas().length }} {{ filas().length === 1 ? 'contrato' : 'contratos' }}</span>
+            @if (totalPaginas() > 1) {
+              <nav class="paginas" aria-label="Páginas">
+                <button type="button" class="btn btn--sm" [disabled]="pagina() === 1" (click)="pagina.set(pagina() - 1)" aria-label="Página anterior">‹</button>
+                @for (n of numerosPagina(); track n) {
+                  <button type="button" class="btn btn--sm" [class.is-on]="pagina() === n" [attr.aria-current]="pagina() === n ? 'page' : null"
+                          (click)="pagina.set(n)">{{ n }}</button>
+                }
+                <button type="button" class="btn btn--sm" [disabled]="pagina() === totalPaginas()" (click)="pagina.set(pagina() + 1)" aria-label="Página siguiente">›</button>
+              </nav>
+            }
+          </div>
         }
       }
     }
@@ -245,11 +257,12 @@
       } @else {
         <div class="table-wrap adendas">
           <table class="tbl">
-            <thead><tr><th>#</th><th>Nuevo fin</th><th>Referencia</th><th>Registrada</th></tr></thead>
+            <thead><tr><th>#</th><th>Desde</th><th>Nuevo fin</th><th>Referencia</th><th>Registrada</th></tr></thead>
             <tbody>
-              @for (a of d.adendas; track a.id) {
+              @for (a of d.adendas; track a.id; let i = $index) {
                 <tr>
                   <td class="num">{{ a.numero }}</td>
+                  <td class="num">{{ inicioAdenda(d, i) | date: 'dd MMM yyyy' }}</td>
                   <td class="num">{{ a.nuevaFechaFin | date: 'dd MMM yyyy' }}</td>
                   <td>{{ a.referencia ?? '—' }}@if (a.observaciones) { <br /><small class="muted">{{ a.observaciones }}</small> }</td>
                   <td class="num muted">{{ a.fechaRegistro | date: 'dd MMM yyyy' }}</td>

@@ -1,0 +1,71 @@
+/*
+ * Piezas de página que se repiten en Anticipos, Liquidaciones, Documentos, Exportaciones y Configuración.
+ * Se carga después de formularios.scss (angular.json). Contratos e Inicio tienen sus propias versiones.
+ */
+
+/* Encabezado: título, descripción y acciones */
+.pagina { display: grid; gap: 18px; min-width: 0; }
+.pagina__head {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px;
+  h1 { font-size: 30px; font-weight: 700; letter-spacing: -.01em; }
+  p { margin: 4px 0 0; color: var(--rps-muted); max-width: 75ch; }
+}
+.pagina__acciones { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+
+/* Indicadores (tarjetas con número grande) */
+.indicadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.indicador { display: flex; align-items: center; gap: 14px; padding: 16px; min-width: 0; }
+.indicador__icono { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: #eef2f5; color: var(--rps-navy); }
+.indicador__icono--ok { background: var(--rps-ok-50); color: var(--rps-ok); }
+.indicador__icono--warn { background: var(--rps-warn-50); color: var(--rps-warn); }
+.indicador__icono--danger { background: var(--rps-danger-50); color: var(--rps-danger); }
+.indicador__icono--info { background: var(--rps-info-50); color: var(--rps-info); }
+.indicador__icono--teal { background: var(--rps-teal-50); color: var(--rps-teal); }
+.indicador__cuerpo { display: grid; gap: 1px; min-width: 0; }
+.indicador__etiqueta { color: var(--rps-muted); font-size: 13px; }
+.indicador__valor { font-size: 24px; font-weight: 700; line-height: 1.2; }
+.indicador__ayuda { color: var(--rps-muted); font-size: 12px; }
+.indicador--warn { background: var(--rps-warn-50); border-color: #efd29f; }
+.indicador--ok { background: var(--rps-ok-50); border-color: #bfe3cd; }
+
+/* Lista + panel lateral de detalle */
+.con-panel { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(340px, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 1180px) { .con-panel { grid-template-columns: minmax(0, 1fr); } }
+.panel-lateral { padding: 18px; display: grid; gap: 14px; position: sticky; top: 76px; min-width: 0; }
+@media (max-width: 1180px) { .panel-lateral { position: static; } }
+.panel-lateral__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  h2 { font-size: 20px; font-weight: 700; } }
+
+/* Barra de filtros dentro de una tarjeta */
+.filtros-barra { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 16px 18px;
+  .field { min-width: 160px; flex: 1 1 160px; } }
+
+/* Filas de tabla que se pueden elegir */
+.fila-elegible { cursor: pointer;
+  &:hover td { background: #f6fafb; }
+  &.is-sel td { background: var(--rps-teal-50); }
+  &:focus-visible { outline: 2px solid var(--rps-teal); outline-offset: -2px; } }
+tr.fila-total td { background: #f6f8fa; font-weight: 700; }
+
+/* "Etiqueta ........ valor" para desgloses de dinero */
+.desglose { margin: 0; display: grid;
+  > div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px dashed var(--rps-border); }
+  > div:last-child { border-bottom: 0; }
+  dt { color: var(--rps-muted); }
+  dd { margin: 0; font-variant-numeric: tabular-nums; text-align: right; }
+  .desglose__total { font-weight: 700; dt { color: var(--rps-text); } } }
+
+/* Pie de tarjeta con el conteo */
+.pie-tabla { margin: 0; padding: 10px 18px; border-top: 1px solid var(--rps-border); color: var(--rps-muted); font-size: 12.5px; }
+
+/* Grupo de botones que funciona como selector (Quincena | Fin de mes) */
+.segmentos { display: inline-flex; border: 1px solid var(--rps-border); border-radius: 8px; overflow: hidden;
+  button { height: 36px; padding: 0 14px; border: 0; background: var(--rps-surface); color: var(--rps-muted); cursor: pointer; font-weight: 500;
+    &:not(:last-child) { border-right: 1px solid var(--rps-border); }
+    &.is-on { background: var(--rps-teal); color: #fff; } } }
+
+.bloque-sm { padding: 14px; border: 1px solid var(--rps-border); border-radius: 10px; display: grid; gap: 8px; }
+.importe-grande { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.lista-avisos { display: grid; gap: 8px; }
+.r { text-align: right; }

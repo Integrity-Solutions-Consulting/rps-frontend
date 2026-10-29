@@ -1,0 +1,150 @@
+<div class="pagina">
+  <header class="pagina__head">
+    <div>
+      <h1>Documentos tributarios</h1>
+      <p>Un documento por colaborador y mes, aunque cobre en dos cortes o tenga varios proyectos (RN 32).</p>
+    </div>
+  </header>
+
+  <div class="con-panel">
+    <section class="card lista">
+      <div class="filtros-barra">
+        <div class="field">
+          <label for="periodo">Período</label>
+          <input id="periodo" type="month" class="input" [value]="periodo()" (change)="cambiarPeriodo($any($event.target).value)" />
+        </div>
+        <div class="field">
+          <label for="f-tipo">Tipo de documento</label>
+          <select id="f-tipo" class="select" [ngModel]="filtroTipo()" (ngModelChange)="filtroTipo.set($event)">
+            <option value="">Todos</option>
+            @for (t of tipos; track t) { <option [value]="t">{{ etiquetaTipo[t] }}</option> }
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-estado">Estado</label>
+          <select id="f-estado" class="select" [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)">
+            <option value="">Todos</option>
+            <option value="Registrado">Registrado</option>
+            <option value="Pendiente">Pendiente</option>
+          </select>
+        </div>
+        <button type="button" class="btn" (click)="limpiarFiltros()">Limpiar filtros</button>
+      </div>
+
+      @if (cargando()) {
+        <div class="relleno">@for (i of [1, 2, 3]; track i) { <div class="skeleton" style="height: 46px"></div> }</div>
+      } @else if (error()) {
+        <div class="relleno"><div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ error() }}</div></div></div>
+      } @else if (filas().length === 0) {
+        <p class="vacio relleno">
+          No hay liquidaciones calculadas en {{ nombrePeriodo(periodo()).toLowerCase() }}.
+          <a routerLink="/liquidaciones" [queryParams]="{ periodo: periodo() }">Calcular el mes</a> para saber qué documentos se esperan.
+        </p>
+      } @else {
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th>Colaborador</th><th>Tipo</th><th>Número</th><th>Emisión</th><th class="r">Total esperado</th><th>Registro</th></tr></thead>
+            <tbody>
+              @for (f of visibles(); track f.colaboradorId) {
+                <tr class="fila-elegible" [class.is-sel]="seleccionadoId() === f.colaboradorId" tabindex="0"
+                    (click)="seleccionadoId.set(f.colaboradorId)" (keydown.enter)="seleccionadoId.set(f.colaboradorId)">
+                  <td><strong>{{ f.colaborador }}</strong></td>
+                  <td>{{ f.documento ? etiquetaTipo[f.documento.tipo] : '—' }}</td>
+                  <td class="num">{{ f.documento?.numero ?? '—' }}</td>
+                  <td class="num">{{ f.documento ? (f.documento.fechaEmision | date: 'dd MMM yyyy') : '—' }}</td>
+                  <td class="r num">{{ f.totalCalculado | dinero }}</td>
+                  <td>
+                    @if (f.documento) { <app-estado-chip tono="ok">{{ f.documento.correcciones ? 'Corregido' : 'Registrado' }}</app-estado-chip> }
+                    @else { <app-estado-chip tono="warn">Pendiente</app-estado-chip> }
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="muted">Ningún documento con estos filtros.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <p class="pie-tabla">
+          {{ visibles().length }} de {{ filas().length }} ·
+          {{ pendientes() }} {{ pendientes() === 1 ? 'pendiente' : 'pendientes' }}. La falta del documento se advierte, pero no impide exportar (RN 35).
+        </p>
+      }
+    </section>
+
+    <!-- ── Registrar o corregir ──────────────────────────────────── -->
+    <section class="card panel-lateral">
+      @if (seleccionado(); as f) {
+        <header class="panel-lateral__head">
+          <h2>{{ f.documento ? 'Corregir documento' : 'Registrar documento' }}</h2>
+        </header>
+
+        @if (!f.documento) {
+          <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div><strong>Documento pendiente:</strong> revisar antes de exportar.</div></div>
+        } @else if (f.documento.correcciones) {
+          <p class="muted small">Corregido {{ f.documento.correcciones }} {{ f.documento.correcciones === 1 ? 'vez' : 'veces' }}. Las versiones anteriores se conservan.</p>
+        }
+
+        <form class="formulario" (submit)="$event.preventDefault(); guardar()">
+          <div class="field">
+            <label for="d-colab">Colaborador</label>
+            <input id="d-colab" class="input" [value]="f.colaborador" disabled />
+          </div>
+          <div class="field">
+            <label for="d-periodo">Período</label>
+            <input id="d-periodo" class="input" [value]="nombrePeriodo(f.periodo)" disabled />
+          </div>
+          <div class="field">
+            <label for="d-tipo">Tipo de documento</label>
+            <select id="d-tipo" name="tipo" class="select" [ngModel]="tipo()" (ngModelChange)="tipo.set($event)">
+              @for (t of tipos; track t) { <option [value]="t">{{ etiquetaTipo[t] }}</option> }
+            </select>
+            <span class="field__hint">Solo para el registro: no cambia el cálculo de impuestos (RN 33).</span>
+          </div>
+          <div class="field">
+            <label for="d-numero">Número de documento</label>
+            <input id="d-numero" name="numero" class="input num" placeholder="Ej. 001-001-000001234" maxlength="17"
+                   [class.is-invalid]="errores()['numero']" [ngModel]="numero()" (ngModelChange)="numero.set($event)" />
+            @if (errores()['numero']; as e) { <span class="field__error">{{ e }}</span> }
+          </div>
+          <div class="field">
+            <label for="d-fecha">Fecha de emisión</label>
+            <input id="d-fecha" name="fecha" type="date" class="input" [max]="hoy"
+                   [class.is-invalid]="errores()['fechaEmision']" [ngModel]="fechaEmision()" (ngModelChange)="fechaEmision.set($event)" />
+            @if (errores()['fechaEmision']; as e) { <span class="field__error">{{ e }}</span> }
+          </div>
+          <div class="field">
+            <label for="d-obs">Observaciones (opcional)</label>
+            <textarea id="d-obs" name="obs" class="input area" rows="2" maxlength="500"
+                      [ngModel]="observaciones()" (ngModelChange)="observaciones.set($event)"></textarea>
+          </div>
+
+          <!-- Qué cubre: sale de la liquidación, para no duplicar proyectos (RN 34) -->
+          @if (f.proyectos.length) {
+            <div class="bloque-sm">
+              <strong>Proyectos que cubre</strong>
+              <dl class="desglose">
+                @for (p of f.proyectos; track p.tmrProyectoId) { <div><dt>{{ p.proyecto }}</dt><dd>{{ p.importe | dinero }}</dd></div> }
+                <div class="desglose__total"><dt>Total esperado del documento</dt><dd>{{ f.totalCalculado | dinero }}</dd></div>
+              </dl>
+              <small class="muted">Subtotal más IVA de cada proyecto, según la liquidación.</small>
+            </div>
+          }
+
+          <div class="adjunto" aria-disabled="true">
+            <app-icon name="paperclip" [size]="20" />
+            <span><strong>Adjuntar archivo</strong><br />Pendiente: falta definir dónde se guardan los archivos.</span>
+          </div>
+
+          @if (errorGuardar(); as e) {
+            <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+          }
+          <button type="submit" class="btn btn--primary guardar" [disabled]="guardando()">
+            <app-icon name="save" [size]="17" /> {{ guardando() ? 'Guardando…' : (f.documento ? 'Guardar corrección' : 'Guardar documento') }}
+          </button>
+        </form>
+      } @else {
+        <p class="muted">Elige un colaborador de la lista para registrar su documento.</p>
+      }
+    </section>
+  </div>
+</div>

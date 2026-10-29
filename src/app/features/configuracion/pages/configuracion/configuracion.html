@@ -1,0 +1,220 @@
+<div class="pagina">
+  <header class="pagina__head">
+    <div>
+      <h1>Configuración</h1>
+      <p>Parámetros del sistema para la gestión de honorarios. Cada cambio guarda desde cuándo rige y quién lo hizo.</p>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist">
+    @for (p of pestanas; track p.id) {
+      <button type="button" role="tab" class="tab" [class.is-on]="pestana() === p.id" [attr.aria-selected]="pestana() === p.id"
+              (click)="pestana.set(p.id)">{{ p.titulo }}</button>
+    }
+  </div>
+
+  @if (cargando()) {
+    <div class="card skeleton" style="height: 220px"></div>
+  } @else if (error()) {
+    <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ error() }}</div></div>
+  } @else {
+    @switch (pestana()) {
+      @case ('alertas') {
+        <!-- ── Alertas de vencimiento (RN 13) ──────────────────────── -->
+        <section class="card seccion">
+          <header class="seccion__head">
+            <div>
+              <h2>Alertas de vencimiento</h2>
+              <p>Con cuántos días de anticipación se avisa en Inicio que vence un contrato.</p>
+            </div>
+            <button type="button" class="btn btn--primary" (click)="guardarParametro('AlertasDias')"
+                    [disabled]="guardando() === 'AlertasDias' || !cambiosAlertas() || alertas().length === 0">
+              <app-icon name="save" [size]="17" /> Guardar cambios
+            </button>
+          </header>
+          <span class="field__label">Días de anticipación</span>
+          <div class="chips-dias">
+            @for (d of alertas(); track d) {
+              <span class="chip-dia">{{ d }} días
+                <button type="button" (click)="quitarAlerta(d)" [attr.aria-label]="'Quitar ' + d + ' días'"><app-icon name="x" [size]="14" /></button>
+              </span>
+            }
+            <span class="agregar-dia">
+              <input class="input num" inputmode="numeric" placeholder="Días" aria-label="Días de la nueva alerta" maxlength="3"
+                     [ngModel]="nuevaAlerta()" (ngModelChange)="nuevaAlerta.set($event)" (keydown.enter)="$event.preventDefault(); agregarAlerta()" />
+              <button type="button" class="btn" (click)="agregarAlerta()"><app-icon name="plus" [size]="16" /> Agregar</button>
+            </span>
+          </div>
+          @if (errores().AlertasDias; as e) { <span class="field__error">{{ e }}</span> }
+          <p class="muted small">Rigen de inmediato porque no cambian importes. El aviso por correo no está confirmado (sección 14).</p>
+        </section>
+      }
+      @case ('anticipos') {
+        <!-- ── Límite de anticipos (RN 42, RN 43) ──────────────────── -->
+        <section class="card seccion">
+          <header class="seccion__head">
+            <div>
+              <h2>Límite de anticipos adicionales</h2>
+              <p>Porcentaje del neto mensual completo que pueden sumar los anticipos pendientes de un colaborador.</p>
+            </div>
+          </header>
+          <div class="dos">
+            <div class="field">
+              <label for="limite">Porcentaje del neto</label>
+              <select id="limite" class="select" [ngModel]="limite()" (ngModelChange)="limite.set(+$event)">
+                @for (o of opcionesLimite; track o) { <option [value]="o">{{ o }} %</option> }
+              </select>
+              @if (parametro('LimiteAnticiposPct'); as p) {
+                <span class="field__hint">Rige hoy: {{ p.valores[0] }} % desde {{ nombrePeriodo(p.vigenteDesde).toLowerCase() }}.</span>
+              }
+              @if (errores().LimiteAnticiposPct; as e) { <span class="field__error">{{ e }}</span> }
+            </div>
+            <div class="aviso aviso--info"><app-icon name="info" [size]="18" />
+              <div>El total de anticipos pendientes, contando la nueva solicitud, no puede superar el {{ limite() }} % del neto mensual del colaborador. Se permite llegar justo al límite.</div>
+            </div>
+          </div>
+          @if (parametro('LimiteAnticiposPct')?.programado; as prog) {
+            <div class="aviso aviso--warn programado"><app-icon name="clock" [size]="18" />
+              <div>Cambio programado: {{ prog.valores[0] }} % desde {{ nombrePeriodo(prog.vigenteDesde).toLowerCase() }}.</div>
+              <button type="button" class="btn btn--sm" (click)="cancelarProgramado('LimiteAnticiposPct')" [disabled]="guardando() === 'LimiteAnticiposPct'">Cancelar cambio</button>
+            </div>
+          }
+          <div class="form-actions">
+            <button type="button" class="btn btn--primary" (click)="guardarParametro('LimiteAnticiposPct')" [disabled]="guardando() === 'LimiteAnticiposPct'">
+              <app-icon name="save" [size]="17" /> Guardar desde el mes siguiente
+            </button>
+          </div>
+        </section>
+      }
+      @case ('reglas') {
+        <!-- ── Reglas tributarias (sección 7) ──────────────────────── -->
+        <section class="card seccion">
+          <header class="seccion__head">
+            <div>
+              <h2>Reglas de cálculo</h2>
+              <p>Porcentajes de IVA y retenciones. Contabilidad es responsable de sus valores y vigencias.</p>
+            </div>
+          </header>
+          <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" />
+            <div>Las reglas tributarias requieren validación de Contabilidad. Un cambio rige desde el mes siguiente; las liquidaciones ya calculadas conservan los porcentajes que usaron (RN 29).</div>
+          </div>
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead><tr><th>Concepto</th><th>Base</th><th class="r">Rige hoy</th><th>Nuevo valor</th><th></th></tr></thead>
+              <tbody>
+                @for (clave of reglas; track clave) {
+                  @if (parametro(clave); as p) {
+                    <tr>
+                      <td><strong>{{ parametrosInfo[clave].nombre }}</strong>
+                        @if (p.programado; as prog) {
+                          <br /><small class="t-warn">Desde {{ nombrePeriodo(prog.vigenteDesde).toLowerCase() }}: {{ prog.valores[0] }} %
+                            <button type="button" class="enlace" (click)="cancelarProgramado(clave)">cancelar</button></small>
+                        }
+                      </td>
+                      <td class="muted">{{ parametrosInfo[clave].ayuda }}</td>
+                      <td class="r num">{{ p.valores[0] }} %</td>
+                      <td>
+                        <input class="input num corto" inputmode="decimal" [attr.aria-label]="'Nuevo valor de ' + parametrosInfo[clave].nombre"
+                               [placeholder]="p.valores[0] + ''" [ngModel]="borradorReglas()[clave] ?? ''"
+                               (ngModelChange)="escribirRegla(clave, $event)" />
+                        @if (errores()[clave]; as e) { <br /><span class="field__error">{{ e }}</span> }
+                      </td>
+                      <td class="r">
+                        <button type="button" class="btn btn--sm" (click)="guardarParametro(clave)"
+                                [disabled]="!borradorReglas()[clave] || guardando() === clave">Programar</button>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+          <p class="muted small">
+            Factor para la modalidad neto con estos valores: profesional {{ factores().profesional }} · junior {{ factores().junior }}.
+            El subtotal se obtiene dividiendo el neto acordado para el factor.
+          </p>
+        </section>
+      }
+      @case ('catalogos') {
+        <!-- ── Catálogos ───────────────────────────────────────────── -->
+        <section class="card seccion">
+          <header class="seccion__head">
+            <div>
+              <h2>Bancos</h2>
+              <p>Lista de bancos para elegir en Datos bancarios del colaborador.</p>
+            </div>
+            <button type="button" class="btn btn--primary" (click)="guardarBancos()" [disabled]="guardando() === 'bancos'">
+              <app-icon name="save" [size]="17" /> Guardar cambios
+            </button>
+          </header>
+          <ul class="lista-bancos">
+            @for (b of bancos(); track b) {
+              <li>{{ b }} <button type="button" class="btn btn--ghost btn--sm" (click)="quitarBanco(b)" [attr.aria-label]="'Quitar ' + b"><app-icon name="trash" [size]="15" /></button></li>
+            }
+          </ul>
+          <div class="agregar-dia">
+            <input class="input" placeholder="Nombre del banco" aria-label="Nombre del banco nuevo" maxlength="100"
+                   [ngModel]="nuevoBanco()" (ngModelChange)="nuevoBanco.set($event)" (keydown.enter)="$event.preventDefault(); agregarBanco()" />
+            <button type="button" class="btn" (click)="agregarBanco()"><app-icon name="plus" [size]="16" /> Agregar</button>
+          </div>
+          @if (errores().bancos; as e) { <span class="field__error">{{ e }}</span> }
+          <p class="muted small">Los campos y códigos que pide el banco se definirán con la plantilla del Excel (PA 02).</p>
+        </section>
+      }
+      @case ('accesos') {
+        <!-- ── Accesos (RC 01) ─────────────────────────────────────── -->
+        <section class="card seccion">
+          <header class="seccion__head">
+            <div>
+              <h2>Accesos</h2>
+              <p>Quién puede entrar a RPS.</p>
+            </div>
+          </header>
+          <div class="aviso aviso--info"><app-icon name="shield" [size]="18" />
+            <div>Solo usuarios autorizados de Contabilidad acceden a RPS y a sus datos económicos (RC 01). El acceso a TMR no da acceso a RPS.
+              Cómo se administran los usuarios está pendiente de definir con TI; esta pestaña es informativa por ahora.</div>
+          </div>
+        </section>
+      }
+    }
+
+    <!-- ── Vigencias e historial (todas las pestañas) ────────────── -->
+    <section class="card seccion">
+      <header class="seccion__head">
+        <div>
+          <h2>Vigencias de parámetros</h2>
+          <p>Cuándo empieza a regir cada cambio.</p>
+        </div>
+      </header>
+      <ul class="vigencias">
+        <li><app-estado-chip tono="info">Inmediato</app-estado-chip> Alertas de vencimiento: no cambian importes.</li>
+        <li><app-estado-chip tono="warn">Desde el mes siguiente</app-estado-chip> Límite de anticipos y reglas tributarias: el mes en curso no se modifica.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <header class="seccion__head historial__head">
+        <div>
+          <h2>Historial de cambios</h2>
+          <p>Últimas modificaciones de la configuración.</p>
+        </div>
+      </header>
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>Parámetro</th><th>Anterior</th><th>Nuevo</th><th>Vigente desde</th><th>Registrado</th></tr></thead>
+          <tbody>
+            @for (c of datos()?.historial ?? []; track $index) {
+              <tr>
+                <td>{{ parametrosInfo[c.clave].nombre }}</td>
+                <td>{{ textoValores(c.clave, c.anterior) }}</td>
+                <td><strong>{{ textoValores(c.clave, c.nuevo) }}</strong></td>
+                <td>{{ nombrePeriodo(c.vigenteDesde) }}</td>
+                <td class="num muted">{{ c.registradoEn | date: 'dd MMM yyyy, HH:mm' }} · {{ c.usuario }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>

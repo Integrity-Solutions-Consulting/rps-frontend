@@ -5,5 +5,8 @@ export const environment = {
   apiUrl: '/api',
   // Rutas que el backend todavía no tiene: siguen con datos de ejemplo.
   // Quitar cada una de la lista cuando exista su endpoint.
-  mockRutas: ['/dashboard', '/contratos', '/honorarios', '/integracion-tmr'] as string[],
+  mockRutas: [
+    '/dashboard', '/contratos', '/honorarios', '/integracion-tmr',
+    '/anticipos', '/liquidaciones', '/documentos', '/exportaciones', '/configuracion',
+  ] as string[],
 };

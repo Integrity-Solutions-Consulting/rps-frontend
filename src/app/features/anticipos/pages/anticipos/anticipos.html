@@ -1,0 +1,254 @@
+<div class="pagina">
+  <header class="pagina__head">
+    <div>
+      <h1>Anticipos adicionales</h1>
+      <p>Dinero que se entrega aparte y se recupera con cuotas en los cortes del mismo mes.</p>
+    </div>
+  </header>
+
+  <div class="aviso aviso--warn">
+    <app-icon name="info" [size]="18" />
+    <div><strong>Independientes del pago ordinario de quincena.</strong>
+      El 50 % de la quincena es parte del honorario y no es deuda (RN 37). Estos anticipos son otra cosa: se descuentan con el plan que se registre aquí.</div>
+  </div>
+
+  <!-- ── Colaborador ───────────────────────────────────────────── -->
+  <section class="card colaborador">
+    <div class="field">
+      <label for="colaborador">Colaborador</label>
+      <select id="colaborador" class="select" [ngModel]="colaboradorId()" (ngModelChange)="elegirColaborador($event)">
+        @if (opciones().length === 0) { <option value="">Cargando…</option> }
+        @for (o of opciones(); track o.id) { <option [value]="o.id">{{ o.nombre }}</option> }
+      </select>
+    </div>
+    @if (resumen(); as r) {
+      <dl class="colaborador__datos">
+        <div><dt>Tipo de servicio</dt><dd>{{ r.clasificacion ? etiquetaClasificacion[r.clasificacion] : 'Sin definir' }}</dd></div>
+        <div><dt>Identificación</dt><dd>{{ enmascarar(r.identificacion) }}</dd></div>
+        <div><dt>Frecuencia en {{ nombreMes().toLowerCase() }}</dt><dd>{{ r.frecuencia ? etiquetaFrecuencia[r.frecuencia] : 'Sin definir' }}</dd></div>
+        <div><dt>Ficha</dt><dd><a [routerLink]="['/colaboradores', r.colaboradorId]">Ver ficha</a></dd></div>
+      </dl>
+    }
+  </section>
+
+  @if (errorResumen()) {
+    <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ errorResumen() }}</div></div>
+  }
+
+  @if (cargandoResumen() && !resumen()) {
+    <div class="indicadores">@for (i of [1, 2, 3, 4]; track i) { <div class="card skeleton" style="height: 82px"></div> }</div>
+  } @else if (resumen(); as r) {
+    <!-- ── Indicadores ───────────────────────────────────────────── -->
+    <section class="indicadores" aria-label="Límite de anticipos">
+      <article class="card indicador">
+        <span class="indicador__icono"><app-icon name="coins" [size]="22" /></span>
+        <div class="indicador__cuerpo">
+          <span class="indicador__etiqueta">Neto de referencia</span>
+          <strong class="indicador__valor num">{{ r.netoReferencia | dinero }}</strong>
+          <span class="indicador__ayuda">Neto del mes completo, todos sus proyectos (RN 21)</span>
+        </div>
+      </article>
+      <article class="card indicador" [class.indicador--warn]="r.saldoPendiente > 0">
+        <span class="indicador__icono indicador__icono--warn"><app-icon name="file" [size]="22" /></span>
+        <div class="indicador__cuerpo">
+          <span class="indicador__etiqueta">Saldo pendiente</span>
+          <strong class="indicador__valor num">{{ r.saldoPendiente | dinero }}</strong>
+          <span class="indicador__ayuda">Cuotas que aún no se descuentan</span>
+        </div>
+      </article>
+      <article class="card indicador">
+        <span class="indicador__icono"><app-icon name="shield" [size]="22" /></span>
+        <div class="indicador__cuerpo">
+          <span class="indicador__etiqueta">Límite</span>
+          <strong class="indicador__valor num">{{ r.limite | dinero }}</strong>
+          <span class="indicador__ayuda">{{ r.limitePct }} % del neto de referencia</span>
+        </div>
+      </article>
+      <article class="card indicador indicador--ok">
+        <span class="indicador__icono indicador__icono--ok"><app-icon name="pie" [size]="22" /></span>
+        <div class="indicador__cuerpo">
+          <span class="indicador__etiqueta">Disponible</span>
+          <strong class="indicador__valor num">{{ r.disponible | dinero }}</strong>
+          <span class="indicador__ayuda">Límite menos saldo pendiente</span>
+        </div>
+      </article>
+    </section>
+
+    @if (r.bloqueo) {
+      <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div><strong>No se puede registrar un anticipo.</strong> {{ r.bloqueo }}</div></div>
+    }
+
+    <div class="dos-columnas">
+      <!-- ── Formulario ──────────────────────────────────────────── -->
+      <form class="card formulario" (submit)="$event.preventDefault(); guardar()">
+        <h2>Registrar anticipo</h2>
+        <div class="form-grid">
+          <div class="field">
+            <label for="monto">Monto del anticipo</label>
+            <div class="con-prefijo"><span>$</span>
+              <input id="monto" name="monto" class="input num" inputmode="decimal" placeholder="0,00" [disabled]="!!r.bloqueo"
+                     [ngModel]="monto()" (ngModelChange)="monto.set($event)" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="fecha">Fecha de registro</label>
+            <input id="fecha" name="fecha" type="date" class="input" [min]="minFecha" [ngModel]="fecha()" (ngModelChange)="fecha.set($event)" />
+            <span class="field__hint">Se recupera en {{ nombreMes().toLowerCase() }} (RN 45).</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="obs">Observaciones (opcional)</label>
+          <textarea id="obs" name="obs" class="input area" maxlength="500" rows="2" [disabled]="!!r.bloqueo"
+                    [ngModel]="observaciones()" (ngModelChange)="observaciones.set($event)"></textarea>
+          <span class="field__hint r">{{ observaciones().length }}/500</span>
+        </div>
+
+        <h3>Plan de recuperación</h3>
+        <p class="muted small">Lo pide el colaborador y Contabilidad lo registra. Puede ser desigual, por ejemplo $200 en quincena y $300 a fin de mes (RN 44).</p>
+        <div class="table-wrap plan">
+          <table class="tbl">
+            <thead><tr><th>Mes</th><th>Corte</th><th>Monto</th><th><span class="sr-only">Quitar</span></th></tr></thead>
+            <tbody>
+              @for (c of cuotas(); track c.clave) {
+                <tr>
+                  <td>{{ nombreMes() }}</td>
+                  <td>
+                    <select class="select" [attr.aria-label]="'Corte de la cuota'" [name]="'corte' + c.clave"
+                            [ngModel]="c.corte" (ngModelChange)="cambiarCuota(c.clave, { corte: $event })">
+                      @for (k of cortesPermitidos(); track k) { <option [value]="k">{{ etiquetaCorte[k] }}</option> }
+                    </select>
+                  </td>
+                  <td>
+                    <div class="con-prefijo"><span>$</span>
+                      <input class="input num" inputmode="decimal" [attr.aria-label]="'Monto de la cuota'" [name]="'monto' + c.clave"
+                             [ngModel]="c.monto" (ngModelChange)="cambiarCuota(c.clave, { monto: $event })" />
+                    </div>
+                  </td>
+                  <td class="r">
+                    <button type="button" class="btn btn--ghost btn--sm" (click)="quitarCuota(c.clave)" aria-label="Quitar cuota">
+                      <app-icon name="trash" [size]="16" />
+                    </button>
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="4" class="muted">Sin cuotas todavía.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <button type="button" class="btn btn--sm agregar" (click)="agregarCuota()" [disabled]="!!r.bloqueo || cortesPermitidos().length === 0">
+          <app-icon name="plus" [size]="15" /> Agregar cuota
+        </button>
+        @if (!r.bloqueo && cortesPermitidos().length === 0) {
+          <p class="muted small">No queda ningún corte de {{ nombreMes().toLowerCase() }} sin exportar. Elige una fecha del mes siguiente.</p>
+        }
+
+        <div class="totales">
+          <div><span>Monto del anticipo</span><strong class="num">{{ validacion().monto | dinero }}</strong></div>
+          <div><span>Distribuido en cuotas</span><strong class="num">{{ validacion().distribuido | dinero }}</strong></div>
+          <div [class.t-danger]="validacion().porDistribuir !== 0"><span>Por distribuir</span><strong class="num">{{ validacion().porDistribuir | dinero }}</strong></div>
+        </div>
+
+        @if (errorGuardar(); as e) {
+          <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+        }
+        <div class="form-actions">
+          <button type="button" class="btn" (click)="limpiarFormulario()" [disabled]="guardando()">Limpiar</button>
+          <button type="submit" class="btn btn--primary" [disabled]="guardando() || !!r.bloqueo || validacion().errores.length > 0">
+            {{ guardando() ? 'Guardando…' : 'Registrar anticipo' }}
+          </button>
+        </div>
+      </form>
+
+      <!-- ── Validación en vivo ──────────────────────────────────── -->
+      <aside class="card validacion">
+        <h2>Validación del límite</h2>
+        @if (validacion().monto > 0) {
+          @if (validacion().dentroLimite) {
+            <div class="aviso aviso--ok"><app-icon name="check" [size]="18" /><div><strong>Dentro del límite disponible.</strong> El total pendiente no pasa del límite del colaborador.</div></div>
+          } @else {
+            <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div><strong>Supera el límite.</strong> Puede pedir hasta {{ r.disponible | dinero }}.</div></div>
+          }
+        }
+        <dl class="desglose">
+          <div><dt>Saldo pendiente actual</dt><dd>{{ validacion().saldo | dinero }}</dd></div>
+          <div><dt>Monto de este anticipo</dt><dd>{{ validacion().monto | dinero }}</dd></div>
+          <div class="desglose__total"><dt>Total pendiente (proyectado)</dt><dd>{{ validacion().proyectado | dinero }}</dd></div>
+          <div><dt>Límite</dt><dd>{{ validacion().limite | dinero }}</dd></div>
+          <div><dt>Disponible después del registro</dt><dd [class.t-danger]="(validacion().disponibleDespues ?? 0) < 0">{{ validacion().disponibleDespues | dinero }}</dd></div>
+        </dl>
+
+        <h3>Cortes de {{ nombreMes().toLowerCase() }}</h3>
+        <p class="muted small">Además del límite, cada corte debe alcanzar para su cuota sin quedar en negativo (RN 47).</p>
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th>Corte</th><th class="r">Paga</th><th class="r">Ya programado</th><th class="r">Esta cuota</th><th class="r">Queda</th></tr></thead>
+            <tbody>
+              @for (c of validacion().porCorte; track c.corte) {
+                <tr>
+                  <td>{{ etiquetaCorte[c.corte] }}
+                    @if (c.versionExportada) { <br /><app-estado-chip tono="info">Exportado v{{ c.versionExportada }}</app-estado-chip> }
+                  </td>
+                  <td class="r num">{{ c.base | dinero }}</td>
+                  <td class="r num">{{ c.cuotasProgramadas | dinero }}</td>
+                  <td class="r num">{{ c.pedido | dinero }}</td>
+                  <td class="r num" [class.t-danger]="c.queda < 0">{{ c.queda | dinero }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="5" class="muted">Sin cortes para calcular.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (r.proyectos.length) {
+          <details class="origen-neto">
+            <summary>¿De dónde sale el neto de referencia?</summary>
+            <dl class="desglose">
+              @for (p of r.proyectos; track p.proyecto) { <div><dt>{{ p.proyecto }}</dt><dd>{{ p.neto | dinero }}</dd></div> }
+              <div class="desglose__total"><dt>Neto mensual completo</dt><dd>{{ r.netoReferencia | dinero }}</dd></div>
+            </dl>
+            <p class="muted small">Se calcula cada proyecto con su modalidad y luego se suman los netos. No se usa el proporcional del mes.</p>
+          </details>
+        }
+
+        <div class="aviso aviso--warn notas">
+          <app-icon name="info" [size]="18" />
+          <ul>
+            <li>Las cuotas se descuentan de la liquidación en los cortes indicados. Después de registrar, recalcula el mes.</li>
+            <li>Exportar el Excel no da por recuperado el anticipo (RN 56).</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ── Anticipos registrados ───────────────────────────────────── -->
+    <section class="card">
+      <header class="bloque__head registrados__head"><h2>Anticipos registrados</h2></header>
+      @if (anticipos().length === 0) {
+        <p class="vacio registrados__vacio">Este colaborador no tiene anticipos adicionales.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th>Fecha</th><th>Mes de recuperación</th><th class="r">Monto</th><th>Cuotas</th><th>Estado</th><th>Observaciones</th></tr></thead>
+            <tbody>
+              @for (a of anticipos(); track a.id) {
+                <tr>
+                  <td class="num">{{ a.fecha | date: 'dd MMM yyyy' }}</td>
+                  <td>{{ nombrePeriodo(a.periodo) }}</td>
+                  <td class="r num"><strong>{{ a.monto | dinero }}</strong></td>
+                  <td>{{ textoCuotas(a) }}</td>
+                  <td>
+                    @if (a.cuotas[0]?.estado === 'Aplicada') { <app-estado-chip tono="ok">Recuperado</app-estado-chip> }
+                    @else { <app-estado-chip tono="warn">Cuotas programadas</app-estado-chip> }
+                  </td>
+                  <td class="muted">{{ a.observaciones ?? '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+</div>

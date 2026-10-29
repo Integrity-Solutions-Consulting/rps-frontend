@@ -13,6 +13,7 @@ import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
+import { sumarDias } from '../../../../shared/utils/fechas';
 
 type Carga<T> = { estado: 'cargando' } | { estado: 'ok'; datos: T } | { estado: 'error'; mensaje: string };
 
@@ -74,6 +75,21 @@ export class Contratos {
       `${x.colaborador} ${x.proyecto} ${x.cliente ?? ''} ${x.referencia ?? ''} ${x.tmrColaboradorId}`.toLowerCase().includes(t));
   });
 
+  // ── Paginación (10 por página, como el mockup) ───────────────────────
+  private readonly porPagina = 10;
+  protected readonly pagina = signal(1);
+  protected readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.filas().length / this.porPagina)));
+  protected readonly numerosPagina = computed(() => Array.from({ length: this.totalPaginas() }, (_, i) => i + 1));
+  protected readonly filasPagina = computed(() => {
+    const inicio = (Math.min(this.pagina(), this.totalPaginas()) - 1) * this.porPagina;
+    return this.filas().slice(inicio, inicio + this.porPagina);
+  });
+  protected readonly rango = computed(() => {
+    const total = this.filas().length;
+    const desde = total === 0 ? 0 : (Math.min(this.pagina(), this.totalPaginas()) - 1) * this.porPagina + 1;
+    return { desde, hasta: Math.min(desde + this.porPagina - 1, total) };
+  });
+
   /** Nombre del colaborador filtrado, para la etiqueta "Filtrado por". */
   protected readonly nombreFiltrado = computed(() => {
     const id = this.filtroColaborador();
@@ -95,6 +111,14 @@ export class Contratos {
   protected readonly errorDetalle = signal<string | null>(null);
 
   constructor() {
+    // Al cambiar filtros o búsqueda se vuelve a la primera página.
+    effect(() => {
+      this.filtroEstado();
+      this.busqueda();
+      this.filtroColaborador();
+      untracked(() => this.pagina.set(1));
+    });
+
     // Selecciona el primero de la lista si no hay uno elegido o si el elegido ya no aparece.
     effect(() => {
       const filas = this.filas();
@@ -271,6 +295,12 @@ export class Contratos {
     if (c.diasParaVencer < 0) return `venció hace ${-c.diasParaVencer} ${-c.diasParaVencer === 1 ? 'día' : 'días'}`;
     if (c.diasParaVencer === 0) return 'vence hoy';
     return `${c.diasParaVencer} ${c.diasParaVencer === 1 ? 'día' : 'días'}`;
+  }
+
+  /** Una adenda empieza el día siguiente al fin anterior (el original o el de la adenda previa). */
+  protected inicioAdenda(d: ContratoDetalle, indice: number): string {
+    const finAnterior = indice === 0 ? d.fechaFinOriginal : d.adendas[indice - 1].nuevaFechaFin;
+    return sumarDias(finAnterior, 1);
   }
 
   protected iniciales(nombre: string): string {

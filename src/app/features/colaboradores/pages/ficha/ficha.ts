@@ -54,6 +54,8 @@ export class ColaboradorFicha {
 
   /** :id de la ruta (withComponentInputBinding). */
   readonly id = input.required<string>();
+  /** ?tab=condiciones abre directo esa pestaña (enlaces desde Liquidaciones o el Historial). */
+  readonly tab = input<string | undefined>(undefined);
 
   protected readonly pestanas: { id: PestanaFicha; titulo: string }[] = [
     { id: 'generales', titulo: 'Datos generales' },
@@ -99,6 +101,10 @@ export class ColaboradorFicha {
   });
 
   constructor() {
+    effect(() => {
+      const t = this.tab();
+      if (t && this.pestanas.some((p) => p.id === t)) untracked(() => this.pestana.set(t as PestanaFicha));
+    });
     effect(() => {
       const id = this.id();
       untracked(() => this.cargar(id));

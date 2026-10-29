@@ -1,0 +1,162 @@
+<div class="pagina">
+  <header class="pagina__head">
+    <div>
+      <h1>Exportaciones</h1>
+      <p>Prepara el archivo de pago de cada corte para que el pago siga fuera de RPS.</p>
+    </div>
+  </header>
+
+  <div class="aviso aviso--info">
+    <app-icon name="info" [size]="18" />
+    <div>Generar el archivo <strong>no marca nada como pagado</strong> ni da por recuperados los anticipos (RN 56).
+      La plantilla del banco todavía no llega (PA 02): por ahora se genera un CSV que Excel abre directo.</div>
+  </div>
+
+  <!-- ── Preparar archivo ──────────────────────────────────────── -->
+  <section class="card preparar">
+    <div class="preparar__barra">
+      <div class="field">
+        <label for="periodo">Período</label>
+        <input id="periodo" type="month" class="input" [value]="periodo()" (change)="cambiarPeriodo($any($event.target).value)" />
+      </div>
+      <div class="field">
+        <span class="field__label" id="corte-label">Corte</span>
+        <div class="segmentos" role="group" aria-labelledby="corte-label">
+          @for (c of cortes; track c) {
+            <button type="button" [class.is-on]="corte() === c" [attr.aria-pressed]="corte() === c" (click)="cambiarCorte(c)">
+              {{ etiquetaCorte[c] }} <small>({{ rangoCorte(c, periodo()) }})</small>
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    @if (cargando()) {
+      <div class="relleno">@for (i of [1, 2, 3]; track i) { <div class="skeleton" style="height: 50px"></div> }</div>
+    } @else if (error()) {
+      <div class="relleno"><div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ error() }}</div></div></div>
+    } @else if (preparacion(); as p) {
+      @if (!p.calculado) {
+        <p class="vacio relleno">
+          {{ nombrePeriodo(p.periodo) }} todavía no se calcula.
+          <a routerLink="/liquidaciones" [queryParams]="{ periodo: p.periodo }">Ir a Liquidaciones</a>.
+        </p>
+      } @else if (p.candidatos.length === 0) {
+        <p class="vacio relleno">Nadie cobra en {{ etiquetaCorte[p.corte].toLowerCase() }} de {{ nombrePeriodo(p.periodo).toLowerCase() }}.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th><input type="checkbox" class="casilla" aria-label="Elegir todos" [checked]="todosElegidos()" (change)="alternarTodos($any($event.target).checked)" /></th>
+                <th>Colaborador</th><th>Cuenta</th><th class="r">Valor del corte</th><th>Estado</th><th>Advertencias</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of p.candidatos; track c.liquidacionId) {
+                <tr [class.is-sel]="elegidos().has(c.liquidacionId)">
+                  <td><input type="checkbox" class="casilla" [attr.aria-label]="'Incluir a ' + c.colaborador"
+                             [checked]="elegidos().has(c.liquidacionId)" (change)="alternar(c, $any($event.target).checked)" /></td>
+                  <td><strong>{{ c.colaborador }}</strong></td>
+                  <td>{{ c.banco ?? 'Sin banco' }}<br /><small class="muted num">{{ c.cuenta ?? 'Sin cuenta' }}</small></td>
+                  <td class="r num"><strong>{{ c.valor | dinero }}</strong></td>
+                  <td class="chips">
+                    <app-estado-chip [tono]="c.revisado ? 'ok' : 'neutral'">{{ c.revisado ? 'Revisado' : 'Sin revisar' }}</app-estado-chip>
+                    @if (c.versionExportada) { <app-estado-chip tono="info">Exportado v{{ c.versionExportada }}</app-estado-chip> }
+                  </td>
+                  <td>
+                    @if (c.advertencias.length) {
+                      <ul class="advertencias">@for (a of c.advertencias; track a) { <li>{{ a }}</li> }</ul>
+                    } @else { <span class="muted">—</span> }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <footer class="resumen">
+          <div class="resumen__datos">
+            <span><strong>{{ seleccion().lista.length }}</strong> de {{ p.candidatos.length }} elegidos</span>
+            <span>Total <strong class="num">{{ seleccion().total | dinero }}</strong></span>
+            <span class="muted">Se generará la versión {{ p.siguienteVersion }}</span>
+          </div>
+          @if (seleccion().sinDocumento) {
+            <p class="muted small">{{ seleccion().sinDocumento }} sin documento tributario: se advierte, pero se puede exportar (RN 57).</p>
+          }
+          @if (confirmando()) {
+            <div class="aviso aviso--warn confirmar">
+              <app-icon name="alert" [size]="18" />
+              <div><strong>{{ seleccion().repetidos }} {{ seleccion().repetidos === 1 ? 'colaborador ya salió' : 'colaboradores ya salieron' }} en una versión anterior de este corte.</strong>
+                Si sigues, aparecerán otra vez en el archivo nuevo. La versión anterior se conserva.</div>
+              <button type="button" class="btn btn--sm" (click)="confirmando.set(false)">Revisar</button>
+              <button type="button" class="btn btn--sm btn--primary" (click)="generar()">Generar de todos modos</button>
+            </div>
+          }
+          <button type="button" class="btn btn--primary" (click)="generar()" [disabled]="generando() || seleccion().lista.length === 0 || confirmando()">
+            <app-icon name="upload" [size]="18" /> {{ generando() ? 'Generando…' : 'Generar archivo' }}
+          </button>
+        </footer>
+      }
+    }
+  </section>
+
+  <!-- ── Versiones generadas ───────────────────────────────────── -->
+  <section class="card">
+    <header class="versiones__head">
+      <h2>Versiones generadas</h2>
+      <label class="solo-mes">
+        <input type="checkbox" class="casilla" [checked]="soloEsteMes()" (change)="soloEsteMes.set($any($event.target).checked)" />
+        Solo {{ nombrePeriodo(periodo()).toLowerCase() }}
+      </label>
+    </header>
+    @if (versiones().length === 0) {
+      <p class="vacio relleno">Todavía no hay archivos generados{{ soloEsteMes() ? ' para este mes' : '' }}.</p>
+    } @else {
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>Período</th><th>Corte</th><th>Versión</th><th>Generada</th><th class="r">Colaboradores</th><th class="r">Total</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+            @for (e of versiones(); track e.id) {
+              <tr class="fila-elegible" [class.is-sel]="abierta() === e.id" (click)="abierta.set(abierta() === e.id ? null : e.id)">
+                <td>{{ nombrePeriodo(e.periodo) }}</td>
+                <td>{{ etiquetaCorte[e.corte] }}</td>
+                <td>v{{ e.version }}</td>
+                <td class="num">{{ e.generadaEn | date: 'dd MMM yyyy, HH:mm' }}<br /><small class="muted">{{ e.usuario }}</small></td>
+                <td class="r num">{{ e.filas.length }}</td>
+                <td class="r num"><strong>{{ e.total | dinero }}</strong></td>
+                <td class="chips">
+                  @if (e.vigente) { <app-estado-chip tono="ok">Vigente</app-estado-chip> } @else { <app-estado-chip tono="neutral">Reemplazada</app-estado-chip> }
+                  @if (e.desactualizada) { <app-estado-chip tono="warn">Importes cambiaron</app-estado-chip> }
+                </td>
+                <td class="r" (click)="$event.stopPropagation()">
+                  <button type="button" class="btn btn--sm" (click)="descargar(e)" [disabled]="descargando() === e.id">
+                    <app-icon name="download" [size]="15" /> Descargar
+                  </button>
+                </td>
+              </tr>
+              @if (abierta() === e.id) {
+                <tr class="detalle-version">
+                  <td colspan="8">
+                    <table class="tbl interna">
+                      <thead><tr><th>Colaborador</th><th>Banco</th><th>Cuenta</th><th class="r">Valor</th></tr></thead>
+                      <tbody>
+                        @for (f of e.filas; track f.colaboradorId) {
+                          <tr><td>{{ f.colaborador }}</td><td>{{ f.banco ?? '—' }}</td><td class="num">{{ f.cuenta ?? '—' }}</td><td class="r num">{{ f.valor | dinero }}</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                    @if (e.desactualizada) {
+                      <p class="muted small">Algún importe cambió después de generar esta versión. Si el archivo ya se envió, coordina con Contabilidad cómo reemplazarlo.</p>
+                    }
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="pie-tabla">Haz clic en una versión para ver quiénes salieron. "Descargar" entrega el mismo archivo, no genera otra versión.</p>
+    }
+  </section>
+</div>

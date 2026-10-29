@@ -1,0 +1,326 @@
+<div class="pagina">
+  <header class="pagina__head">
+    <div>
+      <h1>Liquidaciones</h1>
+      <p>Cálculo de honorarios por mes: cada proyecto con sus días e impuestos, el total por colaborador y los dos cortes de pago.</p>
+    </div>
+    <div class="pagina__acciones">
+      <div class="field">
+        <label for="periodo">Período</label>
+        <input id="periodo" type="month" class="input" [value]="periodo()" (change)="cambiarPeriodo($any($event.target).value)" />
+      </div>
+      <button type="button" class="btn btn--primary" (click)="calcular()" [disabled]="calculando() || cargando()">
+        <app-icon name="calculator" [size]="18" /> {{ calculando() ? 'Calculando…' : 'Calcular período' }}
+      </button>
+      <a class="btn" routerLink="/exportaciones" [queryParams]="{ periodo: periodo() }">
+        <app-icon name="upload" [size]="18" /> Preparar exportación
+      </a>
+    </div>
+  </header>
+
+  @if (cargando()) {
+    <div class="indicadores">@for (i of [1, 2, 3, 4]; track i) { <div class="card skeleton" style="height: 82px"></div> }</div>
+    <div class="card skeleton" style="height: 260px"></div>
+  } @else if (error()) {
+    <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ error() }}</div>
+      <button type="button" class="btn btn--sm" (click)="cambiarPeriodo(periodo())">Reintentar</button></div>
+  } @else if (datos(); as d) {
+
+    <!-- Colaboradores con proyectos en el mes que no se pudieron calcular (RN 06) -->
+    @if (d.pendientes.length) {
+      <div class="aviso aviso--warn">
+        <app-icon name="alert" [size]="18" />
+        <div>
+          <strong>{{ d.pendientes.length }} {{ d.pendientes.length === 1 ? 'colaborador no se puede calcular' : 'colaboradores no se pueden calcular' }}</strong>
+          porque falta configuración. No se inventan datos: complétalos en su ficha y vuelve a calcular.
+          <ul class="pendientes">
+            @for (p of d.pendientes; track p.colaboradorId) {
+              <li><a [routerLink]="['/colaboradores', p.colaboradorId]" [queryParams]="{ tab: 'condiciones' }">{{ p.colaborador }}</a>: {{ p.motivo }}</li>
+            }
+          </ul>
+        </div>
+      </div>
+    }
+
+    @if (!d.calculado) {
+      <section class="card vacio-grande">
+        <app-icon name="calculator" [size]="32" />
+        <h2>{{ nombreMes() }} todavía no se calcula</h2>
+        <p class="muted">Al calcular, RPS toma las asignaciones de TMR, los honorarios por proyecto, la frecuencia y los anticipos del mes.</p>
+        <button type="button" class="btn btn--primary" (click)="calcular()" [disabled]="calculando()">Calcular {{ nombreMes() }}</button>
+      </section>
+    } @else {
+      <!-- ── Indicadores ─────────────────────────────────────────── -->
+      <section class="indicadores" aria-label="Resumen del período">
+        <article class="card indicador">
+          <span class="indicador__icono indicador__icono--teal"><app-icon name="cash" [size]="22" /></span>
+          <div class="indicador__cuerpo">
+            <span class="indicador__etiqueta">Neto consolidado</span>
+            <strong class="indicador__valor num">{{ totales().neto | dinero }}</strong>
+            <span class="indicador__ayuda">{{ filas().length }} colaboradores · antes de anticipos</span>
+          </div>
+        </article>
+        <article class="card indicador">
+          <span class="indicador__icono indicador__icono--ok"><app-icon name="check" [size]="22" /></span>
+          <div class="indicador__cuerpo">
+            <span class="indicador__etiqueta">Revisadas para envío</span>
+            <strong class="indicador__valor num">{{ totales().revisadas }} <small class="muted">de {{ filas().length }}</small></strong>
+          </div>
+        </article>
+        <article class="card indicador" [class.indicador--warn]="totales().recalcular > 0">
+          <span class="indicador__icono indicador__icono--warn"><app-icon name="refresh" [size]="22" /></span>
+          <div class="indicador__cuerpo">
+            <span class="indicador__etiqueta">Requieren recálculo</span>
+            <strong class="indicador__valor num">{{ totales().recalcular }}</strong>
+            <span class="indicador__ayuda">Algo cambió después de calcular</span>
+          </div>
+        </article>
+        <article class="card indicador">
+          <span class="indicador__icono indicador__icono--info"><app-icon name="folder" [size]="22" /></span>
+          <div class="indicador__cuerpo">
+            <span class="indicador__etiqueta">Sin documento tributario</span>
+            <strong class="indicador__valor num">{{ totales().sinDocumento }}</strong>
+            <span class="indicador__ayuda">No bloquea la exportación</span>
+          </div>
+        </article>
+      </section>
+
+      <div class="con-panel">
+        <!-- ── Lista ───────────────────────────────────────────────── -->
+        <section class="card lista">
+          <div class="tabs" role="tablist">
+            <button type="button" role="tab" class="tab" [class.is-on]="vista() === 'resumen'" [attr.aria-selected]="vista() === 'resumen'"
+                    (click)="vista.set('resumen')">Resumen mensual</button>
+            <button type="button" role="tab" class="tab" [class.is-on]="vista() === 'cortes'" [attr.aria-selected]="vista() === 'cortes'"
+                    (click)="vista.set('cortes')">Por corte</button>
+          </div>
+
+          @if (vista() === 'resumen') {
+            <div class="table-wrap">
+              <table class="tbl">
+                <thead>
+                  <tr><th>Colaborador</th><th class="r">Proyectos</th><th class="r">Neto del mes</th><th>Documento</th><th>Revisión</th></tr>
+                </thead>
+                <tbody>
+                  @for (l of filas(); track l.id) {
+                    <tr class="fila-elegible" [class.is-sel]="seleccionadoId() === l.id" tabindex="0"
+                        (click)="elegir(l)" (keydown.enter)="elegir(l)">
+                      <td>
+                        <div class="persona">
+                          <span class="avatar" aria-hidden="true">{{ iniciales(l.colaborador) }}</span>
+                          <span class="persona__txt">
+                            <strong>{{ l.colaborador }}</strong>
+                            <small>{{ etiquetaClasificacion[l.clasificacion] }} · {{ etiquetaFrecuencia[l.frecuencia] }}</small>
+                          </span>
+                        </div>
+                      </td>
+                      <td class="r num">{{ l.proyectos }}</td>
+                      <td class="r num"><strong>{{ l.netoConsolidado | dinero }}</strong></td>
+                      <td>
+                        <app-estado-chip [tono]="l.documento === 'Registrado' ? 'ok' : 'warn'">{{ l.documento }}</app-estado-chip>
+                      </td>
+                      <td>
+                        @if (l.requiereRecalculo) { <app-estado-chip tono="danger">Recalcular</app-estado-chip> }
+                        @else if (l.revisado) { <app-estado-chip tono="ok">Revisada</app-estado-chip> }
+                        @else { <app-estado-chip tono="neutral">Por revisar</app-estado-chip> }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <p class="aviso aviso--info nota-cortes">
+              <app-icon name="info" [size]="18" />
+              <span>El mes se divide en dos cortes: quincena ({{ rangoCorte('Quincena', periodo()) }}) y fin de mes ({{ rangoCorte('FinDeMes', periodo()) }}).
+              "Desc." son las cuotas de anticipos adicionales de ese corte.</span>
+            </p>
+            <div class="table-wrap">
+              <table class="tbl">
+                <thead>
+                  <tr>
+                    <th>Colaborador</th><th class="r">Neto</th>
+                    <th class="r">Desc. quincena</th><th class="r">Valor quincena</th>
+                    <th class="r">Desc. fin de mes</th><th class="r">Valor fin de mes</th>
+                    <th>Revisado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (l of filas(); track l.id) {
+                    <tr class="fila-elegible" [class.is-sel]="seleccionadoId() === l.id" tabindex="0"
+                        (click)="elegir(l)" (keydown.enter)="elegir(l)">
+                      <td><strong>{{ l.colaborador }}</strong></td>
+                      <td class="r num">{{ l.netoConsolidado | dinero }}</td>
+                      @if (tieneCorte(l, 'Quincena')) {
+                        <td class="r num">{{ corteDe(l, 'Quincena').descuento | dinero }}</td>
+                        <td class="r num">{{ corteDe(l, 'Quincena').valor | dinero }}</td>
+                      } @else {
+                        <td class="r muted" colspan="2">Solo fin de mes</td>
+                      }
+                      <td class="r num">{{ corteDe(l, 'FinDeMes').descuento | dinero }}</td>
+                      <td class="r num">{{ corteDe(l, 'FinDeMes').valor | dinero }}</td>
+                      <td (click)="$event.stopPropagation()">
+                        <input type="checkbox" class="casilla" [checked]="l.revisado" [disabled]="guardandoRevision()"
+                               [attr.aria-label]="'Revisado para envío: ' + l.colaborador"
+                               (change)="cambiarRevision(l, $any($event.target).checked)" />
+                      </td>
+                    </tr>
+                  }
+                  <tr class="fila-total">
+                    <td>Total del período</td>
+                    <td class="r num">{{ totales().neto | dinero }}</td>
+                    <td class="r num">{{ totales().descQ | dinero }}</td>
+                    <td class="r num">{{ totales().valorQ | dinero }}</td>
+                    <td class="r num">{{ totales().descF | dinero }}</td>
+                    <td class="r num">{{ totales().valorF | dinero }}</td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          }
+          <p class="pie-tabla">{{ filas().length }} {{ filas().length === 1 ? 'colaborador' : 'colaboradores' }} · elige uno para ver su detalle</p>
+        </section>
+
+        <!-- ── Detalle del colaborador ─────────────────────────────── -->
+        <section class="card panel-lateral" aria-live="polite">
+          @if (!seleccionadoId()) {
+            <div class="sin-seleccion">
+              <app-icon name="users" [size]="28" />
+              <p>Elige un colaborador para ver sus proyectos, impuestos y cortes.</p>
+            </div>
+          } @else if (cargandoDetalle() && !detalle()) {
+            <div class="skeleton" style="height: 40px"></div><div class="skeleton" style="height: 260px"></div>
+          } @else if (errorDetalle()) {
+            <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ errorDetalle() }}</div></div>
+          } @else if (detalle(); as det) {
+            <header class="panel-lateral__head">
+              <div>
+                <h2>{{ det.colaborador }}</h2>
+                <span class="muted">Detalle de liquidación · {{ nombreMes() }} · versión {{ det.version }}</span>
+              </div>
+              <button type="button" class="btn btn--ghost btn--sm" (click)="seleccionadoId.set(null)" aria-label="Cerrar detalle">
+                <app-icon name="x" [size]="18" />
+              </button>
+            </header>
+
+            <!-- Días por proyecto: cada proyecto cuenta los suyos (RN 25) -->
+            <div class="resumen-proyectos">
+              @for (p of det.detalleProyectos; track p.tmrProyectoId) {
+                <div class="resumen-proyectos__item">
+                  <app-icon name="calendar" [size]="18" />
+                  <div>
+                    <strong>{{ p.proyecto }}: {{ p.diasReconocidos }} de {{ p.diasDelMes }} días</strong>
+                    <small>{{ p.desde | date: 'd MMM' }} – {{ p.hasta | date: 'd MMM yyyy' }}
+                      @if (p.contrato) { · contrato {{ etiquetaContrato[p.contrato.estado].toLowerCase() }} } @else { · sin contrato }
+                    </small>
+                  </div>
+                </div>
+              }
+            </div>
+
+            @if (det.documento === 'Pendiente') {
+              <div class="aviso aviso--warn">
+                <app-icon name="alert" [size]="18" />
+                <div><strong>Documento pendiente.</strong> Falta registrar el documento tributario del mes. No impide exportar (RN 35).</div>
+                <a class="btn btn--sm" routerLink="/documentos" [queryParams]="{ periodo: det.periodo, colaborador: det.colaboradorId }">
+                  <app-icon name="paperclip" [size]="15" /> Registrar
+                </a>
+              </div>
+            }
+            @for (a of det.advertencias; track a) {
+              <div class="aviso" [class.aviso--danger]="det.requiereRecalculo && $first" [class.aviso--warn]="!(det.requiereRecalculo && $first)">
+                <app-icon name="alert" [size]="18" /><div>{{ a }}</div>
+              </div>
+            }
+
+            <div class="neto">
+              <span>Neto del período</span>
+              <strong class="importe-grande">{{ det.netoConsolidado | dinero }}</strong>
+              <small class="muted">Suma de los netos de cada proyecto, antes de anticipos (RN 31).</small>
+            </div>
+
+            <!-- Proyecto por proyecto (RN 17, RN 28) -->
+            <h3 class="subtitulo">Detalle por proyecto</h3>
+            @for (p of det.detalleProyectos; track p.tmrProyectoId) {
+              <article class="bloque-sm">
+                <header class="proyecto__head">
+                  <strong>{{ p.proyecto }}</strong>
+                  <app-estado-chip tono="info">{{ etiquetaModalidad[p.modalidad] }}</app-estado-chip>
+                </header>
+                <dl class="desglose">
+                  <div><dt>Honorario mensual</dt><dd>{{ p.honorario | dinero }}</dd></div>
+                  <div><dt>Proporcional ({{ p.diasReconocidos }}/{{ p.diasDelMes }} días)</dt><dd>{{ p.proporcional | dinero }}</dd></div>
+                  <div><dt>Subtotal</dt><dd>{{ p.subtotal | dinero }}</dd></div>
+                  <div><dt>IVA {{ det.parametros.ivaPct }} %</dt><dd>{{ p.iva | dinero }}</dd></div>
+                  <div><dt>Total del documento</dt><dd>{{ p.totalDocumento | dinero }}</dd></div>
+                  <div><dt>Retención en la fuente {{ det.parametros.retencionFuentePct }} %</dt><dd>− {{ p.retencionFuente | dinero }}</dd></div>
+                  <div><dt>Retención de IVA {{ det.parametros.retencionIvaPct }} %</dt><dd>− {{ p.retencionIva | dinero }}</dd></div>
+                  <div class="desglose__total"><dt>Neto del proyecto</dt><dd>{{ p.neto | dinero }}</dd></div>
+                </dl>
+                @if (p.ajusteRedondeo !== 0) {
+                  <small class="muted">Incluye un ajuste de redondeo de {{ p.ajusteRedondeo | dinero }} para llegar al neto acordado. La secuencia de redondeo la confirmará Contabilidad.</small>
+                }
+              </article>
+            }
+            @if (det.proyectosSinHonorario.length) {
+              <p class="muted small">Sin honorario, no calculados: {{ det.proyectosSinHonorario.join(', ') }}.</p>
+            }
+
+            <!-- Cortes (RN 36 a 40) -->
+            <h3 class="subtitulo">Detalle por corte</h3>
+            @for (c of det.cortes; track c.corte) {
+              <article class="bloque-sm">
+                <header class="proyecto__head">
+                  <strong>{{ etiquetaCorte[c.corte] }} <span class="muted">({{ rangoCorte(c.corte, det.periodo) }})</span></strong>
+                  @if (c.versionExportada) { <app-estado-chip tono="info">Exportado v{{ c.versionExportada }}</app-estado-chip> }
+                </header>
+                <dl class="desglose">
+                  <div><dt>Base del corte</dt><dd>{{ c.base | dinero }}</dd></div>
+                  <div><dt>Cuotas de anticipos</dt><dd>− {{ c.descuento | dinero }}</dd></div>
+                  <div class="desglose__total"><dt>Valor a considerar en la exportación</dt><dd>{{ c.valor | dinero }}</dd></div>
+                </dl>
+              </article>
+            }
+            @for (n of det.notasCortes; track n) {
+              <p class="nota"><app-icon name="info" [size]="15" /> {{ n }}</p>
+            }
+
+            <!-- Revisado para envío (RN 49) -->
+            <label class="revision">
+              <input type="checkbox" class="casilla" [checked]="det.revisado" [disabled]="guardandoRevision()"
+                     (change)="cambiarRevision(det, $any($event.target).checked)" />
+              <span>
+                <strong>Revisado para envío</strong>
+                <small>No confirma una transferencia; solo indica que la información fue revisada.
+                  @if (det.revisadoEn) { Marcado por {{ det.revisadoPor }} el {{ det.revisadoEn | date: 'dd MMM yyyy, HH:mm' }}. }
+                </small>
+              </span>
+            </label>
+
+            @if (det.versionesAnteriores.length) {
+              <details class="versiones">
+                <summary>Versiones anteriores ({{ det.versionesAnteriores.length }})</summary>
+                <ul>
+                  @for (v of det.versionesAnteriores; track v.version) {
+                    <li>Versión {{ v.version }} · {{ v.calculadoEn | date: 'dd MMM yyyy, HH:mm' }} · neto {{ v.netoConsolidado | dinero }}</li>
+                  }
+                </ul>
+              </details>
+            }
+
+            <div class="acciones-detalle">
+              <a class="btn" [routerLink]="['/colaboradores', det.colaboradorId]" [queryParams]="{ tab: 'condiciones' }">
+                <app-icon name="sliders" [size]="16" /> Ver condiciones
+              </a>
+              <a class="btn" routerLink="/anticipos" [queryParams]="{ colaborador: det.colaboradorId }">
+                <app-icon name="card" [size]="16" /> Ver anticipos
+              </a>
+            </div>
+            <p class="muted small">Calculado el {{ det.calculadoEn | date: 'dd MMM yyyy, HH:mm' }}.</p>
+          }
+        </section>
+      </div>
+    }
+  }
+</div>

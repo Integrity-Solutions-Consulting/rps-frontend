@@ -12,7 +12,7 @@
         <select id="b-banco" name="banco" class="select" [disabled]="bloqueado()" [class.is-invalid]="errores()['banco']"
                 [ngModel]="bancoForm()" (ngModelChange)="bancoForm.set($event)">
           <option value="">Elige un banco</option>
-          @for (b of bancos; track b) { <option [value]="b">{{ b }}</option> }
+          @for (b of bancos(); track b) { <option [value]="b">{{ b }}</option> }
         </select>
         @if (bancoForm() === 'Otro') {
           <input name="otroBanco" class="input" maxlength="100" placeholder="Nombre del banco" aria-label="Nombre del banco"

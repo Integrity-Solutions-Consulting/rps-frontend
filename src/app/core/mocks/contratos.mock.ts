@@ -5,13 +5,15 @@ import {
 import { RespuestaMock, colaboradoresMock } from './colaboradores.mock';
 import { TMR_ASIGNACIONES, asignacionTmr, nombreTmr } from './tmr.mock';
 import { diasEntre, enDias, hoy, sumarDias } from './fechas';
+import { configuracionMock } from './configuracion.mock';
 
 /**
  * Contratos y adendas en memoria, con las reglas de la sección 4 de los requisitos (RN 08 a 16).
  * Los errores siguen el formato ProblemDetails con `codigo`, igual que Colaboradores.
  */
 
-const DIAS_ALERTA = 30;
+/** Mayor plazo de alerta configurado (RN 13): 30 días por defecto. */
+const diasAlerta = () => Math.max(...configuracionMock.alertasDias(), 0);
 
 interface ContratoGuardado {
   id: string;
@@ -70,7 +72,7 @@ class ContratosMock {
       vigentes: todos.filter((c) => c.estado === 'Vigente').length,
       proximosAVencer: todos.filter((c) => c.estado === 'ProximoAVencer').length,
       vencidos: todos.filter((c) => c.estado === 'Vencido').length,
-      diasAlerta: DIAS_ALERTA,
+      diasAlerta: diasAlerta(),
     };
     return { status: 200, body };
   }
@@ -143,19 +145,30 @@ class ContratosMock {
     return { status: 200, body: lista };
   }
 
+  /** Para la liquidación: estado del último contrato de una relación colaborador y proyecto (RN 14: solo informa). */
+  contratoDe(tmrColaboradorId: string, tmrProyectoId: string): ContratoResumen | null {
+    const lista = this.contratos
+      .filter((c) => c.tmrColaboradorId === tmrColaboradorId && c.tmrProyectoId === tmrProyectoId)
+      .sort((a, b) => this.finVigente(b).localeCompare(this.finVigente(a)));
+    return lista.length ? this.resumen(lista[0]) : null;
+  }
+
   /** Movimientos para el historial del colaborador. */
   eventosDe(tmrColaboradorId: string): EventoHistorial[] {
     const eventos: EventoHistorial[] = [];
     for (const c of this.contratos.filter((x) => x.tmrColaboradorId === tmrColaboradorId)) {
       const proyecto = asignacionTmr(c.tmrColaboradorId, c.tmrProyectoId)?.proyecto ?? `Proyecto ${c.tmrProyectoId}`;
+      const enlace = { texto: 'Ver contrato', ruta: '/contratos', query: { contrato: c.id } };
       eventos.push({
         fecha: c.registradoEn, tipo: 'Contrato', usuario: 'Contabilidad',
         descripcion: `Contrato ${c.referencia ?? ''} en ${proyecto}: del ${c.fechaInicio} al ${c.fechaFinOriginal}.`.replace('  ', ' '),
+        periodo: c.fechaInicio.slice(0, 7), estado: 'Registrado', enlace,
       });
       for (const a of c.adendas) {
         eventos.push({
           fecha: a.fechaRegistro, tipo: 'Adenda', usuario: 'Contabilidad',
           descripcion: `Adenda ${a.numero} en ${proyecto}: nuevo fin ${a.nuevaFechaFin}.`,
+          periodo: a.fechaRegistro.slice(0, 7), estado: 'Registrada', enlace,
         });
       }
     }
@@ -170,7 +183,7 @@ class ContratosMock {
   private resumen(c: ContratoGuardado): ContratoResumen {
     const fin = this.finVigente(c);
     const dias = diasEntre(hoy(), fin);
-    const estado: EstadoContrato = dias < 0 ? 'Vencido' : dias <= DIAS_ALERTA ? 'ProximoAVencer' : 'Vigente';
+    const estado: EstadoContrato = dias < 0 ? 'Vencido' : dias <= diasAlerta() ? 'ProximoAVencer' : 'Vigente';
     const asig = asignacionTmr(c.tmrColaboradorId, c.tmrProyectoId);
     const asignacionActiva = !!asig && asig.activa && (asig.fechaFinAsignacion === null || asig.fechaFinAsignacion >= hoy());
     return {

@@ -20,6 +20,15 @@ interface CuentaGuardada extends CuentaBancaria {
   registradaEn: string;
 }
 
+export interface DatosCalculo {
+  id: string;
+  tmrColaboradorId: string;
+  clasificacion: Clasificacion | null;
+  activo: boolean;
+  cuenta: { banco: string | null; tipoCuenta: string | null; numero: string } | null;
+  frecuenciaEn: (periodo: string) => Frecuencia | null;
+}
+
 interface Registro {
   colaborador: ColaboradorResumen;
   frecuencias: FrecuenciaVigencia[];
@@ -71,7 +80,7 @@ class ColaboradoresMock {
   constructor() {
     this.sembrar('1', 'Profesional', [['DosPagos', mesRelativo(-9)]], { banco: 'Banco Pichincha', tipo: 'Ahorros', numero: '****4521' }, 300);
     this.sembrar('2', 'Junior', [['FinDeMes', mesRelativo(-7)], ['DosPagos', mesRelativo(1)]], { banco: 'Banco Guayaquil', tipo: 'Corriente', numero: '****8830' }, 240);
-    this.sembrar('4', 'Profesional', [], null, 200);
+    this.sembrar('4', 'Profesional', [['DosPagos', mesRelativo(-9)]], { banco: 'Banco del Pacífico', tipo: 'Ahorros', numero: '****3390' }, 200);
     this.sembrar('10', null, [['DosPagos', mesRelativo(-6)]], null, 190);
     const inactivo = this.sembrar('9', 'Profesional', [['FinDeMes', mesRelativo(-20)]], { banco: 'Produbanco', tipo: 'Ahorros', numero: '****1207' }, 600);
     inactivo.colaborador.activo = false;
@@ -87,6 +96,32 @@ class ColaboradoresMock {
   /** Para otros mocks: el ID de TMR de un colaborador de RPS. */
   tmrIdDe(id: string): string | null {
     return this.registros.get(id)?.colaborador.tmrColaboradorId ?? null;
+  }
+
+  /**
+   * Para el cálculo (liquidaciones, anticipos, exportaciones): datos del colaborador
+   * y la frecuencia que rige en un mes "yyyy-MM" (RN 20, RN 36).
+   */
+  paraCalculo(id: string): DatosCalculo | null {
+    const r = this.registros.get(id);
+    if (!r) return null;
+    const cuenta = r.cuentas.find((c) => c.activa) ?? null;
+    return {
+      id: r.colaborador.id,
+      tmrColaboradorId: r.colaborador.tmrColaboradorId,
+      clasificacion: r.colaborador.clasificacion,
+      activo: r.colaborador.activo,
+      cuenta: cuenta ? { banco: cuenta.banco, tipoCuenta: cuenta.tipoCuenta, numero: cuenta.numeroCuentaEnmascarado } : null,
+      frecuenciaEn: (periodo: string) =>
+        [...r.frecuencias]
+          .filter((f) => f.vigenteDesdeMes <= `${periodo}-01`)
+          .sort((a, b) => b.vigenteDesdeMes.localeCompare(a.vigenteDesdeMes))[0]?.frecuencia ?? null,
+    };
+  }
+
+  /** IDs de RPS de todos los colaboradores vinculados (activos e inactivos: RN 07). */
+  ids(): string[] {
+    return [...this.registros.keys()];
   }
 
   // ── Endpoints ──────────────────────────────────────────────────────

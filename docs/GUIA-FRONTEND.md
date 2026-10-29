@@ -34,13 +34,20 @@ src/app/
 │   │   ├── models/          Tipos que coinciden con los DTO del backend
 │   │   └── services/        Llamadas HTTP del módulo
 │   ├── contratos/           Contratos y adendas
+│   ├── anticipos/           Anticipos adicionales: límite, cortes y plan de recuperación
+│   ├── liquidaciones/       Cálculo del mes: proyectos, impuestos, cortes y "Revisado para envío"
+│   ├── documentos/          Documento tributario mensual por colaborador
+│   ├── exportaciones/       Preparar el archivo de pago por corte y descargar versiones
+│   ├── configuracion/       Parámetros con vigencia: alertas, límite, impuestos, bancos
 │   ├── honorarios/          Modelos y servicio de honorarios por proyecto (los usa la ficha)
 │   ├── integracion-tmr/     Lectura de la copia de TMR: nombres, identificación, asignaciones
-│   └── proximamente/        Pantalla temporal de módulos sin construir
+│   └── proximamente/        Pantalla temporal para módulos futuros (hoy no se usa)
 ├── shared/                  Piezas reutilizables sin lógica de negocio
 │   ├── components/          icon, estado-chip
+│   ├── models/corte.ts      Quincena / Fin de mes y sus rangos de días
+│   ├── pipes/dinero.pipe.ts {{ 1066.67 | dinero }} → $ 1.066,67
 │   └── utils/               periodo.ts (meses "yyyy-MM"), fechas.ts (fechas locales, días del mes)
-└── styles/formularios.scss  Estilos compartidos: campos, avisos, pestañas, bloques
+└── (src/styles/)            formularios.scss: campos, avisos, pestañas · paginas.scss: encabezados, indicadores, panel lateral
 ```
 
 Regla general: **cada módulo tiene `models`, `services` y `pages`**. Si una pantalla crece mucho, sus partes van en `components` (como las pestañas de la ficha).
@@ -68,6 +75,45 @@ Pantalla (pages/…)  →  servicio (services/…)  →  HttpClient  →  interc
 | Historial | `components/tab-historial` | `/api/colaboradores/{id}/historial` |
 
 La página de la ficha carga los datos una vez y se los pasa a cada pestaña. Cuando una pestaña guarda algo, avisa con `(actualizado)` y la ficha vuelve a leer.
+Otras pantallas pueden abrir una pestaña directo con `?tab=`: `/colaboradores/<id>?tab=condiciones`.
+
+### Las demás pantallas
+
+| Pantalla | Archivo | Datos | Llega con |
+|---|---|---|---|
+| Anticipos | `features/anticipos/pages/anticipos` | `/api/anticipos` | `?colaborador=<id>` |
+| Liquidaciones | `features/liquidaciones/pages/liquidaciones` | `/api/liquidaciones` | `?periodo=2026-10&liquidacion=<id>` |
+| Documentos | `features/documentos/pages/documentos` | `/api/documentos` | `?periodo=&colaborador=` |
+| Exportaciones | `features/exportaciones/pages/exportaciones` | `/api/exportaciones` | `?periodo=&corte=Quincena` |
+| Configuración | `features/configuracion/pages/configuracion` | `/api/configuracion` | — |
+
+### El flujo del mes (sección 14 de los requisitos) en pantallas
+
+1. **Colaboradores**: revisar personas, proyectos y configuración.
+2. **Contratos** y **ficha → Condiciones económicas**: contratos, adendas y honorarios por proyecto.
+3. **Anticipos**: registrar anticipos y su plan de recuperación del mismo mes.
+4. **Liquidaciones → Calcular período**: días y valores por proyecto, total por colaborador.
+5. **Documentos**: registrar el documento mensual (si falta, solo es advertencia).
+6. **Liquidaciones**: revisar cortes y descuentos; marcar "Revisado para envío".
+7. **Exportaciones**: elegir colaboradores y generar el archivo. Queda guardada la versión.
+8. **Historial** del colaborador: todo lo anterior, con fecha y usuario.
+
+## 3b. Cómo se calcula una liquidación
+
+El cálculo lo hará el backend. Mientras tanto, `core/mocks/calculo.mock.ts` hace lo mismo para que las pantallas muestren números coherentes. Paso a paso, con Ana Pérez en octubre (31 días, servicios profesionales):
+
+| Paso | Regla | Marketing Digital (neto $600) | Consultoría RPS (más IVA $400) |
+|---|---|---|---|
+| Días del proyecto | RN 22 a 25: **cada proyecto cuenta sus propios días**; dos proyectos a la vez pagan los dos | 31 de 31 | 31 de 31 |
+| Proporcional | honorario ÷ días del mes × días | $600,00 | $400,00 |
+| Subtotal | Neto: se busca hacia atrás (÷ 0,90) · Más IVA: es el mismo valor | $666,67 | $400,00 |
+| IVA 15 % | sobre el subtotal | $100,00 | $60,00 |
+| Retención fuente 10 % + retención IVA 100 % | | $166,67 | $100,00 |
+| **Neto del proyecto** | | **$600,00** | **$360,00** |
+
+Neto del mes = $600 + $360 = **$960** (RN 31). Frecuencia "quincena y fin de mes": $480 y $480; si sobra un centavo va a la quincena (RN 39).
+Luego se restan las cuotas de anticipos de cada corte (RN 38): con $200 en quincena y $300 a fin de mes quedan $280 y $180.
+Es el mismo ejemplo de la sección 8 de los requisitos.
 
 ## 4. Datos de ejemplo
 
@@ -112,3 +158,10 @@ Donde un mockup y el documento de requisitos no coinciden, se siguió el documen
 | Tipo de servicio y frecuencia junto al honorario | Separados: una sola para el colaborador | RN 05 y RN 36 (decisión del 27 oct 2026) |
 | Alertas con interruptores y envío por correo | Fechas de alerta, sin interruptores | El correo no está confirmado (sección 14); los plazos se configuran en Configuración |
 | Archivos PDF de contrato y adendas | No incluido | Falta definir el almacenamiento de archivos (Propuesta de arquitectura, pendientes) |
+| Liquidaciones: "30 días reconocidos" para la persona | Días **por proyecto** (Marketing Digital 23 de 30, Consultoría RPS 30 de 30) | RN 22 y RN 25: los días se cuentan por proyecto y no se juntan |
+| Liquidaciones: un solo "Base del período" | Desglose de cada proyecto (subtotal, IVA, retenciones, neto) y luego el total | RN 17, RN 28, RN 31 |
+| Historial: todo con estado "Exportado" | Estado exacto: Registrado, Programado, Calculada, Exportado v1, Recuperado… | Sección 12: un cambio de honorario no es una exportación, y exportar no es pagar |
+| Anticipos: se elige el mes de cada cuota | El mes es el de la fecha del anticipo | RN 45: se recupera completo en el mismo mes |
+| Documentos: adjuntar archivo | Recuadro visible pero desactivado | Falta definir el almacenamiento de archivos |
+| Configuración: "Aplicar cambios desde" se elige | Regla fija: alertas de inmediato; límite e impuestos desde el mes siguiente | RN 29: un parámetro no debe cambiar cálculos del mes en curso |
+| Exportaciones | No había mockup; se armó con RN 52 a 57 | — |

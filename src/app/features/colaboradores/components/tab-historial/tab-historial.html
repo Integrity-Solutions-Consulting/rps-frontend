@@ -1,33 +1,78 @@
-<section class="card bloque">
-  <header class="bloque__head">
-    <h2>Historial</h2>
-    <p>Cambios de configuración, contratos, adendas y honorarios, con fecha y usuario. Nada se borra: cada cambio queda registrado.</p>
-  </header>
+<div class="historial">
+  <section class="card bloque">
+    @if (cargando()) {
+      <div class="skeleton" style="height: 240px"></div>
+    } @else if (error()) {
+      <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ error() }}</div></div>
+    } @else {
+      <div class="filtros">
+        <div class="field">
+          <label for="h-anio">Año</label>
+          <select id="h-anio" class="select" [ngModel]="anio()" (ngModelChange)="anio.set($event); tipo.set('')">
+            @for (a of anios(); track a) { <option [value]="a">{{ a }}</option> }
+          </select>
+        </div>
+        <div class="field">
+          <label for="h-tipo">Tipo</label>
+          <select id="h-tipo" class="select" [ngModel]="tipo()" (ngModelChange)="tipo.set($event)">
+            <option value="">Todos</option>
+            @for (t of tipos(); track t) { <option [value]="t">{{ t }}</option> }
+          </select>
+        </div>
+      </div>
 
-  @if (cargando()) {
-    <div class="skeleton" style="height: 200px"></div>
-  } @else if (error()) {
-    <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ error() }}</div></div>
-  } @else if (eventos().length === 0) {
-    <p class="vacio">Sin movimientos todavía.</p>
-  } @else {
-    <div class="filtros" role="group" aria-label="Filtrar historial">
-      <button type="button" class="filtro" [class.is-on]="filtro() === 'Todos'" (click)="filtro.set('Todos')">Todos · {{ eventos().length }}</button>
-      @for (t of tipos(); track t.tipo) {
-        <button type="button" class="filtro" [class.is-on]="filtro() === t.tipo" (click)="filtro.set(t.tipo)">{{ t.tipo }} · {{ t.total }}</button>
+      <div class="contadores">
+        <button type="button" class="card contador" [class.is-on]="tipo() === 'Liquidación'" (click)="tipo.set(tipo() === 'Liquidación' ? '' : 'Liquidación')">
+          <span class="contador__icono contador__icono--ok"><app-icon name="calculator" [size]="20" /></span>
+          <span><small>Liquidaciones</small><strong>{{ contadores().liquidaciones }}</strong></span>
+        </button>
+        <button type="button" class="card contador" [class.is-on]="tipo() === 'Anticipo'" (click)="tipo.set(tipo() === 'Anticipo' ? '' : 'Anticipo')">
+          <span class="contador__icono contador__icono--info"><app-icon name="card" [size]="20" /></span>
+          <span><small>Anticipos registrados</small><strong>{{ contadores().anticipos }}</strong></span>
+        </button>
+        <button type="button" class="card contador" [class.is-on]="tipo() === 'Exportación'" (click)="tipo.set(tipo() === 'Exportación' ? '' : 'Exportación')">
+          <span class="contador__icono contador__icono--lila"><app-icon name="upload" [size]="20" /></span>
+          <span><small>Exportaciones</small><strong>{{ contadores().exportaciones }}</strong></span>
+        </button>
+      </div>
+
+      @if (visibles().length === 0) {
+        <p class="vacio">Sin movimientos con estos filtros.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th>Fecha</th><th>Movimiento</th><th>Período</th><th class="r">Importe</th><th>Estado</th><th>Acción</th></tr></thead>
+            <tbody>
+              @for (e of visibles(); track $index) {
+                <tr>
+                  <td class="num fecha">{{ e.fecha | date: 'dd MMM yyyy' }}<br /><small class="muted">{{ e.fecha | date: 'HH:mm' }} · {{ e.usuario }}</small></td>
+                  <td>
+                    <div class="movimiento">
+                      <span class="movimiento__icono"><app-icon [name]="iconos[e.tipo]" [size]="16" /></span>
+                      <span><strong>{{ e.tipo }}</strong><br /><small class="muted">{{ e.descripcion }}</small></span>
+                    </div>
+                  </td>
+                  <td>{{ e.periodo ? nombrePeriodo(e.periodo) : '—' }}</td>
+                  <td class="r num">{{ e.importe | dinero }}</td>
+                  <td>@if (e.estado) { <app-estado-chip [tono]="tono(e.estado)">{{ e.estado }}</app-estado-chip> } @else { <span class="muted">—</span> }</td>
+                  <td>
+                    @if (e.enlace; as l) {
+                      <a class="btn btn--sm" [routerLink]="l.ruta" [queryParams]="l.query ?? {}">{{ l.texto }}</a>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
+    }
+  </section>
+
+  <aside class="nota">
+    <div class="aviso aviso--info">
+      <app-icon name="info" [size]="18" />
+      <div>Este historial registra cálculos y preparación de archivos, <strong>no confirma transferencias bancarias</strong>. Nada se borra: cada cambio queda con fecha y usuario.</div>
     </div>
-
-    <ol class="linea">
-      @for (e of visibles(); track $index) {
-        <li>
-          <span class="linea__icono"><app-icon [name]="iconos[e.tipo]" [size]="17" /></span>
-          <div class="linea__cuerpo">
-            <div class="linea__top"><strong>{{ e.tipo }}</strong><span class="muted small">{{ e.fecha | date: 'dd MMM yyyy, HH:mm' }} · {{ e.usuario }}</span></div>
-            <p>{{ e.descripcion }}</p>
-          </div>
-        </li>
-      }
-    </ol>
-  }
-</section>
+  </aside>
+</div>

@@ -1,0 +1,46 @@
+:host { display: block; }
+
+.colaborador { padding: 16px 18px; display: grid; grid-template-columns: minmax(220px, 340px) minmax(0, 1fr); gap: 18px; align-items: end; }
+@media (max-width: 820px) { .colaborador { grid-template-columns: minmax(0, 1fr); } }
+.colaborador__datos { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;
+  padding-left: 18px; border-left: 1px solid var(--rps-border);
+  div { display: grid; gap: 2px; }
+  dt { color: var(--rps-muted); font-size: 12.5px; }
+  dd { margin: 0; font-weight: 600; }
+  a { color: var(--rps-teal); } }
+@media (max-width: 820px) { .colaborador__datos { padding-left: 0; border-left: 0; } }
+
+.dos-columnas { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 1100px) { .dos-columnas { grid-template-columns: minmax(0, 1fr); } }
+
+.formulario, .validacion { padding: 18px; display: grid; gap: 14px; min-width: 0;
+  h2 { font-size: 18px; font-weight: 700; }
+  h3 { font-size: 15.5px; font-weight: 700; margin-top: 4px; }
+  p { margin: 0; } }
+
+.con-prefijo { display: flex; align-items: stretch;
+  > span { display: grid; place-items: center; padding: 0 10px; border: 1px solid var(--rps-border); border-right: 0;
+    border-radius: 8px 0 0 8px; background: #f6f8fa; color: var(--rps-muted); }
+  .input { border-radius: 0 8px 8px 0; } }
+.area { height: auto; padding: 8px 12px; resize: vertical; }
+
+.plan { border: 1px solid var(--rps-border); border-radius: 10px;
+  td { padding: 8px 10px; }
+  .select, .input { height: 34px; } }
+.agregar { justify-self: start; color: var(--rps-teal); border-color: var(--rps-teal); }
+
+.totales { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-radius: 10px; background: #f3f6f8;
+  div { display: grid; gap: 2px; padding: 12px 14px; }
+  div + div { border-left: 1px solid var(--rps-border); }
+  span { color: var(--rps-muted); font-size: 12.5px; }
+  strong { font-size: 18px; } }
+@media (max-width: 560px) { .totales { grid-template-columns: 1fr; div + div { border-left: 0; border-top: 1px solid var(--rps-border); } } }
+
+.t-danger { color: var(--rps-danger); }
+
+.origen-neto { font-size: 13px;
+  summary { cursor: pointer; color: var(--rps-teal); font-weight: 600; margin-bottom: 6px; } }
+.notas ul { margin: 0; padding-left: 16px; display: grid; gap: 4px; }
+
+.registrados__head { padding: 16px 18px 8px; }
+.registrados__vacio { padding: 8px 18px 18px; }

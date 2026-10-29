@@ -108,15 +108,27 @@ class HonorariosMock {
     return { status: 204, body: null };
   }
 
+  /** Para el cálculo: honorario que rige en un mes "yyyy-MM" para un proyecto (RN 19). */
+  vigenteEn(tmrColaboradorId: string, tmrProyectoId: string, periodo: string): { importe: number; modalidad: Modalidad } | null {
+    const v = this.vigencias
+      .filter((x) => x.tmrColaboradorId === tmrColaboradorId && x.tmrProyectoId === tmrProyectoId && x.vigenteDesdeMes <= `${periodo}-01`)
+      .sort((a, b) => b.vigenteDesdeMes.localeCompare(a.vigenteDesdeMes))[0];
+    return v ? { importe: v.importe, modalidad: v.modalidad } : null;
+  }
+
   /** Movimientos para el historial del colaborador. */
   eventosDe(tmrColaboradorId: string): EventoHistorial[] {
     return this.vigencias
       .filter((v) => v.tmrColaboradorId === tmrColaboradorId)
-      .map((v) => ({
+      .map((v): EventoHistorial => ({
         fecha: v.registradoEn,
-        tipo: 'Honorario' as const,
-        descripcion: `${asignacionTmr(v.tmrColaboradorId, v.tmrProyectoId)?.proyecto ?? 'Proyecto ' + v.tmrProyectoId}: ${dinero(v.importe)} ${v.modalidad === 'Neto' ? 'neto' : 'más IVA'} desde ${mesEnTexto(v.vigenteDesdeMes)}.`,
+        tipo: 'Honorario',
+        descripcion: `Cambio de honorario · ${asignacionTmr(v.tmrColaboradorId, v.tmrProyectoId)?.proyecto ?? 'Proyecto ' + v.tmrProyectoId}: ${dinero(v.importe)} ${v.modalidad === 'Neto' ? 'neto' : 'más IVA'} desde ${mesEnTexto(v.vigenteDesdeMes)}.`,
         usuario: 'Contabilidad',
+        periodo: v.vigenteDesdeMes.slice(0, 7),
+        importe: v.importe,
+        estado: v.vigenteDesdeMes > mesActual() ? 'Programado' : 'Registrado',
+        enlace: { texto: 'Ver condiciones', ruta: `/colaboradores/${colaboradoresMock.porTmrId(v.tmrColaboradorId)?.id ?? ''}`, query: { tab: 'condiciones' } },
       }));
   }
 

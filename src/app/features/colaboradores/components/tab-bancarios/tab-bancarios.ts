@@ -6,8 +6,12 @@ import { ColaboradorDetalle, TIPOS_CUENTA } from '../../models/colaborador.model
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { ConfiguracionService } from '../../../configuracion/services/configuracion.service';
 
-/** Bancos más usados; "Otro" permite escribir el nombre. La lista oficial depende de la plantilla del banco (PA 02). */
+/**
+ * Lista de respaldo si no se puede leer el catálogo de Configuración.
+ * "Otro" permite escribir el nombre. La lista oficial depende de la plantilla del banco (PA 02).
+ */
 const BANCOS = [
   'Banco Pichincha', 'Banco Guayaquil', 'Produbanco', 'Banco del Pacífico', 'Banco Internacional',
   'Banco Bolivariano', 'Banco del Austro', 'Cooperativa JEP',
@@ -29,13 +33,16 @@ const OTRO = 'Otro';
 export class TabBancarios {
   private readonly colaboradores = inject(ColaboradoresService);
   private readonly avisos = inject(NotificationService);
+  private readonly configuracion = inject(ConfiguracionService);
 
   readonly colaborador = input.required<ColaboradorDetalle>();
   /** Nombre de TMR; null si no se pudo leer. */
   readonly titular = input<string | null>(null);
   readonly actualizado = output<void>();
 
-  protected readonly bancos = [...BANCOS, OTRO];
+  /** Catálogo de bancos de Configuración → Catálogos. */
+  private readonly catalogo = signal<string[]>(BANCOS);
+  protected readonly bancos = computed(() => [...this.catalogo(), OTRO]);
   protected readonly tiposCuenta = TIPOS_CUENTA;
   protected readonly bloqueado = computed(() => !this.colaborador().activo);
 
@@ -72,13 +79,17 @@ export class TabBancarios {
       this.colaborador();
       untracked(() => this.cancelar());
     });
+    this.configuracion.obtener().subscribe({
+      next: (c) => { if (c.bancos.length) { this.catalogo.set(c.bancos); this.cancelar(); } },
+      error: () => { /* se queda con la lista de respaldo */ },
+    });
   }
 
   /** Vuelve el formulario a la cuenta guardada. */
   protected cancelar(): void {
     const c = this.colaborador().cuentaBancaria;
     const banco = c?.banco ?? '';
-    const conocido = !banco || BANCOS.includes(banco);
+    const conocido = !banco || this.catalogo().includes(banco);
     this.bancoForm.set(conocido ? banco : OTRO);
     this.otroBancoForm.set(conocido ? '' : banco);
     this.tipoForm.set(c?.tipoCuenta ?? '');

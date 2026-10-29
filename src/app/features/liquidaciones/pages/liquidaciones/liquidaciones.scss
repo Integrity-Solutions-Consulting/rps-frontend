@@ -1,0 +1,47 @@
+:host { display: block; }
+
+.pendientes { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 2px;
+  a { color: inherit; font-weight: 600; } }
+
+.vacio-grande { padding: 40px 20px; display: grid; justify-items: center; gap: 10px; text-align: center; color: var(--rps-muted);
+  h2 { color: var(--rps-text); font-size: 18px; }
+  p { margin: 0; max-width: 60ch; } }
+
+.lista { overflow: hidden; min-width: 0;
+  .tabs { padding: 0 12px; } }
+.nota-cortes { margin: 14px 16px 4px; }
+
+.persona { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: var(--rps-info-50); color: var(--rps-info); font-weight: 600; font-size: 12.5px; }
+.persona__txt { display: grid; min-width: 0; small { color: var(--rps-muted); font-size: 12px; } }
+
+.casilla { width: 18px; height: 18px; accent-color: var(--rps-teal); cursor: pointer; }
+
+.sin-seleccion { display: grid; justify-items: center; gap: 8px; padding: 30px 10px; color: var(--rps-muted); text-align: center;
+  p { margin: 0; } }
+
+.resumen-proyectos { display: grid; gap: 8px; padding: 12px 14px; border-radius: 10px; background: var(--rps-teal-50); }
+.resumen-proyectos__item { display: flex; gap: 10px; align-items: flex-start; color: var(--rps-teal-700);
+  div { display: grid; }
+  strong { color: var(--rps-text); font-size: 13.5px; }
+  small { color: var(--rps-muted); font-size: 12px; } }
+
+.neto { display: grid; gap: 2px; padding: 14px; border: 1px solid var(--rps-border); border-radius: 10px;
+  > span { font-weight: 600; } }
+
+.subtitulo { font-size: 15px; font-weight: 700; margin-top: 4px; }
+.proyecto__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.nota { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: 12.5px; color: var(--rps-info); }
+
+.revision { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 10px; background: var(--rps-info-50); cursor: pointer;
+  span { display: grid; gap: 2px; }
+  small { color: var(--rps-muted); font-size: 12.5px; } }
+
+.versiones { font-size: 13px;
+  summary { cursor: pointer; color: var(--rps-teal); font-weight: 600; }
+  ul { margin: 8px 0 0; padding-left: 18px; color: var(--rps-muted); } }
+
+.acciones-detalle { display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  .btn { justify-content: center; text-decoration: none; } }
+a.btn { text-decoration: none; }

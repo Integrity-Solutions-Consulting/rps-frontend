@@ -9,8 +9,9 @@ import { leerErrorApi } from '../../../../core/http/error-api';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { hoy, sumarDias } from '../../../../shared/utils/fechas';
+import { ConfiguracionService } from '../../../configuracion/services/configuracion.service';
 
-/** Plazos de alerta por defecto (RN 13). Cuando exista Configuración se leerán de Parámetros. */
+/** Plazos de alerta por defecto (RN 13), mientras se leen los de Configuración. */
 const PLAZOS_ALERTA = [30, 15, 7];
 
 interface AlertaVencimiento {
@@ -35,6 +36,9 @@ interface AlertaVencimiento {
 export class TabContratos {
   private readonly api = inject(ContratosService);
   private readonly router = inject(Router);
+  private readonly configuracion = inject(ConfiguracionService);
+  /** Días de alerta de Configuración → Alertas. */
+  private readonly plazos = signal<number[]>(PLAZOS_ALERTA);
 
   /** Resumen de contratos del colaborador, que ya cargó la ficha. */
   readonly contratos = input<ContratoResumen[]>([]);
@@ -60,13 +64,20 @@ export class TabContratos {
   protected readonly alertas = computed<AlertaVencimiento[]>(() => {
     const c = this.proximo();
     if (!c) return [];
-    return PLAZOS_ALERTA.map((dias) => {
+    return this.plazos().map((dias) => {
       const fecha = sumarDias(c.fechaFinVigente, -dias);
       return { dias, fecha, pasada: fecha < hoy() };
     });
   });
 
   constructor() {
+    this.configuracion.obtener().subscribe({
+      next: (c) => {
+        const alertas = c.parametros.find((p) => p.clave === 'AlertasDias')?.valores ?? [];
+        if (alertas.length) this.plazos.set(alertas);
+      },
+      error: () => { /* se queda con 30, 15 y 7 */ },
+    });
     effect(() => {
       const lista = this.contratos();
       untracked(() => this.cargarDetalles(lista));
