@@ -1,0 +1,33 @@
+<section class="card bloque">
+  <header class="bloque__head">
+    <h2>Historial</h2>
+    <p>Cambios de configuración, contratos, adendas y honorarios, con fecha y usuario. Nada se borra: cada cambio queda registrado.</p>
+  </header>
+
+  @if (cargando()) {
+    <div class="skeleton" style="height: 200px"></div>
+  } @else if (error()) {
+    <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ error() }}</div></div>
+  } @else if (eventos().length === 0) {
+    <p class="vacio">Sin movimientos todavía.</p>
+  } @else {
+    <div class="filtros" role="group" aria-label="Filtrar historial">
+      <button type="button" class="filtro" [class.is-on]="filtro() === 'Todos'" (click)="filtro.set('Todos')">Todos · {{ eventos().length }}</button>
+      @for (t of tipos(); track t.tipo) {
+        <button type="button" class="filtro" [class.is-on]="filtro() === t.tipo" (click)="filtro.set(t.tipo)">{{ t.tipo }} · {{ t.total }}</button>
+      }
+    </div>
+
+    <ol class="linea">
+      @for (e of visibles(); track $index) {
+        <li>
+          <span class="linea__icono"><app-icon [name]="iconos[e.tipo]" [size]="17" /></span>
+          <div class="linea__cuerpo">
+            <div class="linea__top"><strong>{{ e.tipo }}</strong><span class="muted small">{{ e.fecha | date: 'dd MMM yyyy, HH:mm' }} · {{ e.usuario }}</span></div>
+            <p>{{ e.descripcion }}</p>
+          </div>
+        </li>
+      }
+    </ol>
+  }
+</section>

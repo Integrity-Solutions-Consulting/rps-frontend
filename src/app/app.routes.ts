@@ -21,6 +21,14 @@ export const routes: Routes = [
         title: 'Inicio · RPS',
         loadChildren: () => import('./features/dashboard/dashboard.routes').then((r) => r.DASHBOARD_ROUTES),
       },
+      {
+        path: 'colaboradores',
+        loadChildren: () => import('./features/colaboradores/colaboradores.routes').then((r) => r.COLABORADORES_ROUTES),
+      },
+      {
+        path: 'contratos',
+        loadChildren: () => import('./features/contratos/contratos.routes').then((r) => r.CONTRATOS_ROUTES),
+      },
       ...pendientes,
     ],
   },

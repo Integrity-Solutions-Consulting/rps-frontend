@@ -1,0 +1,114 @@
+<nav class="migas" aria-label="Ruta">
+  <a routerLink="/colaboradores">Colaboradores</a>
+  <span aria-hidden="true">/</span>
+  <span>{{ colaborador() ? nombre() : '…' }}</span>
+</nav>
+
+@if (cargando()) {
+  <div class="stack">
+    <div class="skeleton" style="height: 80px"></div>
+    <div class="skeleton" style="height: 44px"></div>
+    <div class="skeleton" style="height: 260px"></div>
+  </div>
+} @else if (errorCarga()) {
+  <div class="aviso aviso--danger">
+    <app-icon name="alert" [size]="18" />
+    <div>{{ errorCarga() }}</div>
+    <a routerLink="/colaboradores" class="btn btn--sm">Volver a la lista</a>
+  </div>
+} @else if (colaborador(); as c) {
+  <!-- ── Cabecera ──────────────────────────────────────────────── -->
+  <header class="cabecera">
+    <div class="cabecera__identidad">
+      <div class="cabecera__fila">
+        <h1>{{ nombre() }}</h1>
+        <app-estado-chip [tono]="chipContrato().tono">{{ chipContrato().texto }}</app-estado-chip>
+        <app-estado-chip tono="info">{{ proyectosActivos() }} {{ proyectosActivos() === 1 ? 'proyecto activo' : 'proyectos activos' }}</app-estado-chip>
+        @if (c.estadoConfiguracion === 'Pendiente') {
+          <app-estado-chip tono="warn">Pendiente de configuración</app-estado-chip>
+        }
+        @if (!c.activo) {
+          <app-estado-chip tono="neutral">Desactivado</app-estado-chip>
+        }
+      </div>
+      <span class="cabecera__id num">{{ identificacion() }}</span>
+    </div>
+
+    <div class="acciones">
+      <button type="button" class="btn" [attr.aria-expanded]="menuAbierto()" aria-haspopup="menu"
+              (click)="menuAbierto.set(!menuAbierto()); confirmarDesactivar.set(false)">
+        Acciones <app-icon name="chevronDown" [size]="16" />
+      </button>
+      @if (menuAbierto()) {
+        <div class="acciones__menu card" role="menu">
+          <button type="button" role="menuitem" class="acciones__item" (click)="pestana.set('condiciones'); menuAbierto.set(false)">
+            <app-icon name="sliders" [size]="17" /> Editar condiciones económicas
+          </button>
+          <button type="button" role="menuitem" class="acciones__item" (click)="pestana.set('bancarios'); menuAbierto.set(false)">
+            <app-icon name="card" [size]="17" /> Cambiar cuenta bancaria
+          </button>
+          <button type="button" role="menuitem" class="acciones__item" (click)="verEnContratos()">
+            <app-icon name="file" [size]="17" /> Ver en Contratos
+          </button>
+          <hr />
+          @if (c.activo) {
+            @if (confirmarDesactivar()) {
+              <div class="acciones__confirmar">
+                <span>¿Desactivar? No se borra nada y se puede reactivar.</span>
+                <div>
+                  <button type="button" class="btn btn--sm" (click)="confirmarDesactivar.set(false)">No</button>
+                  <button type="button" class="btn btn--sm btn--danger" (click)="cambiarActivo(false)" [disabled]="cambiandoActivo()">Desactivar</button>
+                </div>
+              </div>
+            } @else {
+              <button type="button" role="menuitem" class="acciones__item acciones__item--peligro" (click)="confirmarDesactivar.set(true)">
+                <app-icon name="x" [size]="17" /> Desactivar colaborador
+              </button>
+            }
+          } @else {
+            <button type="button" role="menuitem" class="acciones__item" (click)="cambiarActivo(true)" [disabled]="cambiandoActivo()">
+              <app-icon name="check" [size]="17" /> Activar colaborador
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </header>
+
+  @if (!c.activo) {
+    <div class="aviso aviso--warn">
+      <app-icon name="alert" [size]="18" />
+      <div>Este colaborador está desactivado. Actívalo desde <strong>Acciones</strong> para modificar su configuración.</div>
+    </div>
+  }
+
+  <!-- ── Pestañas ──────────────────────────────────────────────── -->
+  <div class="tabs" role="tablist">
+    @for (p of pestanas; track p.id) {
+      <button type="button" role="tab" class="tab" [class.is-on]="pestana() === p.id"
+              [attr.aria-selected]="pestana() === p.id" (click)="pestana.set(p.id)">{{ p.titulo }}</button>
+    }
+  </div>
+
+  @switch (pestana()) {
+    @case ('generales') {
+      <app-tab-datos-generales [colaborador]="c" [datosTmr]="datosTmr()" [errorTmr]="errorTmr()"
+                               [proyectosActivos]="proyectosActivos()" (irA)="pestana.set($event)" />
+    }
+    @case ('proyectos') {
+      <app-tab-proyectos [asignaciones]="datosTmr()?.asignaciones ?? []" [contratos]="contratos()" [errorTmr]="errorTmr()" />
+    }
+    @case ('condiciones') {
+      <app-tab-condiciones [colaborador]="c" [frecuencias]="frecuencias()" (actualizado)="alActualizar()" />
+    }
+    @case ('bancarios') {
+      <app-tab-bancarios [colaborador]="c" [titular]="datosTmr() ? nombre() : null" (actualizado)="alActualizar()" />
+    }
+    @case ('contratos') {
+      <app-tab-contratos [contratos]="contratos()" />
+    }
+    @case ('historial') {
+      <app-tab-historial [colaboradorId]="c.id" [version]="version()" />
+    }
+  }
+}

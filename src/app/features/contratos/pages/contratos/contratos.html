@@ -1,0 +1,266 @@
+<header class="head">
+  <div>
+    <h1>Contratos y adendas</h1>
+    <p>Un contrato por colaborador y proyecto. Las adendas extienden la fecha de fin sin borrar la original.</p>
+  </div>
+  <button type="button" class="btn btn--primary" (click)="abrirRegistro()" [disabled]="registrando()">
+    <app-icon name="file" [size]="18" /> Registrar contrato
+  </button>
+</header>
+
+<!-- ── Contadores ───────────────────────────────────────────────── -->
+<section class="kpis" aria-label="Resumen de contratos">
+  <button type="button" class="card kpi" [class.is-on]="filtroEstado() === 'Vigente'"
+          (click)="filtroEstado.set(filtroEstado() === 'Vigente' ? '' : 'Vigente')">
+    <span class="kpi__icon kpi__icon--ok"><app-icon name="check" [size]="22" /></span>
+    <span class="kpi__body"><span class="kpi__label">Vigentes</span><strong class="kpi__value num">{{ resumen()?.vigentes ?? '–' }}</strong></span>
+  </button>
+  <button type="button" class="card kpi" [class.is-on]="filtroEstado() === 'ProximoAVencer'"
+          (click)="filtroEstado.set(filtroEstado() === 'ProximoAVencer' ? '' : 'ProximoAVencer')">
+    <span class="kpi__icon kpi__icon--warn"><app-icon name="clock" [size]="22" /></span>
+    <span class="kpi__body">
+      <span class="kpi__label">Próximos a vencer</span>
+      <strong class="kpi__value num">{{ resumen()?.proximosAVencer ?? '–' }}</strong>
+      <span class="kpi__hint">en {{ resumen()?.diasAlerta ?? 30 }} días o menos</span>
+    </span>
+  </button>
+  <button type="button" class="card kpi" [class.is-on]="filtroEstado() === 'Vencido'"
+          (click)="filtroEstado.set(filtroEstado() === 'Vencido' ? '' : 'Vencido')">
+    <span class="kpi__icon kpi__icon--danger"><app-icon name="alert" [size]="22" /></span>
+    <span class="kpi__body"><span class="kpi__label">Vencidos</span><strong class="kpi__value num">{{ resumen()?.vencidos ?? '–' }}</strong></span>
+  </button>
+</section>
+
+<!-- ── Registrar contrato ───────────────────────────────────────── -->
+@if (registrando()) {
+  <section class="card panel-form" aria-label="Registrar contrato">
+    <header>
+      <h2>Registrar contrato</h2>
+      <p>Elige la asignación de TMR. Para extender un contrato existente usa “Registrar adenda” en su detalle.</p>
+    </header>
+    <form class="form-grid form-grid--contrato" (submit)="$event.preventDefault(); guardarContrato()">
+      <div class="field campo-ancho">
+        <label for="asignacion">Colaborador y proyecto (TMR)</label>
+        <select id="asignacion" name="asignacion" class="select" [class.is-invalid]="erroresContrato()['asignacion']"
+                [disabled]="cargandoAsignaciones()" [ngModel]="asignacionForm()" (ngModelChange)="elegirAsignacion($event)">
+          <option value="">{{ cargandoAsignaciones() ? 'Cargando asignaciones…' : 'Elige una asignación' }}</option>
+          @for (a of asignaciones(); track clave(a)) {
+            <option [value]="clave(a)" [disabled]="!a.vinculadoEnRps">{{ etiquetaAsignacion(a) }}</option>
+          }
+        </select>
+        @if (erroresContrato()['asignacion']; as e) { <span class="field__error">{{ e }}</span> }
+        @else if (asignacionElegida(); as a) {
+          <span class="field__hint">
+            Asignación en TMR desde {{ a.fechaAsignacion ? (a.fechaAsignacion | date: 'dd MMM yyyy') : 'sin fecha' }}
+            {{ a.fechaFinAsignacion ? 'hasta ' + (a.fechaFinAsignacion | date: 'dd MMM yyyy') : '· sin fecha de salida' }}
+            @if (a.cliente) { · {{ a.cliente }} }
+          </span>
+        }
+      </div>
+      <div class="field">
+        <label for="inicio">Inicio</label>
+        <input id="inicio" name="inicio" type="date" class="input" [class.is-invalid]="erroresContrato()['fechaInicio']"
+               [ngModel]="inicioForm()" (ngModelChange)="inicioForm.set($event)" />
+        @if (erroresContrato()['fechaInicio']; as e) { <span class="field__error">{{ e }}</span> }
+      </div>
+      <div class="field">
+        <label for="fin">Fin</label>
+        <input id="fin" name="fin" type="date" class="input" [class.is-invalid]="erroresContrato()['fechaFin']"
+               [min]="inicioForm()" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
+        @if (erroresContrato()['fechaFin']; as e) { <span class="field__error">{{ e }}</span> }
+      </div>
+      <div class="field">
+        <label for="referencia">Referencia (opcional)</label>
+        <input id="referencia" name="referencia" class="input" maxlength="100" placeholder="Ej. CT-2026-031"
+               [ngModel]="referenciaForm()" (ngModelChange)="referenciaForm.set($event)" />
+      </div>
+      <div class="field campo-ancho">
+        <label for="observaciones">Observaciones (opcional)</label>
+        <input id="observaciones" name="observaciones" class="input" maxlength="500"
+               [ngModel]="observacionesForm()" (ngModelChange)="observacionesForm.set($event)" />
+      </div>
+      @if (errorContrato(); as e) {
+        <div class="aviso aviso--danger campo-ancho"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+      }
+      <div class="form-actions campo-ancho">
+        <button type="button" class="btn" (click)="registrando.set(false)" [disabled]="guardandoContrato()">Cancelar</button>
+        <button type="submit" class="btn btn--primary" [disabled]="guardandoContrato()">
+          {{ guardandoContrato() ? 'Guardando…' : 'Registrar contrato' }}
+        </button>
+      </div>
+    </form>
+  </section>
+}
+
+@if (filtroColaborador()) {
+  <div class="filtro-activo">
+    <span>Mostrando los contratos de <strong>{{ nombreFiltrado() }}</strong></span>
+    <button type="button" class="btn btn--sm" (click)="quitarFiltroColaborador()"><app-icon name="x" [size]="14" /> Ver todos</button>
+  </div>
+}
+
+<div class="grid">
+  <!-- ── Lista ──────────────────────────────────────────────────── -->
+  <section class="card lista">
+    <div class="filtros">
+      <div class="field filtros__buscar">
+        <label for="buscar">Buscar</label>
+        <input id="buscar" type="search" class="input" placeholder="Colaborador, proyecto o referencia"
+               [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+      </div>
+      <div class="field">
+        <label for="f-estado">Estado</label>
+        <select id="f-estado" class="select" [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)">
+          <option value="">Todos</option>
+          <option value="Vigente">Vigente</option>
+          <option value="ProximoAVencer">Próximo a vencer</option>
+          <option value="Vencido">Vencido</option>
+        </select>
+      </div>
+      <button type="button" class="btn filtros__refrescar" (click)="actualizar()" aria-label="Actualizar">
+        <app-icon name="refresh" [size]="17" />
+      </button>
+    </div>
+
+    @switch (carga().estado) {
+      @case ('cargando') {
+        <div class="pad stack">@for (i of [1, 2, 3, 4]; track i) { <div class="skeleton" style="height: 52px"></div> }</div>
+      }
+      @case ('error') {
+        <div class="pad"><div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ $any(carga()).mensaje }}</div>
+          <button type="button" class="btn btn--sm" (click)="actualizar()">Reintentar</button></div></div>
+      }
+      @case ('ok') {
+        @if (filas().length === 0) {
+          <p class="vacio">No hay contratos con estos filtros.</p>
+        } @else {
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th>Colaborador · proyecto</th><th>Inicio</th><th>Fin vigente</th><th>Estado</th><th><span class="sr-only">Ver</span></th></tr>
+              </thead>
+              <tbody>
+                @for (c of filas(); track c.id) {
+                  <tr class="fila" [class.is-sel]="seleccionadoId() === c.id" tabindex="0"
+                      (click)="seleccionadoId.set(c.id)" (keydown.enter)="seleccionadoId.set(c.id)">
+                    <td>
+                      <div class="persona">
+                        <span class="avatar" aria-hidden="true">{{ iniciales(c.colaborador) }}</span>
+                        <span class="persona__txt">
+                          <strong>{{ c.colaborador }}</strong>
+                          <small>{{ c.proyecto }}{{ c.numeroAdendas ? ' · ' + c.numeroAdendas + (c.numeroAdendas === 1 ? ' adenda' : ' adendas') : '' }}</small>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="num">{{ c.fechaInicio | date: 'dd MMM yyyy' }}</td>
+                    <td class="num">{{ c.fechaFinVigente | date: 'dd MMM yyyy' }}</td>
+                    <td><app-estado-chip [tono]="tono(c.estado)">{{ etiquetaEstado[c.estado] }}</app-estado-chip></td>
+                    <td class="r"><app-icon name="chevronRight" [size]="18" /></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <p class="pie">{{ filas().length }} {{ filas().length === 1 ? 'contrato' : 'contratos' }}</p>
+        }
+      }
+    }
+  </section>
+
+  <!-- ── Detalle ────────────────────────────────────────────────── -->
+  <section class="card detalle" aria-live="polite">
+    @if (cargandoDetalle() && !detalle()) {
+      <div class="pad stack"><div class="skeleton" style="height: 40px"></div><div class="skeleton" style="height: 180px"></div></div>
+    } @else if (errorDetalle()) {
+      <div class="pad"><div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ errorDetalle() }}</div></div></div>
+    } @else if (detalle(); as d) {
+      <header class="detalle__head">
+        <div>
+          <h2>{{ d.colaborador }}</h2>
+          <span class="muted">{{ d.proyecto }}{{ d.cliente ? ' · ' + d.cliente : '' }}</span>
+        </div>
+        <app-estado-chip [tono]="tono(d.estado)">{{ etiquetaEstado[d.estado] }} · {{ textoPlazo(d) }}</app-estado-chip>
+      </header>
+
+      @for (a of d.advertencias; track a) {
+        <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>{{ a }}</div></div>
+      }
+
+      <dl class="datos">
+        <div><dt>Referencia</dt><dd>{{ d.referencia ?? '—' }}</dd></div>
+        <div><dt>Inicio</dt><dd>{{ d.fechaInicio | date: 'dd MMM yyyy' }}</dd></div>
+        <div><dt>Fin original</dt><dd>{{ d.fechaFinOriginal | date: 'dd MMM yyyy' }}</dd></div>
+        <div><dt>Fin vigente</dt><dd><strong>{{ d.fechaFinVigente | date: 'dd MMM yyyy' }}</strong></dd></div>
+        <div>
+          <dt>Asignación en TMR</dt>
+          <dd>
+            {{ d.asignacionInicio ? (d.asignacionInicio | date: 'dd MMM yyyy') : 'sin fecha' }} →
+            {{ d.asignacionSalida ? (d.asignacionSalida | date: 'dd MMM yyyy') : 'sin salida' }}
+            <app-estado-chip [tono]="d.asignacionActiva ? 'info' : 'neutral'">{{ d.asignacionActiva ? 'Activa' : 'Terminada' }}</app-estado-chip>
+          </dd>
+        </div>
+        @if (d.observaciones) { <div><dt>Observaciones</dt><dd>{{ d.observaciones }}</dd></div> }
+      </dl>
+
+      <div class="adendas__head">
+        <h3>Adendas</h3>
+        @if (!agregandoAdenda()) {
+          <button type="button" class="btn btn--sm btn--primary" (click)="abrirAdenda()">Registrar adenda</button>
+        }
+      </div>
+
+      @if (agregandoAdenda()) {
+        <form class="adenda-form" (submit)="$event.preventDefault(); guardarAdenda()">
+          <div class="form-grid">
+            <div class="field">
+              <label for="nueva-fin">Nueva fecha de fin</label>
+              <input id="nueva-fin" name="nuevaFin" type="date" class="input" [class.is-invalid]="errorAdendaCampo()"
+                     [min]="d.fechaFinVigente" [ngModel]="nuevaFinForm()" (ngModelChange)="nuevaFinForm.set($event)" />
+              @if (errorAdendaCampo(); as e) { <span class="field__error">{{ e }}</span> }
+              @else { <span class="field__hint">Posterior al fin vigente ({{ d.fechaFinVigente | date: 'dd MMM yyyy' }}).</span> }
+            </div>
+            <div class="field">
+              <label for="ref-adenda">Referencia (opcional)</label>
+              <input id="ref-adenda" name="refAdenda" class="input" maxlength="100"
+                     [ngModel]="referenciaAdendaForm()" (ngModelChange)="referenciaAdendaForm.set($event)" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="obs-adenda">Observaciones (opcional)</label>
+            <input id="obs-adenda" name="obsAdenda" class="input" maxlength="500"
+                   [ngModel]="observacionesAdendaForm()" (ngModelChange)="observacionesAdendaForm.set($event)" />
+          </div>
+          @if (errorAdenda(); as e) { <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div> }
+          <div class="form-actions">
+            <button type="button" class="btn btn--sm" (click)="cancelarAdenda()" [disabled]="guardandoAdenda()">Cancelar</button>
+            <button type="submit" class="btn btn--sm btn--primary" [disabled]="guardandoAdenda()">
+              {{ guardandoAdenda() ? 'Guardando…' : 'Guardar adenda' }}
+            </button>
+          </div>
+        </form>
+      }
+
+      @if (d.adendas.length === 0) {
+        <p class="muted sin-adendas">Sin adendas. El fin vigente es el original.</p>
+      } @else {
+        <div class="table-wrap adendas">
+          <table class="tbl">
+            <thead><tr><th>#</th><th>Nuevo fin</th><th>Referencia</th><th>Registrada</th></tr></thead>
+            <tbody>
+              @for (a of d.adendas; track a.id) {
+                <tr>
+                  <td class="num">{{ a.numero }}</td>
+                  <td class="num">{{ a.nuevaFechaFin | date: 'dd MMM yyyy' }}</td>
+                  <td>{{ a.referencia ?? '—' }}@if (a.observaciones) { <br /><small class="muted">{{ a.observaciones }}</small> }</td>
+                  <td class="num muted">{{ a.fechaRegistro | date: 'dd MMM yyyy' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    } @else {
+      <p class="vacio">Elige un contrato para ver su detalle.</p>
+    }
+  </section>
+</div>

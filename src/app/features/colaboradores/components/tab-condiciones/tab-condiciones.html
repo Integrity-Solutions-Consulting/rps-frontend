@@ -1,0 +1,229 @@
+<!-- ── 1. Configuración del colaborador ──────────────────────────── -->
+<section class="card bloque">
+  <header class="bloque__head">
+    <h2>Configuración del colaborador</h2>
+    <p>Tipo de servicio y frecuencia de pago. Son una sola para todos sus proyectos.</p>
+  </header>
+
+  <div class="config">
+    <div class="config__campos">
+      <form class="field" (submit)="$event.preventDefault(); guardarClasificacion()">
+        <label for="tipo-servicio">Tipo de servicio</label>
+        <div class="linea">
+          <select id="tipo-servicio" name="tipoServicio" class="select" [disabled]="bloqueado()"
+                  [ngModel]="clasificacionForm()" (ngModelChange)="clasificacionForm.set($event)">
+            <option value="">Sin definir</option>
+            @for (c of clasificaciones; track c) { <option [value]="c">{{ etiquetaClasificacion[c] }}</option> }
+          </select>
+          <button type="submit" class="btn btn--primary" [disabled]="bloqueado() || !clasificacionCambio() || guardandoClasificacion()">
+            {{ guardandoClasificacion() ? 'Guardando…' : 'Guardar' }}
+          </button>
+        </div>
+        @if (clasificacionForm(); as c) { <span class="field__hint">{{ detalleClasificacion[c] }}</span> }
+      </form>
+
+      <div class="field">
+        <span class="field__label">Frecuencia de pago vigente</span>
+        @if (colaborador().frecuenciaVigente; as f) {
+          <div class="valor">
+            <strong>{{ etiquetaFrecuencia[f.frecuencia] }}</strong>
+            <span class="muted">desde {{ nombrePeriodo(periodoDeFecha(f.vigenteDesdeMes)) }}</span>
+          </div>
+        } @else {
+          <div class="aviso aviso--warn"><app-icon name="clock" [size]="18" /><div>Sin frecuencia vigente. Prográmala abajo en “Cambio programado”.</div></div>
+        }
+      </div>
+
+      @if (filasFrecuencia().length > 0) {
+        <div class="table-wrap marco">
+          <table class="tbl">
+            <thead><tr><th>Frecuencia desde</th><th>Frecuencia</th><th>Estado</th><th><span class="sr-only">Acciones</span></th></tr></thead>
+            <tbody>
+              @for (f of filasFrecuencia(); track f.id) {
+                <tr>
+                  <td>{{ nombrePeriodo(periodoDeFecha(f.vigenteDesdeMes)) }}</td>
+                  <td>{{ etiquetaFrecuencia[f.frecuencia] }}</td>
+                  <td><app-estado-chip [tono]="tonoVigencia(f.estado)">{{ f.estado }}</app-estado-chip></td>
+                  <td class="r">
+                    @if (f.modificable && !bloqueado()) {
+                      <button type="button" class="btn btn--sm btn--ghost" (click)="cancelarFrecuencia(f)">Cancelar</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <aside class="distribucion">
+      <div class="distribucion__head">
+        <span class="distribucion__icono"><app-icon name="calendar" [size]="22" /></span>
+        <div><strong>Distribución ordinaria</strong><small>Antes de anticipos adicionales</small></div>
+      </div>
+      @if (distribucion().length) {
+        <table class="tbl tbl--blanca">
+          <thead><tr><th>Corte</th><th class="r">Porcentaje del neto</th></tr></thead>
+          <tbody>
+            @for (d of distribucion(); track d.corte) { <tr><td>{{ d.corte }}</td><td class="r num">{{ d.porcentaje }}</td></tr> }
+          </tbody>
+        </table>
+      } @else {
+        <p class="muted small">Se muestra cuando tenga una frecuencia vigente.</p>
+      }
+    </aside>
+  </div>
+</section>
+
+<!-- ── 2. Honorarios por proyecto ────────────────────────────────── -->
+<section class="card bloque">
+  <header class="bloque__head">
+    <h2>Honorarios por proyecto</h2>
+    <span class="origen"><app-icon name="info" [size]="15" /> Proyectos de TMR · importes de RPS</span>
+    <p>Cada proyecto tiene su honorario mensual fijo y su modalidad. Un proyecto puede ser neto y otro más IVA en el mismo mes.</p>
+  </header>
+
+  @if (cargandoHonorarios()) {
+    <div class="skeleton" style="height: 110px"></div>
+  } @else if (errorHonorarios()) {
+    <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ errorHonorarios() }}</div></div>
+  } @else if (honorarios().length === 0) {
+    <p class="vacio">Sin proyectos asignados en TMR.</p>
+  } @else {
+    <div class="table-wrap marco">
+      <table class="tbl">
+        <thead>
+          <tr><th>Proyecto</th><th class="r">Honorario mensual</th><th>Modalidad</th><th>Vigente desde</th><th>Cambio programado</th><th><span class="sr-only">Historial</span></th></tr>
+        </thead>
+        <tbody>
+          @for (h of honorarios(); track h.tmrProyectoId) {
+            <tr [class.fila-finalizada]="!h.asignacionActiva">
+              <td>
+                <strong>{{ h.proyecto }}</strong>
+                <br /><small class="muted">{{ h.cliente ?? '' }}{{ h.asignacionActiva ? '' : ' · asignación finalizada' }}</small>
+              </td>
+              @if (h.vigente; as v) {
+                <td class="r num"><strong>{{ v.importe | currency: 'USD' : 'symbol' : '1.2-2' }}</strong></td>
+                <td>{{ etiquetaModalidad[v.modalidad] }}</td>
+                <td>{{ nombrePeriodo(periodoDeFecha(v.vigenteDesdeMes)) }}</td>
+              } @else {
+                <td colspan="3"><app-estado-chip tono="warn">Sin honorario · pendiente de configuración</app-estado-chip></td>
+              }
+              <td>
+                @if (h.programado; as p) {
+                  <div class="programado">
+                    <app-estado-chip tono="info">{{ p.importe | currency: 'USD' : 'symbol' : '1.2-2' }} {{ etiquetaModalidad[p.modalidad] }} desde {{ nombrePeriodo(periodoDeFecha(p.vigenteDesdeMes)) }}</app-estado-chip>
+                    @if (!bloqueado()) { <button type="button" class="btn btn--sm btn--ghost" (click)="cancelarHonorario(h)">Cancelar</button> }
+                  </div>
+                } @else { <span class="muted">—</span> }
+              </td>
+              <td class="r">
+                @if (h.historial.length > 1) {
+                  <button type="button" class="btn btn--sm btn--ghost" (click)="historialAbierto.set(historialAbierto() === h.tmrProyectoId ? null : h.tmrProyectoId)">
+                    {{ historialAbierto() === h.tmrProyectoId ? 'Ocultar' : 'Historial' }}
+                  </button>
+                }
+              </td>
+            </tr>
+            @if (historialAbierto() === h.tmrProyectoId) {
+              <tr class="fila-historial">
+                <td colspan="6">
+                  <ul>
+                    @for (v of h.historial; track v.id) {
+                      <li>
+                        <span class="num">{{ v.importe | currency: 'USD' : 'symbol' : '1.2-2' }}</span> {{ etiquetaModalidad[v.modalidad] }}
+                        desde {{ nombrePeriodo(periodoDeFecha(v.vigenteDesdeMes)) }}
+                        <span class="muted">· registrado {{ v.registradoEn | date: 'dd MMM yyyy' }}</span>
+                      </li>
+                    }
+                  </ul>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+
+<!-- ── 3. Cambio programado ──────────────────────────────────────── -->
+<section class="card bloque">
+  <header class="bloque__head"><h2>Cambio programado</h2></header>
+
+  <div class="aviso aviso--warn">
+    <app-icon name="info" [size]="18" />
+    <div>Los cambios aplican desde el <strong>siguiente mes</strong>. El mes en curso no se modifica (RN 19, RN 20).</div>
+  </div>
+
+  <div class="selector" role="radiogroup" aria-label="Qué quieres cambiar">
+    <label class="selector__opcion" [class.is-on]="queCambia() === 'honorario'">
+      <input type="radio" name="queCambia" value="honorario" [ngModel]="queCambia()" (ngModelChange)="queCambia.set($event); erroresCambio.set({})" />
+      Honorario de un proyecto
+    </label>
+    <label class="selector__opcion" [class.is-on]="queCambia() === 'frecuencia'">
+      <input type="radio" name="queCambia" value="frecuencia" [ngModel]="queCambia()" (ngModelChange)="queCambia.set($event); erroresCambio.set({})" />
+      Frecuencia de pago
+    </label>
+  </div>
+
+  <form class="form-grid" (submit)="$event.preventDefault(); programarCambio()">
+    @if (queCambia() === 'honorario') {
+      <div class="field">
+        <label for="c-proyecto">Proyecto</label>
+        <select id="c-proyecto" name="proyecto" class="select" [disabled]="bloqueado()" [class.is-invalid]="erroresCambio()['tmrProyectoId']"
+                [ngModel]="proyectoForm()" (ngModelChange)="elegirProyecto($event)">
+          <option value="">Elige un proyecto</option>
+          @for (h of honorarios(); track h.tmrProyectoId) {
+            <option [value]="h.tmrProyectoId" [disabled]="!h.asignacionActiva">{{ h.proyecto }}{{ h.asignacionActiva ? '' : ' (finalizado)' }}</option>
+          }
+        </select>
+        @if (erroresCambio()['tmrProyectoId']; as e) { <span class="field__error">{{ e }}</span> }
+      </div>
+      <div class="field">
+        <label for="c-importe">Nuevo honorario mensual</label>
+        <div class="dinero" [class.is-invalid]="erroresCambio()['importe']">
+          <span>$</span>
+          <input id="c-importe" name="importe" type="number" min="0.01" step="0.01" inputmode="decimal" class="input num" [disabled]="bloqueado()"
+                 [ngModel]="importeForm()" (ngModelChange)="importeForm.set($event)" />
+        </div>
+        @if (erroresCambio()['importe']; as e) { <span class="field__error">{{ e }}</span> }
+      </div>
+      <div class="field">
+        <label for="c-modalidad">Modalidad económica</label>
+        <select id="c-modalidad" name="modalidad" class="select" [disabled]="bloqueado()"
+                [ngModel]="modalidadForm()" (ngModelChange)="modalidadForm.set($event)">
+          <option value="Neto">{{ etiquetaModalidad.Neto }}</option>
+          <option value="MasIva">{{ etiquetaModalidad.MasIva }}</option>
+        </select>
+        <span class="field__hint">{{ detalleModalidad[modalidadForm()] }}</span>
+      </div>
+    } @else {
+      <div class="field">
+        <label for="c-frecuencia">Nueva frecuencia de pago</label>
+        <select id="c-frecuencia" name="frecuencia" class="select" [disabled]="bloqueado()" [class.is-invalid]="erroresCambio()['frecuencia']"
+                [ngModel]="frecuenciaForm()" (ngModelChange)="frecuenciaForm.set($event)">
+          <option value="DosPagos">{{ etiquetaFrecuencia.DosPagos }}</option>
+          <option value="FinDeMes">{{ etiquetaFrecuencia.FinDeMes }}</option>
+        </select>
+        @if (erroresCambio()['frecuencia']; as e) { <span class="field__error">{{ e }}</span> }
+      </div>
+    }
+    <div class="field">
+      <label for="c-mes">Aplicar desde</label>
+      <input id="c-mes" name="mes" type="month" class="input" [min]="mesMinimo()" [disabled]="bloqueado()"
+             [class.is-invalid]="erroresCambio()['vigenteDesdeMes']" [ngModel]="mesForm()" (ngModelChange)="mesForm.set($event)" />
+      @if (erroresCambio()['vigenteDesdeMes']; as e) { <span class="field__error">{{ e }}</span> }
+    </div>
+
+    @if (errorCambio(); as e) {
+      <div class="aviso aviso--danger ancho"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+    }
+    <div class="form-actions ancho">
+      <button type="submit" class="btn btn--primary" [disabled]="bloqueado() || guardandoCambio()">
+        <app-icon name="calendar" [size]="17" /> {{ guardandoCambio() ? 'Guardando…' : 'Programar cambio' }}
+      </button>
+    </div>
+  </form>
+</section>

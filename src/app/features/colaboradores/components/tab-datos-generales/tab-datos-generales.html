@@ -1,0 +1,70 @@
+<div class="grid">
+  <section class="card bloque">
+    <header class="bloque__head">
+      <h2>Datos generales</h2>
+      <span class="origen"><app-icon name="info" [size]="15" /> Origen TMR · Solo lectura</span>
+    </header>
+
+    @if (datosTmr(); as t) {
+      <div class="aviso aviso--info">
+        <app-icon name="info" [size]="18" />
+        <div>Los datos generales se actualizan desde TMR. Para corregirlos, RR. HH. debe cambiarlos allá.</div>
+      </div>
+      <dl class="datos">
+        <div><dt>Nombres</dt><dd>{{ t.nombres }}</dd></div>
+        <div><dt>Apellidos</dt><dd>{{ t.apellidos }}</dd></div>
+        <div><dt>Identificación</dt><dd class="num">{{ enmascarar(t.identificacion) }}</dd></div>
+        <div><dt>Correo</dt><dd>{{ t.correo ?? '—' }}</dd></div>
+        <div>
+          <dt>Estado en TMR</dt>
+          <dd class="sin-fondo"><app-estado-chip [tono]="t.activo ? 'ok' : 'neutral'">{{ t.activo ? 'Activo' : 'Inactivo' }}</app-estado-chip></dd>
+        </div>
+      </dl>
+    } @else {
+      <div class="aviso aviso--warn">
+        <app-icon name="alert" [size]="18" />
+        <div>{{ errorTmr() ?? 'Cargando datos de TMR…' }}</div>
+      </div>
+      <dl class="datos">
+        <div><dt>ID en TMR</dt><dd class="num">{{ colaborador().tmrColaboradorId }}</dd></div>
+      </dl>
+    }
+  </section>
+
+  <aside class="card resumen">
+    <div class="resumen__fila">
+      <app-icon name="clock" [size]="22" />
+      <div>
+        <span class="muted">Última consulta a TMR</span>
+        <strong>{{ datosTmr() ? (datosTmr()!.ultimaSincronizacion | date: 'dd MMM yyyy, HH:mm') : '—' }}</strong>
+      </div>
+    </div>
+    <div class="resumen__proyectos">
+      <app-icon name="users" [size]="24" />
+      <div><strong class="num">{{ proyectosActivos() }}</strong><span>{{ proyectosActivos() === 1 ? 'proyecto activo' : 'proyectos activos' }}</span></div>
+    </div>
+    <div class="resumen__fila resumen__fila--rps">
+      <app-icon name="calendar" [size]="20" />
+      <div>
+        <span class="muted">Registrado en RPS</span>
+        <strong>{{ colaborador().creadoEn | date: 'dd MMM yyyy' }}</strong>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<section class="card bloque">
+  <header class="bloque__head">
+    <h2>Datos administrados en RPS</h2>
+    <p>Gestiona la información complementaria del colaborador en los siguientes módulos.</p>
+  </header>
+  <div class="accesos">
+    @for (a of accesos; track a.destino) {
+      <button type="button" class="acceso" (click)="irA.emit(a.destino)">
+        <span class="acceso__icono"><app-icon [name]="a.icono" [size]="22" /></span>
+        <span class="acceso__texto"><strong>{{ a.titulo }}</strong><small>{{ a.texto }}</small></span>
+        <app-icon name="chevronRight" [size]="18" />
+      </button>
+    }
+  </div>
+</section>

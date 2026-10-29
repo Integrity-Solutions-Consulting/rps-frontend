@@ -13,9 +13,9 @@ export interface ItemMenu {
 export const MENU: ItemMenu[] = [
   { ruta: 'inicio', titulo: 'Inicio', icono: 'home', disponible: true,
     descripcion: 'Totales del período, revisión pendiente, vencimientos y alertas.' },
-  { ruta: 'colaboradores', titulo: 'Colaboradores', icono: 'users', disponible: false,
-    descripcion: 'Búsqueda de personas de TMR, ficha, condiciones económicas y datos bancarios.' },
-  { ruta: 'contratos', titulo: 'Contratos', icono: 'file', disponible: false,
+  { ruta: 'colaboradores', titulo: 'Colaboradores', icono: 'users', disponible: true,
+    descripcion: 'Personas de TMR configuradas en RPS: clasificación, frecuencia de pago y datos bancarios.' },
+  { ruta: 'contratos', titulo: 'Contratos', icono: 'file', disponible: true,
     descripcion: 'Contratos por colaborador y proyecto, adendas y vencimientos.' },
   { ruta: 'anticipos', titulo: 'Anticipos', icono: 'card', disponible: false,
     descripcion: 'Anticipos adicionales, límite disponible y plan de recuperación.' },

@@ -1,7 +1,6 @@
-// `npm start`: responde con datos de ejemplo (core/mocks) sin necesitar el backend.
-// Los datos son ficticios y la cabecera muestra la marca "Datos de ejemplo".
+// `npm start`: todas las respuestas son datos de ejemplo (core/mocks), sin necesitar el backend.
 export const environment = {
   production: false,
   apiUrl: '/api',
-  useMocks: true,
+  mockRutas: ['*'] as string[],
 };

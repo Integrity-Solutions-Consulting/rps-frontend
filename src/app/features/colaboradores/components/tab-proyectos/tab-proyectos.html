@@ -1,0 +1,80 @@
+<div class="grid">
+  <section class="card bloque">
+    <header class="bloque__head">
+      <h2>Asignaciones consultadas desde TMR</h2>
+      <span class="origen"><app-icon name="info" [size]="15" /> Solo lectura TMR</span>
+    </header>
+
+    <div class="filtros">
+      <div class="field">
+        <label for="p-estado">Mostrar</label>
+        <select id="p-estado" class="select" [ngModel]="filtro()" (ngModelChange)="filtro.set($event)">
+          <option value="activos">Activos</option>
+          <option value="finalizados">Finalizados</option>
+          <option value="todos">Todos</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="p-mes">Mes para días reconocidos</label>
+        <input id="p-mes" type="month" class="input" [value]="periodo()" (change)="cambiarPeriodo($any($event.target).value)" />
+      </div>
+    </div>
+
+    @if (errorTmr()) {
+      <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>{{ errorTmr() }}</div></div>
+    } @else if (visibles().length === 0) {
+      <p class="vacio">No hay asignaciones {{ filtro() === 'activos' ? 'activas' : filtro() === 'finalizados' ? 'finalizadas' : '' }} en TMR.</p>
+    } @else {
+      <div class="table-wrap marco">
+        <table class="tbl">
+          <thead>
+            <tr><th>Cliente</th><th>Proyecto</th><th>Inicio</th><th>Salida</th><th>Estado</th><th>Contrato</th><th class="r">Días en {{ nombrePeriodo() }}</th></tr>
+          </thead>
+          <tbody>
+            @for (a of visibles(); track a.tmrAsignacionId) {
+              <tr>
+                <td>{{ a.cliente ?? '—' }}</td>
+                <td><strong>{{ a.proyecto }}</strong></td>
+                <td class="num">{{ a.fechaAsignacion ? (a.fechaAsignacion | date: 'dd MMM yyyy') : '—' }}</td>
+                <td class="num">{{ a.fechaFinAsignacion ? (a.fechaFinAsignacion | date: 'dd MMM yyyy') : '—' }}</td>
+                <td><app-estado-chip [tono]="a.activa ? 'ok' : 'neutral'">{{ a.activa ? 'Activo' : 'Finalizado' }}</app-estado-chip></td>
+                <td>
+                  @if (a.contrato; as c) { <app-estado-chip [tono]="tonoContrato(c)">{{ etiquetaContrato[c.estado] }}</app-estado-chip> }
+                  @else { <app-estado-chip tono="warn">Sin contrato</app-estado-chip> }
+                </td>
+                <td class="r num">{{ a.diasEnMes }} / {{ diasMes() }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <aside class="card nota-honorario">
+    <app-icon name="info" [size]="26" />
+    <strong>Cada proyecto tiene su propio honorario.</strong>
+    <p>Una persona puede trabajar en varios proyectos a la vez. Cada relación colaborador y proyecto tiene su honorario mensual y su contrato (RN 08, RN 17).</p>
+    <p>La clasificación de servicio y la frecuencia de pago sí son una sola para todos sus proyectos (RN 05, RN 36).</p>
+  </aside>
+</div>
+
+<section class="card dias">
+  <div class="dias__titulo">
+    <span class="dias__icono"><app-icon name="calendar" [size]="26" /></span>
+    <div>
+      <span>Días reconocidos en {{ nombrePeriodo() }}</span>
+      <small class="muted">Mes de {{ diasMes() }} días · inicio y salida cuentan como pagados (RN 23)</small>
+    </div>
+  </div>
+  @if (enElMes().length === 0) {
+    <p class="vacio">Sin proyectos con días en este mes.</p>
+  } @else {
+    <ul class="dias__lista">
+      @for (a of enElMes(); track a.tmrAsignacionId) {
+        <li><strong class="num">{{ a.diasEnMes }}</strong><span>{{ a.proyecto }}</span></li>
+      }
+    </ul>
+  }
+  <p class="dias__nota">Los proyectos simultáneos generan cada uno su honorario (RN 25). Dentro de un mismo proyecto no se cuentan dos veces los mismos días.</p>
+</section>

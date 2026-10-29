@@ -1,0 +1,35 @@
+:host { display: block; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; align-items: start; }
+@media (max-width: 1080px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.columna { display: grid; gap: 18px; min-width: 0; }
+
+h2 { display: inline-flex; align-items: center; gap: 8px; }
+.sub { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; margin: 0; }
+.marco { border: 1px solid var(--rps-border); border-radius: 10px; }
+
+.fechas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 14px 16px;
+  border: 1px solid var(--rps-border); border-radius: 10px;
+  div { display: grid; gap: 4px; }
+  span { color: var(--rps-muted); font-size: 12.5px; }
+  strong { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; } }
+@media (max-width: 760px) { .fechas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.anteriores { display: grid; gap: 8px; }
+.anterior { border: 1px solid var(--rps-border); border-radius: 10px; overflow: hidden; }
+.anterior__fila { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 0; background: var(--rps-surface);
+  color: var(--rps-text); text-align: left; cursor: pointer; font: inherit;
+  span:first-child { flex: 1; }
+  &:hover { background: #f6fafb; } }
+.anterior__detalle { display: flex; flex-wrap: wrap; gap: 6px 20px; padding: 10px 14px; border-top: 1px solid var(--rps-border);
+  background: #f8fafb; font-size: 13px; color: var(--rps-muted); }
+
+.alertas { position: sticky; top: 76px; }
+@media (max-width: 1080px) { .alertas { position: static; } }
+.plazos { list-style: none; margin: 0; padding: 0; display: grid;
+  li { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--rps-border); color: var(--rps-teal); }
+  li:last-child { border-bottom: 0; }
+  li.pasada { color: var(--rps-muted); }
+  div { display: grid; }
+  strong { color: var(--rps-text); }
+  span { color: var(--rps-muted); font-size: 13px; } }

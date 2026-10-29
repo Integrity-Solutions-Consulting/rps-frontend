@@ -1,0 +1,71 @@
+/* Estilos compartidos de formularios, avisos y pestañas. Se carga después de styles.scss (angular.json). */
+
+/* ── Formularios (compartidos) ─────────────────────────────────── */
+.field { display: grid; gap: 5px; min-width: 0; }
+.field > label, .field__label { font-size: 12.5px; font-weight: 600; color: var(--rps-text); }
+.field__hint { font-size: 12px; color: var(--rps-muted); }
+.field__error { font-size: 12px; color: var(--rps-danger); }
+
+.input, .select {
+  height: 38px; width: 100%; padding: 0 12px; border: 1px solid var(--rps-border); border-radius: 8px;
+  background: var(--rps-surface); color: var(--rps-text); font: inherit; font-size: 14px;
+  &:focus { outline: none; border-color: var(--rps-teal); box-shadow: 0 0 0 3px var(--rps-teal-50); }
+  &:disabled { background: #f3f6f8; color: var(--rps-muted); }
+  &.is-invalid { border-color: var(--rps-danger); }
+}
+
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; align-items: start; }
+.form-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+
+.btn--danger { color: var(--rps-danger); border-color: #f1c2bd;
+  &:hover:not(:disabled) { color: #fff; background: var(--rps-danger); border-color: var(--rps-danger); } }
+.btn--sm { height: 30px; padding: 0 12px; font-size: 13px; }
+.btn--ghost { border-color: transparent; background: transparent;
+  &:hover:not(:disabled) { background: var(--rps-teal-50); border-color: transparent; } }
+
+/* Avisos dentro de la página */
+.aviso {
+  display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px; border-radius: var(--rps-radius);
+  border: 1px solid; font-size: 13.5px;
+  > div { flex: 1; min-width: 0; }
+}
+.aviso--info { background: var(--rps-info-50); border-color: #c7d9ee; color: #1d4f86; }
+.aviso--warn { background: var(--rps-warn-50); border-color: #efd29f; color: #7a4a00; }
+.aviso--danger { background: var(--rps-danger-50); border-color: #f1c2bd; color: #8e2a20; }
+.aviso--ok { background: var(--rps-ok-50); border-color: #bfe3cd; color: #155c35; }
+
+/* Pestañas */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rps-border); overflow-x: auto; }
+.tab {
+  height: 42px; padding: 0 14px; border: 0; border-bottom: 2px solid transparent; background: none;
+  color: var(--rps-muted); font-weight: 500; cursor: pointer; white-space: nowrap;
+  &:hover { color: var(--rps-text); }
+  &.is-on { color: var(--rps-teal); border-bottom-color: var(--rps-teal); font-weight: 600; }
+}
+
+/* ── Bloques de contenido (pestañas de fichas) ─────────────────── */
+.bloque { padding: 20px; display: grid; gap: 16px; min-width: 0; align-content: start; }
+.bloque__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px;
+  h2 { font-size: 18px; font-weight: 700; }
+  h3 { font-size: 15.5px; font-weight: 700; }
+  p { margin: 0; flex-basis: 100%; color: var(--rps-muted); font-size: 13px; } }
+.bloque__form { display: grid; gap: 12px; }
+
+.origen {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px;
+  background: var(--rps-info-50); color: var(--rps-info); font-size: 12.5px; font-weight: 600;
+}
+
+/* Lista de datos "etiqueta: valor" */
+.datos { margin: 0; display: grid; gap: 8px;
+  > div { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; align-items: center; }
+  dt { color: var(--rps-muted); font-size: 13.5px; }
+  dd { margin: 0; padding: 9px 12px; border-radius: 8px; background: #f3f6f8; font-weight: 500; overflow-wrap: anywhere; min-height: 38px;
+       display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } }
+.datos--sin-fondo dd { background: none; padding: 0; min-height: 0; }
+@media (max-width: 560px) { .datos > div { grid-template-columns: 1fr; gap: 4px; } }
+
+.muted { color: var(--rps-muted); }
+.small { font-size: 12.5px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.vacio { color: var(--rps-muted); margin: 0; padding: 18px 0; }

@@ -1,0 +1,21 @@
+:host { display: grid; gap: 18px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+@media (max-width: 1080px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.filtros { display: flex; flex-wrap: wrap; gap: 12px; .field { width: 220px; } }
+.marco { border: 1px solid var(--rps-border); border-radius: 10px; }
+
+.nota-honorario { padding: 20px; display: grid; gap: 10px; background: var(--rps-info-50); border-color: #c7d9ee; color: #1d4f86;
+  strong { font-size: 16px; } p { margin: 0; font-size: 13.5px; color: #2d4a6b; } }
+
+.dias { padding: 20px; display: grid; grid-template-columns: minmax(220px, auto) minmax(0, 1fr); gap: 14px 24px; align-items: center;
+  background: #f1f8f8; border-color: #cfe7e8; }
+@media (max-width: 760px) { .dias { grid-template-columns: minmax(0, 1fr); } }
+.dias__titulo { display: flex; align-items: center; gap: 14px;
+  div { display: grid; gap: 2px; } span { font-weight: 600; } }
+.dias__icono { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: #d7eeef; color: var(--rps-teal); }
+.dias__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px 22px;
+  li { display: flex; align-items: baseline; gap: 8px; }
+  strong { font-size: 28px; line-height: 1; } }
+.dias__nota { grid-column: 1 / -1; margin: 0; color: var(--rps-muted); font-size: 13px; }
