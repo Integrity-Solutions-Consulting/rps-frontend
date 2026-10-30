@@ -10,6 +10,7 @@
   }
 
   <div class="navbar__right">
+    <app-campana />
     <span class="navbar__area">{{ session.usuario().area }}</span>
     <span class="navbar__sep" aria-hidden="true"></span>
     <span class="navbar__avatar" [attr.aria-label]="session.usuario().nombre">{{ session.usuario().iniciales }}</span>

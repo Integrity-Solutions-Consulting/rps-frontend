@@ -15,6 +15,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { DineroPipe } from '../../../../shared/pipes/dinero.pipe';
+import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
 import { ETIQUETA_CORTE, TipoCorte } from '../../../../shared/models/corte';
 import { hoy } from '../../../../shared/utils/fechas';
 import { nombrePeriodo } from '../../../../shared/utils/periodo';
@@ -38,7 +39,7 @@ const numero = (texto: string) => {
 @Component({
   selector: 'app-anticipos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, RouterLink, Icon, EstadoChip, DineroPipe],
+  imports: [DatePipe, FormsModule, RouterLink, Icon, EstadoChip, DineroPipe, SoloNumeros],
   templateUrl: './anticipos.html',
   styleUrl: './anticipos.scss',
 })

@@ -71,6 +71,7 @@ class ConfiguracionMock {
   // ── Endpoints ──────────────────────────────────────────────────────
   obtener(): RespuestaMock {
     const body: Configuracion = {
+      capacidades: { vigencias: true, alertas: true, bancos: true },
       parametros: CLAVES.map((c) => this.parametro(c)),
       bancos: this.listaBancos(),
       historial: [...this.cambios].sort((a, b) => b.registradoEn.localeCompare(a.registradoEn)),

@@ -13,6 +13,8 @@ export interface HonorarioVigencia {
   /** Primer día del mes, "2026-11-01". */
   vigenteDesdeMes: string;
   registradoEn: string;
+  /** Si se canceló antes de regir. No se borra: queda en el historial y se puede restaurar. */
+  canceladoEn: string | null;
 }
 
 /** Un proyecto del colaborador con su honorario vigente, el programado y el historial. */
@@ -25,7 +27,7 @@ export interface HonorarioProyecto {
   vigente: HonorarioVigencia | null;
   /** Cambio ya registrado para un mes que aún no empieza. */
   programado: HonorarioVigencia | null;
-  /** Todas las vigencias, de la más reciente a la más antigua. */
+  /** Todas las vigencias (también las canceladas), de la más reciente a la más antigua. */
   historial: HonorarioVigencia[];
 }
 

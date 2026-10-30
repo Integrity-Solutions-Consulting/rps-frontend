@@ -6,6 +6,7 @@ import { ColaboradorDetalle, TIPOS_CUENTA } from '../../models/colaborador.model
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
 import { ConfiguracionService } from '../../../configuracion/services/configuracion.service';
 
 /**
@@ -26,7 +27,7 @@ const OTRO = 'Otro';
 @Component({
   selector: 'app-tab-bancarios',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, Icon],
+  imports: [DatePipe, FormsModule, Icon, SoloNumeros],
   templateUrl: './tab-bancarios.html',
   styleUrl: './tab-bancarios.scss',
 })

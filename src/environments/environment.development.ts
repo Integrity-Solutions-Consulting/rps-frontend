@@ -3,10 +3,9 @@
 export const environment = {
   production: false,
   apiUrl: '/api',
-  // Rutas que el backend todavía no tiene: siguen con datos de ejemplo.
-  // Quitar cada una de la lista cuando exista su endpoint.
-  mockRutas: [
-    '/dashboard', '/contratos', '/honorarios', '/integracion-tmr',
-    '/anticipos', '/liquidaciones', '/documentos', '/exportaciones', '/configuracion',
-  ] as string[],
+  // Rutas que siguen con datos de ejemplo aunque el backend esté encendido:
+  //   /dashboard        → Inicio espera otro formato que el GET /api/dashboard actual
+  //   /integracion-tmr  → nombres e identificación de TMR (falta la integración con TMR)
+  // Todo lo demás va a rps-backend; los servicios adaptan sus rutas (ver core/backend).
+  mockRutas: ['/dashboard', '/integracion-tmr'] as string[],
 };

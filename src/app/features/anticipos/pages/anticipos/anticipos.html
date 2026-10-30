@@ -86,7 +86,7 @@
           <div class="field">
             <label for="monto">Monto del anticipo</label>
             <div class="con-prefijo"><span>$</span>
-              <input id="monto" name="monto" class="input num" inputmode="decimal" placeholder="0,00" [disabled]="!!r.bloqueo"
+              <input id="monto" name="monto" class="input num" appSoloNumeros="monto" placeholder="0,00" [disabled]="!!r.bloqueo"
                      [ngModel]="monto()" (ngModelChange)="monto.set($event)" />
             </div>
           </div>
@@ -120,7 +120,7 @@
                   </td>
                   <td>
                     <div class="con-prefijo"><span>$</span>
-                      <input class="input num" inputmode="decimal" [attr.aria-label]="'Monto de la cuota'" [name]="'monto' + c.clave"
+                      <input class="input num" appSoloNumeros="monto" placeholder="0,00" [attr.aria-label]="'Monto de la cuota'" [name]="'monto' + c.clave"
                              [ngModel]="c.monto" (ngModelChange)="cambiarCuota(c.clave, { monto: $event })" />
                     </div>
                   </td>

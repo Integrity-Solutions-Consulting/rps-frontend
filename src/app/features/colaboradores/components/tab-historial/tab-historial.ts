@@ -88,8 +88,8 @@ export class TabHistorial {
   protected tono(estado: string | null | undefined): TonoChip {
     if (!estado) return 'neutral';
     if (estado.startsWith('Exportado')) return 'info';
-    if (estado.startsWith('Recalculada') || estado === 'Programado' || estado.startsWith('Revisión retirada')) return 'warn';
-    if (estado.startsWith('Revisada') || estado === 'Recuperado') return 'ok';
+    if (estado.startsWith('Recalculada') || estado === 'Programado' || estado === 'Cancelado' || estado.startsWith('Revisión retirada')) return 'warn';
+    if (estado.startsWith('Revisada') || estado === 'Recuperado' || estado === 'Restaurado') return 'ok';
     return 'neutral';
   }
 

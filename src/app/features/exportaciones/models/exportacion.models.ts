@@ -11,6 +11,8 @@ import { TipoCorte } from '../../../shared/models/corte';
 export interface CandidatoExportacion {
   liquidacionId: string;
   colaboradorId: string;
+  /** Lo envía rps-backend para poner el nombre de TMR (el backend aún no conoce nombres). */
+  tmrColaboradorId?: string;
   colaborador: string;
   /** Importe consolidado del corte, ya con los anticipos descontados (RN 54). */
   valor: number;
@@ -36,6 +38,7 @@ export interface PreparacionExportacion {
 
 export interface FilaExportada {
   colaboradorId: string;
+  tmrColaboradorId?: string;
   colaborador: string;
   valor: number;
   banco: string | null;

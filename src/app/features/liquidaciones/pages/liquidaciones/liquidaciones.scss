@@ -1,7 +1,6 @@
 :host { display: block; }
 
-.pendientes { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 2px;
-  a { color: inherit; font-weight: 600; } }
+.pendientes { align-items: center; flex-wrap: wrap; }
 
 .vacio-grande { padding: 40px 20px; display: grid; justify-items: center; gap: 10px; text-align: center; color: var(--rps-muted);
   h2 { color: var(--rps-text); font-size: 18px; }

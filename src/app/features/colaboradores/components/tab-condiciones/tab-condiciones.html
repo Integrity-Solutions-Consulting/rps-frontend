@@ -131,10 +131,13 @@
                 <td colspan="6">
                   <ul>
                     @for (v of h.historial; track v.id) {
-                      <li>
+                      <li [class.cancelado]="v.canceladoEn">
                         <span class="num">{{ v.importe | currency: 'USD' : 'symbol' : '1.2-2' }}</span> {{ etiquetaModalidad[v.modalidad] }}
                         desde {{ nombrePeriodo(periodoDeFecha(v.vigenteDesdeMes)) }}
                         <span class="muted">· registrado {{ v.registradoEn | date: 'dd MMM yyyy' }}</span>
+                        @if (v.canceladoEn) {
+                          <app-estado-chip tono="neutral">Cancelado el {{ v.canceladoEn | date: 'dd MMM yyyy' }}</app-estado-chip>
+                        }
                       </li>
                     }
                   </ul>
@@ -185,7 +188,7 @@
         <label for="c-importe">Nuevo honorario mensual</label>
         <div class="dinero" [class.is-invalid]="erroresCambio()['importe']">
           <span>$</span>
-          <input id="c-importe" name="importe" type="number" min="0.01" step="0.01" inputmode="decimal" class="input num" [disabled]="bloqueado()"
+          <input id="c-importe" name="importe" class="input num" appSoloNumeros="monto" placeholder="0,00" [disabled]="bloqueado()"
                  [ngModel]="importeForm()" (ngModelChange)="importeForm.set($event)" />
         </div>
         @if (erroresCambio()['importe']; as e) { <span class="field__error">{{ e }}</span> }

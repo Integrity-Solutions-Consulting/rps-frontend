@@ -66,12 +66,12 @@ Pantalla (pages/…)  →  servicio (services/…)  →  HttpClient  →  interc
 
 | Pestaña | Componente | Datos |
 |---|---|---|
-| Cabecera | `pages/ficha/ficha.ts` | `/api/colaboradores/{id}` + `/api/integracion-tmr/colaboradores/{tmrId}` + `/api/contratos?tmrColaboradorId=` |
+| Cabecera | `pages/ficha/ficha.ts` | `/api/colaboradores/{id}` + nombre de TMR (ejemplo) + contratos del colaborador |
 | Datos generales | `components/tab-datos-generales` | Copia de TMR (solo lectura) |
-| Proyectos | `components/tab-proyectos` | Asignaciones de TMR; calcula días por proyecto en el mes elegido |
-| Condiciones económicas | `components/tab-condiciones` | Tipo de servicio y frecuencia: `/api/colaboradores`. Honorarios por proyecto: `/api/honorarios` |
+| Proyectos | `components/tab-proyectos` | Asignaciones (`/api/colaboradores/{id}/asignaciones`); calcula días por proyecto en el mes elegido |
+| Condiciones económicas | `components/tab-condiciones` | Tipo de servicio y frecuencia: `/api/colaboradores`. Honorarios por proyecto: `.../condiciones-economicas/historial`, cancelar y restaurar |
 | Datos bancarios | `components/tab-bancarios` | `PUT /api/colaboradores/{id}/cuenta-bancaria` |
-| Contratos | `components/tab-contratos` | `/api/contratos/{id}`; para registrar, lleva a la pantalla Contratos |
+| Contratos | `components/tab-contratos` | `.../contratos` y `.../adendas` del colaborador; para registrar, lleva a la pantalla Contratos |
 | Historial | `components/tab-historial` | `/api/colaboradores/{id}/historial` |
 
 La página de la ficha carga los datos una vez y se los pasa a cada pestaña. Cuando una pestaña guarda algo, avisa con `(actualizado)` y la ficha vuelve a leer.
@@ -81,11 +81,11 @@ Otras pantallas pueden abrir una pestaña directo con `?tab=`: `/colaboradores/<
 
 | Pantalla | Archivo | Datos | Llega con |
 |---|---|---|---|
-| Anticipos | `features/anticipos/pages/anticipos` | `/api/anticipos` | `?colaborador=<id>` |
-| Liquidaciones | `features/liquidaciones/pages/liquidaciones` | `/api/liquidaciones` | `?periodo=2026-10&liquidacion=<id>` |
-| Documentos | `features/documentos/pages/documentos` | `/api/documentos` | `?periodo=&colaborador=` |
+| Anticipos | `features/anticipos/pages/anticipos` | `.../anticipos` y `.../anticipos/{id}/plan` | `?colaborador=<id>` |
+| Liquidaciones | `features/liquidaciones/pages/liquidaciones` | `/api/honorarios/generar` + `/api/liquidaciones/generar`, `/api/liquidaciones` | `?periodo=2026-10&liquidacion=<id>` |
+| Documentos | `features/documentos/pages/documentos` | `.../documentos-mensuales` | `?periodo=&colaborador=` |
 | Exportaciones | `features/exportaciones/pages/exportaciones` | `/api/exportaciones` | `?periodo=&corte=Quincena` |
-| Configuración | `features/configuracion/pages/configuracion` | `/api/configuracion` | — |
+| Configuración | `features/configuracion/pages/configuracion` | `/api/configuracion` (un solo registro; `capacidades` dice qué se puede editar) | — |
 
 ### El flujo del mes (sección 14 de los requisitos) en pantallas
 
@@ -97,6 +97,20 @@ Otras pantallas pueden abrir una pestaña directo con `?tab=`: `/colaboradores/<
 6. **Liquidaciones**: revisar cortes y descuentos; marcar "Revisado para envío".
 7. **Exportaciones**: elegir colaboradores y generar el archivo. Queda guardada la versión.
 8. **Historial** del colaborador: todo lo anterior, con fecha y usuario.
+
+### Adaptadores al backend real
+
+Las rutas reales de rps-backend no siempre tienen la forma que usa la pantalla. Por eso cada servicio tiene dos caminos:
+`if (this.be.usaMock('/x'))` devuelve el mock; si no, llama a las rutas reales y **convierte** su respuesta
+(sección `// ── Conversión desde rps-backend ──` del servicio). Las respuestas crudas están tipadas en
+`core/backend/backend-rps.models.ts` (`Be*`) y las utilidades comunes en `core/backend/backend-rps.service.ts`.
+La pantalla nunca ve un `Be*`. Detalle por pantalla: `../docs/CONEXIONES.md`, sección 2.
+
+### Campana de notificaciones
+
+`features/notificaciones`: `components/campana` (cabecera, top 5 y "Ver más") y `components/bandeja` (ventana con búsqueda,
+severidad, tipo y 20 por página). Datos: `GET /api/notificaciones?periodo=`. Otra pantalla puede abrir la bandeja filtrada con
+`NotificacionesService.abrir('Configuracion')` (lo usa el aviso de pendientes de Liquidaciones).
 
 ## 3b. Cómo se calcula una liquidación
 
@@ -122,7 +136,7 @@ Es el mismo ejemplo de la sección 8 de los requisitos.
 | Entorno | Archivo | Rutas simuladas |
 |---|---|---|
 | `npm start` | `environments/environment.mock.ts` | todas (`['*']`) |
-| `npm run start:api` | `environments/environment.development.ts` | solo las que el backend aún no tiene |
+| `npm run start:api` | `environments/environment.development.ts` | `/dashboard` y `/integracion-tmr` (todo lo demás va al backend) |
 | producción | `environments/environment.ts` | ninguna |
 
 Cuando el backend publique un endpoint, **se quita su ruta de `mockRutas` en `environment.development.ts`** y listo: la pantalla no cambia.

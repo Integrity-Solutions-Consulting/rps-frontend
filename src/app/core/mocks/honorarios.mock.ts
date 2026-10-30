@@ -32,8 +32,20 @@ const conflicto = (codigo: string, detail: string): RespuestaMock =>
 const validacion = (codigo: string, campo: string, mensaje: string): RespuestaMock =>
   ({ status: 400, body: { title: 'One or more validation errors occurred.', status: 400, errors: { [campo]: [mensaje] }, codigo } });
 
+/** Cancelaciones y restauraciones, para el historial (RN 48). */
+interface Movimiento {
+  vigenciaId: string;
+  tipo: 'Cancelado' | 'Restaurado';
+  fecha: string;
+}
+
 class HonorariosMock {
   private readonly vigencias: VigenciaGuardada[] = [];
+  private readonly movimientos: Movimiento[] = [];
+  /** Las canceladas se conservan, pero no rigen. */
+  private activas(): VigenciaGuardada[] {
+    return this.vigencias.filter((v) => !v.canceladoEn);
+  }
 
   constructor() {
     this.sembrar('1', '201', 600, 'Neto', '2026-01-01');
@@ -53,14 +65,15 @@ class HonorariosMock {
     const lista: HonorarioProyecto[] = asignacionesDe(tmrColaboradorId).map((a) => {
       const historial = this.vigencias
         .filter((v) => v.tmrColaboradorId === tmrColaboradorId && v.tmrProyectoId === a.tmrProyectoId)
-        .sort((x, y) => y.vigenteDesdeMes.localeCompare(x.vigenteDesdeMes));
+        .sort((x, y) => y.vigenteDesdeMes.localeCompare(x.vigenteDesdeMes) || x.registradoEn.localeCompare(y.registradoEn));
+      const activas = historial.filter((v) => !v.canceladoEn);
       return {
         tmrProyectoId: a.tmrProyectoId,
         proyecto: a.proyecto,
         cliente: a.cliente,
         asignacionActiva: a.fechaFinAsignacion === null || a.fechaFinAsignacion >= hoy(),
-        vigente: this.publica(historial.find((v) => v.vigenteDesdeMes <= mes) ?? null),
-        programado: this.publica([...historial].reverse().find((v) => v.vigenteDesdeMes > mes) ?? null),
+        vigente: this.publica(activas.find((v) => v.vigenteDesdeMes <= mes) ?? null),
+        programado: this.publica([...activas].reverse().find((v) => v.vigenteDesdeMes > mes) ?? null),
         historial: historial.map((v) => this.publica(v)!),
       };
     }).sort((x, y) => Number(y.asignacionActiva) - Number(x.asignacionActiva) || x.proyecto.localeCompare(y.proyecto));
@@ -88,7 +101,7 @@ class HonorariosMock {
     if (!asignacionTmr(tmrColaboradorId, tmrProyectoId))
       return conflicto('Honorario.SinAsignacion', 'TMR no tiene una asignación de esta persona a este proyecto.');
 
-    const previas = this.vigencias.filter((v) => v.tmrColaboradorId === tmrColaboradorId && v.tmrProyectoId === tmrProyectoId);
+    const previas = this.activas().filter((v) => v.tmrColaboradorId === tmrColaboradorId && v.tmrProyectoId === tmrProyectoId);
     // RN 19: un cambio rige desde un mes nuevo. La primera configuración sí puede ser del mes en curso.
     if (previas.length > 0 && mes <= mesActual())
       return validacion('Honorario.MesNoFuturo', 'vigenteDesdeMes', 'Los cambios de honorario aplican desde el mes siguiente; el mes en curso no se modifica.');
@@ -99,18 +112,39 @@ class HonorariosMock {
     return { status: 201, body: this.publica(nueva) };
   }
 
+  /** No borra: marca la vigencia como cancelada (queda en el historial y se puede restaurar). */
   cancelar(id: string): RespuestaMock {
     const v = this.vigencias.find((x) => x.id === id);
-    if (!v) return { status: 404, body: { title: 'No encontrado', status: 404, detail: 'No existe ese honorario.', codigo: 'Honorario.NoEncontrado' } };
+    if (!v) return this.noExiste();
+    if (v.canceladoEn) return conflicto('Honorario.YaCancelado', 'Este cambio ya estaba cancelado.');
     if (v.vigenteDesdeMes <= mesActual())
       return conflicto('Honorario.NoModificable', 'Solo se pueden cancelar honorarios de meses que aún no empiezan.');
-    this.vigencias.splice(this.vigencias.indexOf(v), 1);
-    return { status: 204, body: null };
+    v.canceladoEn = new Date().toISOString();
+    this.movimientos.push({ vigenciaId: v.id, tipo: 'Cancelado', fecha: v.canceladoEn });
+    return { status: 200, body: this.publica(v) };
+  }
+
+  /** Deshace una cancelación, si el mes todavía no empieza y no hay otro honorario para ese mes. */
+  restaurar(id: string): RespuestaMock {
+    const v = this.vigencias.find((x) => x.id === id);
+    if (!v) return this.noExiste();
+    if (!v.canceladoEn) return conflicto('Honorario.NoCancelado', 'Este cambio no está cancelado.');
+    if (v.vigenteDesdeMes <= mesActual())
+      return conflicto('Honorario.NoModificable', 'Ese mes ya empezó: registra un cambio nuevo para el mes siguiente.');
+    if (this.activas().some((x) => x.tmrColaboradorId === v.tmrColaboradorId && x.tmrProyectoId === v.tmrProyectoId && x.vigenteDesdeMes === v.vigenteDesdeMes))
+      return conflicto('Honorario.Duplicado', `Ya hay otro honorario registrado para ${mesEnTexto(v.vigenteDesdeMes)} en este proyecto.`);
+    v.canceladoEn = null;
+    this.movimientos.push({ vigenciaId: v.id, tipo: 'Restaurado', fecha: new Date().toISOString() });
+    return { status: 200, body: this.publica(v) };
+  }
+
+  private noExiste(): RespuestaMock {
+    return { status: 404, body: { title: 'No encontrado', status: 404, detail: 'No existe ese honorario.', codigo: 'Honorario.NoEncontrado' } };
   }
 
   /** Para el cálculo: honorario que rige en un mes "yyyy-MM" para un proyecto (RN 19). */
   vigenteEn(tmrColaboradorId: string, tmrProyectoId: string, periodo: string): { importe: number; modalidad: Modalidad } | null {
-    const v = this.vigencias
+    const v = this.activas()
       .filter((x) => x.tmrColaboradorId === tmrColaboradorId && x.tmrProyectoId === tmrProyectoId && x.vigenteDesdeMes <= `${periodo}-01`)
       .sort((a, b) => b.vigenteDesdeMes.localeCompare(a.vigenteDesdeMes))[0];
     return v ? { importe: v.importe, modalidad: v.modalidad } : null;
@@ -118,7 +152,24 @@ class HonorariosMock {
 
   /** Movimientos para el historial del colaborador. */
   eventosDe(tmrColaboradorId: string): EventoHistorial[] {
-    return this.vigencias
+    const enlace = { texto: 'Ver condiciones', ruta: `/colaboradores/${colaboradoresMock.porTmrId(tmrColaboradorId)?.id ?? ''}`, query: { tab: 'condiciones' } };
+    const proyecto = (v: VigenciaGuardada) => asignacionTmr(v.tmrColaboradorId, v.tmrProyectoId)?.proyecto ?? 'Proyecto ' + v.tmrProyectoId;
+    const cancelaciones = this.movimientos
+      .map((m) => ({ m, v: this.vigencias.find((x) => x.id === m.vigenciaId)! }))
+      .filter(({ v }) => v.tmrColaboradorId === tmrColaboradorId)
+      .map(({ m, v }): EventoHistorial => ({
+        fecha: m.fecha,
+        tipo: 'Honorario',
+        descripcion: m.tipo === 'Cancelado'
+          ? `Se canceló el cambio programado de ${proyecto(v)}: ${dinero(v.importe)} desde ${mesEnTexto(v.vigenteDesdeMes)}.`
+          : `Se deshizo la cancelación: ${proyecto(v)} vuelve a tener ${dinero(v.importe)} desde ${mesEnTexto(v.vigenteDesdeMes)}.`,
+        usuario: 'Contabilidad',
+        periodo: v.vigenteDesdeMes.slice(0, 7),
+        importe: v.importe,
+        estado: m.tipo === 'Cancelado' ? 'Cancelado' : 'Restaurado',
+        enlace,
+      }));
+    return [...cancelaciones, ...this.vigencias
       .filter((v) => v.tmrColaboradorId === tmrColaboradorId)
       .map((v): EventoHistorial => ({
         fecha: v.registradoEn,
@@ -128,12 +179,12 @@ class HonorariosMock {
         periodo: v.vigenteDesdeMes.slice(0, 7),
         importe: v.importe,
         estado: v.vigenteDesdeMes > mesActual() ? 'Programado' : 'Registrado',
-        enlace: { texto: 'Ver condiciones', ruta: `/colaboradores/${colaboradoresMock.porTmrId(v.tmrColaboradorId)?.id ?? ''}`, query: { tab: 'condiciones' } },
-      }));
+        enlace,
+      }))];
   }
 
   private publica(v: VigenciaGuardada | null): HonorarioVigencia | null {
-    return v ? { id: v.id, importe: v.importe, modalidad: v.modalidad, vigenteDesdeMes: v.vigenteDesdeMes, registradoEn: v.registradoEn } : null;
+    return v ? { id: v.id, importe: v.importe, modalidad: v.modalidad, vigenteDesdeMes: v.vigenteDesdeMes, registradoEn: v.registradoEn, canceladoEn: v.canceladoEn } : null;
   }
 
   private sembrar(tmrColaboradorId: string, tmrProyectoId: string, importe: number, modalidad: Modalidad, vigenteDesdeMes: string): VigenciaGuardada {
@@ -141,7 +192,7 @@ class HonorariosMock {
     const [a, m] = vigenteDesdeMes.split('-').map(Number);
     const registro = new Date(a, m - 2, 20, 10, 0);
     const v: VigenciaGuardada = {
-      id: crypto.randomUUID(), tmrColaboradorId, tmrProyectoId, importe, modalidad, vigenteDesdeMes,
+      id: crypto.randomUUID(), tmrColaboradorId, tmrProyectoId, importe, modalidad, vigenteDesdeMes, canceladoEn: null,
       registradoEn: (registro.getTime() < Date.now() ? registro : new Date()).toISOString(),
     };
     this.vigencias.push(v);

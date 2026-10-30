@@ -2,11 +2,12 @@ import { ChangeDetectionStrategy, Component, inject, output } from '@angular/cor
 import { SessionService } from '../../services/session.service';
 import { Icon } from '../../../shared/components/icon/icon';
 import { hayMocks, textoMocks } from '../../mocks/mock-config';
+import { Campana } from '../../../features/notificaciones/components/campana/campana';
 
 @Component({
   selector: 'app-navbar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon],
+  imports: [Icon, Campana],
   templateUrl: './navbar.html',
   styleUrl: './navbar.scss',
 })

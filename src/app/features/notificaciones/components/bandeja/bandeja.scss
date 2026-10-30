@@ -1,0 +1,37 @@
+:host { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; }
+
+.fondo { position: absolute; inset: 0; background: rgba(19, 38, 61, .45); }
+
+.ventana { position: relative; width: min(760px, 100%); max-height: min(86vh, 900px); display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto; background: var(--rps-surface); border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(19, 38, 61, .3); overflow: hidden; color: var(--rps-text); }
+.ventana__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 20px 6px;
+  h2 { font-size: 20px; font-weight: 700; } p { margin: 2px 0 0; } }
+
+.filtros { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 10px; padding: 10px 20px; }
+@media (max-width: 560px) { .filtros { grid-template-columns: minmax(0, 1fr); } }
+.buscar { position: relative;
+  app-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--rps-muted); }
+  .input { padding-left: 36px; } }
+
+.chips { display: flex; gap: 6px; padding: 0 20px 12px; overflow-x: auto; border-bottom: 1px solid var(--rps-border); }
+.chip { height: 30px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--rps-border); background: var(--rps-surface);
+  color: var(--rps-muted); font-size: 13px; cursor: pointer; white-space: nowrap;
+  &:hover { border-color: var(--rps-teal); color: var(--rps-teal); }
+  &.is-on { background: var(--rps-teal); border-color: var(--rps-teal); color: #fff; } }
+
+.ventana__cuerpo { overflow-y: auto; }
+.lista { list-style: none; margin: 0; padding: 0; }
+.item { display: grid; gap: 4px; padding: 12px 20px; border-bottom: 1px solid var(--rps-border); text-decoration: none; color: inherit;
+  &:hover { background: #f6fafb; }
+  p { margin: 0; color: var(--rps-muted); font-size: 13px; } }
+.item__top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  strong { font-size: 14px; } }
+.fecha { margin-left: auto; }
+
+.vacio-grande { display: grid; justify-items: center; gap: 10px; padding: 40px 20px; color: var(--rps-muted); text-align: center;
+  p { margin: 0; } }
+
+.ventana__pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 20px; border-top: 1px solid var(--rps-border); background: #f8fafb; }
+.paginas { display: flex; align-items: center; gap: 8px; }

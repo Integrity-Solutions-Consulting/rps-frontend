@@ -102,7 +102,7 @@
           </div>
           <div class="field">
             <label for="d-numero">Número de documento</label>
-            <input id="d-numero" name="numero" class="input num" placeholder="Ej. 001-001-000001234" maxlength="17"
+            <input id="d-numero" name="numero" class="input num" appSoloNumeros="documento" placeholder="Ej. 001-001-000001234" maxlength="17"
                    [class.is-invalid]="errores()['numero']" [ngModel]="numero()" (ngModelChange)="numero.set($event)" />
             @if (errores()['numero']; as e) { <span class="field__error">{{ e }}</span> }
           </div>

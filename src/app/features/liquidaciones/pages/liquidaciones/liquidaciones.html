@@ -27,18 +27,15 @@
   } @else if (datos(); as d) {
 
     <!-- Colaboradores con proyectos en el mes que no se pudieron calcular (RN 06) -->
+    <!-- Una sola línea aunque sean cientos: el detalle se ve en la ventana de notificaciones. -->
     @if (d.pendientes.length) {
-      <div class="aviso aviso--warn">
+      <div class="aviso aviso--warn pendientes">
         <app-icon name="alert" [size]="18" />
         <div>
           <strong>{{ d.pendientes.length }} {{ d.pendientes.length === 1 ? 'colaborador no se puede calcular' : 'colaboradores no se pueden calcular' }}</strong>
-          porque falta configuración. No se inventan datos: complétalos en su ficha y vuelve a calcular.
-          <ul class="pendientes">
-            @for (p of d.pendientes; track p.colaboradorId) {
-              <li><a [routerLink]="['/colaboradores', p.colaboradorId]" [queryParams]="{ tab: 'condiciones' }">{{ p.colaborador }}</a>: {{ p.motivo }}</li>
-            }
-          </ul>
+          porque falta configuración. Complétala en su ficha y vuelve a calcular.
         </div>
+        <button type="button" class="btn btn--sm" (click)="verPendientes()">Ver detalle</button>
       </div>
     }
 

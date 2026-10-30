@@ -16,6 +16,7 @@ import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
+import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
 import { nombrePeriodo, periodoActual, periodoDeFecha, periodoSiguiente, primerDia } from '../../../../shared/utils/periodo';
 
 type QueCambia = 'honorario' | 'frecuencia';
@@ -37,7 +38,7 @@ interface FilaFrecuencia extends FrecuenciaVigencia {
 @Component({
   selector: 'app-tab-condiciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, FormsModule, Icon, EstadoChip],
+  imports: [CurrencyPipe, DatePipe, FormsModule, Icon, EstadoChip, SoloNumeros],
   templateUrl: './tab-condiciones.html',
   styleUrl: './tab-condiciones.scss',
 })
@@ -117,9 +118,25 @@ export class TabCondiciones {
     return e === 'Vigente' ? 'ok' : e === 'Programada' ? 'info' : 'neutral';
   }
 
+  /**
+   * Cancela una frecuencia programada. El aviso trae "Deshacer" por si fue un error:
+   * deshacer vuelve a registrar la misma frecuencia para el mismo mes.
+   * El backend real borra la fila; el historial del colaborador conserva ambos movimientos.
+   */
   protected cancelarFrecuencia(f: FilaFrecuencia): void {
-    this.colaboradores.eliminarFrecuencia(this.colaborador().id, f.id).subscribe({
-      next: () => { this.avisos.ok('Frecuencia programada cancelada.'); this.actualizado.emit(); },
+    const id = this.colaborador().id;
+    const mes = nombrePeriodo(periodoDeFecha(f.vigenteDesdeMes)).toLowerCase();
+    this.colaboradores.eliminarFrecuencia(id, f.id).subscribe({
+      next: () => {
+        this.actualizado.emit();
+        this.avisos.ok(`Se canceló la frecuencia programada para ${mes}.`, {
+          texto: 'Deshacer',
+          ejecutar: () => this.colaboradores.registrarFrecuencia(id, { frecuencia: f.frecuencia, vigenteDesdeMes: f.vigenteDesdeMes }).subscribe({
+            next: () => { this.avisos.ok(`Listo: la frecuencia de ${mes} volvió a quedar programada.`); this.actualizado.emit(); },
+            error: (e: unknown) => this.avisos.error(`No se pudo deshacer: ${leerErrorApi(e).mensaje}`),
+          }),
+        });
+      },
       error: (e: unknown) => this.avisos.error(leerErrorApi(e).mensaje),
     });
   }
@@ -143,10 +160,24 @@ export class TabCondiciones {
     });
   }
 
+  /**
+   * Cancela el cambio programado de un proyecto. No se borra: queda como "Cancelado" en el
+   * historial y el aviso trae "Deshacer" para restaurarlo si fue un error.
+   */
   protected cancelarHonorario(h: HonorarioProyecto): void {
-    if (!h.programado) return;
-    this.honorariosApi.cancelarProgramado(h.programado.id).subscribe({
-      next: () => { this.avisos.ok(`Se canceló el cambio programado de ${h.proyecto}.`); this.recargarHonorarios(); },
+    const programado = h.programado;
+    if (!programado) return;
+    this.honorariosApi.cancelarProgramado(programado.id).subscribe({
+      next: () => {
+        this.recargarHonorarios();
+        this.avisos.ok(`Se canceló el cambio programado de ${h.proyecto}.`, {
+          texto: 'Deshacer',
+          ejecutar: () => this.honorariosApi.restaurar(programado.id).subscribe({
+            next: () => { this.avisos.ok(`Listo: el cambio de ${h.proyecto} volvió a quedar programado.`); this.recargarHonorarios(); },
+            error: (e: unknown) => this.avisos.error(`No se pudo deshacer: ${leerErrorApi(e).mensaje}`),
+          }),
+        });
+      },
       error: (e: unknown) => this.avisos.error(leerErrorApi(e).mensaje),
     });
   }
@@ -159,7 +190,10 @@ export class TabCondiciones {
   // ── 3. Cambio programado ─────────────────────────────────────────────
   protected readonly queCambia = signal<QueCambia>('honorario');
   protected readonly proyectoForm = signal('');
-  protected readonly importeForm = signal<number | null>(null);
+  /** Texto del campo (acepta coma o punto decimal); se convierte a número al guardar. */
+  protected readonly importeForm = signal('');
+  /** "1250,5" → 1250.5 */
+  private readonly importeNumero = computed(() => Number(this.importeForm().replace(',', '.')) || 0);
   protected readonly modalidadForm = signal<Modalidad>('Neto');
   protected readonly frecuenciaForm = signal<Frecuencia>('DosPagos');
   protected readonly mesForm = signal(periodoSiguiente());
@@ -179,7 +213,7 @@ export class TabCondiciones {
   protected elegirProyecto(tmrProyectoId: string): void {
     this.proyectoForm.set(tmrProyectoId);
     const h = this.proyectoElegido();
-    this.importeForm.set(h?.vigente?.importe ?? null);
+    this.importeForm.set(h?.vigente ? String(h.vigente.importe).replace('.', ',') : '');
     this.modalidadForm.set(h?.vigente?.modalidad ?? 'Neto');
     if (this.mesForm() < this.mesMinimo()) this.mesForm.set(this.mesMinimo());
   }
@@ -189,8 +223,7 @@ export class TabCondiciones {
     if (this.mesForm() < this.mesMinimo()) errores['vigenteDesdeMes'] = 'Los cambios aplican desde el mes siguiente.';
     if (this.queCambia() === 'honorario') {
       if (!this.proyectoForm()) errores['tmrProyectoId'] = 'Elige el proyecto.';
-      const importe = this.importeForm();
-      if (importe === null || !(importe > 0)) errores['importe'] = 'Escribe un importe mayor que cero.';
+      if (!(this.importeNumero() > 0)) errores['importe'] = 'Escribe un importe mayor que cero.';
     }
     if (Object.keys(errores).length) { this.erroresCambio.set(errores); return; }
 
@@ -199,7 +232,7 @@ export class TabCondiciones {
       ? this.honorariosApi.programar({
           tmrColaboradorId: this.colaborador().tmrColaboradorId,
           tmrProyectoId: this.proyectoForm(),
-          importe: Math.round((this.importeForm() ?? 0) * 100) / 100,
+          importe: Math.round(this.importeNumero() * 100) / 100,
           modalidad: this.modalidadForm(),
           vigenteDesdeMes,
         })

@@ -18,6 +18,10 @@
     <div class="toast" [class]="'toast toast--' + aviso.tipo" role="status">
       <app-icon [name]="aviso.tipo === 'error' ? 'alert' : aviso.tipo === 'ok' ? 'check' : 'info'" [size]="18" />
       <span>{{ aviso.mensaje }}</span>
+      @if (aviso.accion; as accion) {
+        <button type="button" class="toast__accion" (click)="notifications.ejecutar(aviso)">{{ accion.texto }}</button>
+        <span class="toast__tiempo" aria-hidden="true" [style.animation-duration.ms]="aviso.duracion"></span>
+      }
       <button type="button" class="toast__close" aria-label="Cerrar" (click)="notifications.cerrar(aviso.id)">
         <app-icon name="x" [size]="16" />
       </button>

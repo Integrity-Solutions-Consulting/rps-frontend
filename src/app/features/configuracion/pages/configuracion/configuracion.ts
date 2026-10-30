@@ -10,6 +10,7 @@ import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip } from '../../../../shared/components/estado-chip/estado-chip';
+import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
 import { nombrePeriodo } from '../../../../shared/utils/periodo';
 
 type Pestana = 'alertas' | 'anticipos' | 'reglas' | 'catalogos' | 'accesos';
@@ -27,7 +28,7 @@ const REGLAS: ClaveParametro[] = ['IvaPct', 'RetencionFuentePct', 'RetencionIvaP
 @Component({
   selector: 'app-configuracion',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, Icon, EstadoChip],
+  imports: [DatePipe, FormsModule, Icon, EstadoChip, SoloNumeros],
   templateUrl: './configuracion.html',
   styleUrl: './configuracion.scss',
 })
@@ -127,10 +128,22 @@ export class Configuracion {
     });
   }
 
+  /** Cancela un cambio que aún no rige. El aviso trae "Deshacer": vuelve a programar los mismos valores. */
   protected cancelarProgramado(clave: ClaveParametro): void {
+    const valores = this.parametro(clave)?.programado?.valores ?? [];
     this.guardando.set(clave);
     this.api.cancelarProgramado(clave).subscribe({
-      next: () => { this.guardando.set(null); this.avisos.ok('Cambio programado cancelado.'); this.cargar(); },
+      next: () => {
+        this.guardando.set(null);
+        this.cargar();
+        this.avisos.ok(`${PARAMETROS[clave].nombre}: se canceló el cambio programado.`, {
+          texto: 'Deshacer',
+          ejecutar: () => this.api.cambiarParametro(clave, { valores }).subscribe({
+            next: () => { this.avisos.ok('Listo: el cambio volvió a quedar programado.'); this.cargar(); },
+            error: (e: unknown) => this.avisos.error(`No se pudo deshacer: ${leerErrorApi(e).mensaje}`),
+          }),
+        });
+      },
       error: (e: unknown) => { this.guardando.set(null); this.avisos.error(leerErrorApi(e).mensaje); },
     });
   }

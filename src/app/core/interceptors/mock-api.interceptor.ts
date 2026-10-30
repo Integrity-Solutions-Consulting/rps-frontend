@@ -13,6 +13,7 @@ import { anticiposMock } from '../mocks/anticipos.mock';
 import { liquidacionesMock } from '../mocks/liquidaciones.mock';
 import { documentosMock } from '../mocks/documentos.mock';
 import { exportacionesMock } from '../mocks/exportaciones.mock';
+import { notificaciones } from '../mocks/notificaciones.mock';
 import { EventoHistorial } from '../../features/colaboradores/models/colaborador.models';
 
 const LATENCIA_MS = 300;
@@ -39,6 +40,7 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   if (ruta.startsWith('/liquidaciones')) return entregar(req, rutearLiquidaciones(req, ruta));
   if (ruta.startsWith('/documentos')) return entregar(req, rutearDocumentos(req, ruta));
   if (ruta.startsWith('/exportaciones')) return entregar(req, rutearExportaciones(req, ruta));
+  if (ruta === '/notificaciones' && req.method === 'GET') return entregar(req, notificaciones(req.params.get('periodo')));
 
   return entregar(req, { status: 404, body: { title: 'No encontrado', status: 404, detail: `Sin datos de ejemplo para ${ruta}.` } });
 };
@@ -100,10 +102,11 @@ function rutearContratos(req: HttpRequest<unknown>, ruta: string): RespuestaMock
 }
 
 function rutearHonorarios(req: HttpRequest<unknown>, ruta: string): RespuestaMock {
-  const [, id] = ruta.split('/').filter(Boolean); // ['honorarios', id?]
+  const [, id, accion] = ruta.split('/').filter(Boolean); // ['honorarios', id?, 'cancelar' | 'restaurar'?]
   if (!id && req.method === 'GET') return honorariosMock.porColaborador(req.params.get('tmrColaboradorId'));
   if (!id && req.method === 'POST') return honorariosMock.programar((req.body ?? {}) as Record<string, unknown>);
-  if (id && req.method === 'DELETE') return honorariosMock.cancelar(id);
+  if (id && accion === 'cancelar' && req.method === 'POST') return honorariosMock.cancelar(id);
+  if (id && accion === 'restaurar' && req.method === 'POST') return honorariosMock.restaurar(id);
   return { status: 405, body: { title: 'Método no permitido', status: 405, detail: `${req.method} ${ruta} no existe en la API.` } };
 }
 

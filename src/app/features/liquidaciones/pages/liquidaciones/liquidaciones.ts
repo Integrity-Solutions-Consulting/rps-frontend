@@ -14,6 +14,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { DineroPipe } from '../../../../shared/pipes/dinero.pipe';
+import { NotificacionesService } from '../../../notificaciones/services/notificaciones.service';
 import { ETIQUETA_CORTE, TipoCorte, rangoCorte } from '../../../../shared/models/corte';
 import { esPeriodoValido, nombrePeriodo, periodoActual } from '../../../../shared/utils/periodo';
 
@@ -39,6 +40,7 @@ export class Liquidaciones {
   private readonly avisos = inject(NotificationService);
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly bandeja = inject(NotificacionesService);
 
   protected readonly etiquetaCorte = ETIQUETA_CORTE;
   protected readonly etiquetaClasificacion = ETIQUETA_CLASIFICACION;
@@ -116,6 +118,11 @@ export class Liquidaciones {
       },
       error: (e: unknown) => { this.calculando.set(false); this.avisos.error(leerErrorApi(e).mensaje); },
     });
+  }
+
+  /** Abre la ventana de notificaciones filtrada en "Configuración incompleta". */
+  protected verPendientes(): void {
+    this.bandeja.abrir('Configuracion');
   }
 
   protected elegir(l: LiquidacionResumen): void {

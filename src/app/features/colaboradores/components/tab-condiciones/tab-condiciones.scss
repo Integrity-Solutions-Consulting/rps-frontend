@@ -32,3 +32,6 @@
   &:focus-within { border-color: var(--rps-teal); box-shadow: 0 0 0 3px var(--rps-teal-50); }
   &.is-invalid { border-color: var(--rps-danger); } }
 .ancho { grid-column: 1 / -1; }
+
+/* Cambios cancelados: se ven tachados en el historial del proyecto, pero no desaparecen. */
+.fila-historial li.cancelado > .num { text-decoration: line-through; color: var(--rps-muted); }

@@ -33,7 +33,7 @@
 
       <label for="b-numero">Número de cuenta</label>
       <div class="field">
-        <input id="b-numero" name="numero" class="input num" inputmode="numeric" maxlength="30" autocomplete="off"
+        <input id="b-numero" name="numero" class="input num" appSoloNumeros="entero" maxlength="30"
                [placeholder]="colaborador().cuentaBancaria?.numeroCuentaEnmascarado ?? 'Solo dígitos'"
                [disabled]="bloqueado()" [class.is-invalid]="errores()['numeroCuenta']"
                [ngModel]="numeroForm()" (ngModelChange)="numeroForm.set($event)" />

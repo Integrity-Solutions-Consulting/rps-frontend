@@ -10,6 +10,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { DineroPipe } from '../../../../shared/pipes/dinero.pipe';
+import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
 import { hoy } from '../../../../shared/utils/fechas';
 import { esPeriodoValido, nombrePeriodo, periodoActual } from '../../../../shared/utils/periodo';
 
@@ -23,7 +24,7 @@ import { esPeriodoValido, nombrePeriodo, periodoActual } from '../../../../share
 @Component({
   selector: 'app-documentos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, RouterLink, Icon, EstadoChip, DineroPipe],
+  imports: [DatePipe, FormsModule, RouterLink, Icon, EstadoChip, DineroPipe, SoloNumeros],
   templateUrl: './documentos.html',
   styleUrl: './documentos.scss',
 })

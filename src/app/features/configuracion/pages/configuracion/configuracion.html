@@ -28,10 +28,13 @@
               <p>Con cuántos días de anticipación se avisa en Inicio que vence un contrato.</p>
             </div>
             <button type="button" class="btn btn--primary" (click)="guardarParametro('AlertasDias')"
-                    [disabled]="guardando() === 'AlertasDias' || !cambiosAlertas() || alertas().length === 0">
+                    [disabled]="guardando() === 'AlertasDias' || !cambiosAlertas() || alertas().length === 0 || !datos()?.capacidades?.alertas">
               <app-icon name="save" [size]="17" /> Guardar cambios
             </button>
           </header>
+          @if (!datos()?.capacidades?.alertas) {
+            <div class="aviso aviso--info"><app-icon name="info" [size]="18" /><div>Por ahora los días de alerta son fijos (30, 15 y 7): el backend todavía no los guarda.</div></div>
+          }
           <span class="field__label">Días de anticipación</span>
           <div class="chips-dias">
             @for (d of alertas(); track d) {
@@ -40,7 +43,7 @@
               </span>
             }
             <span class="agregar-dia">
-              <input class="input num" inputmode="numeric" placeholder="Días" aria-label="Días de la nueva alerta" maxlength="3"
+              <input class="input num" appSoloNumeros="entero" placeholder="Días" aria-label="Días de la nueva alerta" maxlength="3"
                      [ngModel]="nuevaAlerta()" (ngModelChange)="nuevaAlerta.set($event)" (keydown.enter)="$event.preventDefault(); agregarAlerta()" />
               <button type="button" class="btn" (click)="agregarAlerta()"><app-icon name="plus" [size]="16" /> Agregar</button>
             </span>
@@ -81,7 +84,7 @@
           }
           <div class="form-actions">
             <button type="button" class="btn btn--primary" (click)="guardarParametro('LimiteAnticiposPct')" [disabled]="guardando() === 'LimiteAnticiposPct'">
-              <app-icon name="save" [size]="17" /> Guardar desde el mes siguiente
+              <app-icon name="save" [size]="17" /> {{ datos()?.capacidades?.vigencias ? 'Guardar desde el mes siguiente' : 'Guardar' }}
             </button>
           </div>
         </section>
@@ -96,7 +99,9 @@
             </div>
           </header>
           <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" />
-            <div>Las reglas tributarias requieren validación de Contabilidad. Un cambio rige desde el mes siguiente; las liquidaciones ya calculadas conservan los porcentajes que usaron (RN 29).</div>
+            <div>Las reglas tributarias requieren validación de Contabilidad.
+              {{ datos()?.capacidades?.vigencias ? 'Un cambio rige desde el mes siguiente;' : 'Un cambio rige para los próximos cálculos;' }}
+              las liquidaciones ya calculadas conservan los porcentajes que usaron (RN 29).</div>
           </div>
           <div class="table-wrap">
             <table class="tbl">
@@ -114,14 +119,14 @@
                       <td class="muted">{{ parametrosInfo[clave].ayuda }}</td>
                       <td class="r num">{{ p.valores[0] }} %</td>
                       <td>
-                        <input class="input num corto" inputmode="decimal" [attr.aria-label]="'Nuevo valor de ' + parametrosInfo[clave].nombre"
+                        <input class="input num corto" appSoloNumeros="porcentaje" [attr.aria-label]="'Nuevo valor de ' + parametrosInfo[clave].nombre"
                                [placeholder]="p.valores[0] + ''" [ngModel]="borradorReglas()[clave] ?? ''"
                                (ngModelChange)="escribirRegla(clave, $event)" />
                         @if (errores()[clave]; as e) { <br /><span class="field__error">{{ e }}</span> }
                       </td>
                       <td class="r">
                         <button type="button" class="btn btn--sm" (click)="guardarParametro(clave)"
-                                [disabled]="!borradorReglas()[clave] || guardando() === clave">Programar</button>
+                                [disabled]="!borradorReglas()[clave] || guardando() === clave">{{ datos()?.capacidades?.vigencias ? 'Programar' : 'Guardar' }}</button>
                       </td>
                     </tr>
                   }
@@ -143,7 +148,7 @@
               <h2>Bancos</h2>
               <p>Lista de bancos para elegir en Datos bancarios del colaborador.</p>
             </div>
-            <button type="button" class="btn btn--primary" (click)="guardarBancos()" [disabled]="guardando() === 'bancos'">
+            <button type="button" class="btn btn--primary" (click)="guardarBancos()" [disabled]="guardando() === 'bancos' || !datos()?.capacidades?.bancos">
               <app-icon name="save" [size]="17" /> Guardar cambios
             </button>
           </header>
@@ -187,8 +192,12 @@
         </div>
       </header>
       <ul class="vigencias">
-        <li><app-estado-chip tono="info">Inmediato</app-estado-chip> Alertas de vencimiento: no cambian importes.</li>
-        <li><app-estado-chip tono="warn">Desde el mes siguiente</app-estado-chip> Límite de anticipos y reglas tributarias: el mes en curso no se modifica.</li>
+        @if (datos()?.capacidades?.vigencias) {
+          <li><app-estado-chip tono="info">Inmediato</app-estado-chip> Alertas de vencimiento: no cambian importes.</li>
+          <li><app-estado-chip tono="warn">Desde el mes siguiente</app-estado-chip> Límite de anticipos y reglas tributarias: el mes en curso no se modifica.</li>
+        } @else {
+          <li><app-estado-chip tono="info">Inmediato</app-estado-chip> Con el backend actual, todo cambio rige para los próximos cálculos. Los honorarios ya generados guardan los porcentajes que usaron (RN 29).</li>
+        }
       </ul>
     </section>
 
@@ -211,6 +220,8 @@
                 <td>{{ nombrePeriodo(c.vigenteDesde) }}</td>
                 <td class="num muted">{{ c.registradoEn | date: 'dd MMM yyyy, HH:mm' }} · {{ c.usuario }}</td>
               </tr>
+            } @empty {
+              <tr><td colspan="5" class="muted">Sin cambios registrados todavía.</td></tr>
             }
           </tbody>
         </table>

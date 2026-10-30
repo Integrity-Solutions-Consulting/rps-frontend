@@ -1,0 +1,68 @@
+<div class="fondo" (click)="cerrar()"></div>
+
+<section class="ventana" role="dialog" aria-modal="true" aria-labelledby="bandeja-titulo">
+  <header class="ventana__head">
+    <div>
+      <h2 id="bandeja-titulo">Notificaciones</h2>
+      <p class="muted small">Lo que necesita atención en RPS. Haz clic en una para ir a resolverla.</p>
+    </div>
+    <button type="button" class="btn btn--ghost btn--sm" (click)="cerrar()" aria-label="Cerrar"><app-icon name="x" [size]="20" /></button>
+  </header>
+
+  <div class="filtros">
+    <div class="buscar">
+      <app-icon name="search" [size]="17" />
+      <input #buscador class="input" type="search" placeholder="Buscar por colaborador o texto" aria-label="Buscar notificaciones"
+             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+    </div>
+    <select class="select" aria-label="Severidad" [ngModel]="severidad()" (ngModelChange)="severidad.set($event)">
+      <option value="">Todas las severidades</option>
+      <option value="Critica">Críticas</option>
+      <option value="Advertencia">Advertencias</option>
+      <option value="Info">Informativas</option>
+    </select>
+  </div>
+
+  <div class="chips" role="group" aria-label="Filtrar por tipo">
+    <button type="button" class="chip" [class.is-on]="tipo() === ''" (click)="tipo.set('')">Todas · {{ servicio.total() }}</button>
+    @for (t of tipos(); track t.tipo) {
+      <button type="button" class="chip" [class.is-on]="tipo() === t.tipo" (click)="tipo.set(t.tipo)">{{ etiquetaTipo[t.tipo] }} · {{ t.total }}</button>
+    }
+  </div>
+
+  <div class="ventana__cuerpo">
+    @if (visibles().length === 0) {
+      <div class="vacio-grande">
+        <app-icon name="check" [size]="26" />
+        <p>{{ servicio.total() === 0 ? 'No hay notificaciones. Todo al día.' : 'Ninguna notificación coincide con los filtros.' }}</p>
+        @if (servicio.total() > 0) { <button type="button" class="btn btn--sm" (click)="limpiar()">Limpiar filtros</button> }
+      </div>
+    } @else {
+      <ul class="lista">
+        @for (n of visibles(); track n.id) {
+          <li>
+            <a class="item" [routerLink]="n.ruta" [queryParams]="n.query ?? {}" (click)="cerrar()">
+              <div class="item__top">
+                <app-estado-chip [tono]="tono(n)">{{ textoSeveridad(n) }}</app-estado-chip>
+                <strong>{{ n.titulo }}</strong>
+                <span class="muted small fecha">{{ n.fecha | date: 'dd MMM yyyy' }}</span>
+              </div>
+              <p>@if (n.colaborador) { <b>{{ n.colaborador }}</b> · } {{ n.mensaje }}</p>
+            </a>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <footer class="ventana__pie">
+    <span class="muted small">Mostrando {{ rango().desde }} a {{ rango().hasta }} de {{ rango().total }}</span>
+    @if (totalPaginas() > 1) {
+      <nav class="paginas" aria-label="Páginas">
+        <button type="button" class="btn btn--sm" [disabled]="pagina() === 1" (click)="pagina.set(pagina() - 1)">Anterior</button>
+        <span class="small">Página {{ pagina() }} de {{ totalPaginas() }}</span>
+        <button type="button" class="btn btn--sm" [disabled]="pagina() === totalPaginas()" (click)="pagina.set(pagina() + 1)">Siguiente</button>
+      </nav>
+    }
+  </footer>
+</section>

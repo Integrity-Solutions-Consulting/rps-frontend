@@ -1,0 +1,30 @@
+:host { position: relative; display: inline-flex; }
+
+.campana { position: relative; width: 40px; height: 40px; border-radius: 50%; border: 0; background: none; color: var(--rps-text);
+  display: grid; place-items: center; cursor: pointer;
+  &:hover { background: var(--rps-teal-50); color: var(--rps-teal); } }
+.insignia { position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: var(--rps-warn); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center;
+  border: 2px solid var(--rps-surface); }
+.insignia--critica { background: var(--rps-danger); }
+
+.menu { position: absolute; right: 0; top: calc(100% + 8px); width: min(380px, calc(100vw - 24px)); z-index: 30;
+  background: var(--rps-surface); border: 1px solid var(--rps-border); border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(19, 38, 61, .16); display: grid; overflow: hidden; color: var(--rps-text); }
+.menu__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px; padding: 14px 16px 10px; }
+.menu__vacio { margin: 0; padding: 18px 16px; color: var(--rps-muted); display: flex; gap: 8px; align-items: center; }
+.menu__lista { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rps-border); }
+.menu__pie { padding: 10px 16px; border-top: 1px solid var(--rps-border); background: #f8fafb; }
+.ver-mas { width: 100%; justify-content: center; color: var(--rps-teal); border-color: var(--rps-teal); }
+
+.item { display: flex; gap: 10px; padding: 11px 16px; text-decoration: none; color: inherit; border-bottom: 1px solid var(--rps-border);
+  &:hover { background: #f6fafb; } }
+li:last-child .item { border-bottom: 0; }
+.item__icono { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.item--Critica .item__icono { background: var(--rps-danger-50); color: var(--rps-danger); }
+.item--Advertencia .item__icono { background: var(--rps-warn-50); color: var(--rps-warn); }
+.item--Info .item__icono { background: var(--rps-info-50); color: var(--rps-info); }
+.item__texto { display: grid; gap: 1px; min-width: 0;
+  strong { font-size: 13.5px; }
+  small { color: var(--rps-muted); font-size: 12.5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; } }
+.t-danger { color: var(--rps-danger); }

@@ -35,7 +35,18 @@ export interface CambioParametro {
   usuario: string;
 }
 
+/** Qué sabe guardar quien responde (los datos de ejemplo sí; rps-backend todavía no). */
+export interface CapacidadesConfiguracion {
+  /** Cambios que rigen desde el mes siguiente y se pueden programar o cancelar. */
+  vigencias: boolean;
+  /** Días de alerta de vencimiento editables. */
+  alertas: boolean;
+  /** Catálogo de bancos editable. */
+  bancos: boolean;
+}
+
 export interface Configuracion {
+  capacidades: CapacidadesConfiguracion;
   parametros: ParametroVigente[];
   /** Catálogo de bancos para la pestaña Datos bancarios. */
   bancos: string[];

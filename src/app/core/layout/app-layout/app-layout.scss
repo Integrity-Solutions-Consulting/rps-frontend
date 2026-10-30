@@ -39,4 +39,17 @@
 .toast--error { border-color: #f1c2bd; color: var(--rps-danger); }
 .toast--ok { border-color: #bfe3cd; color: var(--rps-ok); }
 .toast--info { border-color: #c7d9ee; color: var(--rps-info); }
+.toast { position: relative; overflow: hidden; }
+.toast__accion {
+  border: 1px solid currentColor; background: none; color: inherit; font-weight: 600; font-size: 13px;
+  height: 28px; padding: 0 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; align-self: center;
+  &:hover { background: var(--rps-ok-50); }
+}
+/* Barra que se vacía: muestra cuánto tiempo queda para deshacer. */
+.toast__tiempo {
+  position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: currentColor; opacity: .35;
+  transform-origin: left; animation: toast-tiempo linear forwards;
+}
+@keyframes toast-tiempo { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .toast__tiempo { animation: none; } }
 .toast__close { border: 0; background: none; color: var(--rps-muted); cursor: pointer; padding: 2px; }
