@@ -11,7 +11,8 @@ npm start            # todo con datos de ejemplo: no necesita backend
 npm run start:api    # llama al backend real (rps-backend en http://localhost:5203)
 ```
 
-Abrir http://localhost:4200. La etiqueta amarilla de la cabecera dice qué partes son datos de ejemplo.
+Abrir http://localhost:4200 e iniciar sesión (todas las pantallas lo piden). Con `npm start` el login de ejemplo muestra el usuario de prueba; con `start:api` se usa el usuario de desarrollo del backend (`../docs/CONEXIONES.md`, sección 2, Login).
+La etiqueta amarilla de la cabecera dice qué partes son datos de ejemplo.
 Con `npm start` lo que se guarda se pierde al recargar la página.
 
 ## 2. Carpetas
@@ -21,11 +22,13 @@ src/app/
 ├── core/                    Lo que usa toda la aplicación (no es de ningún módulo)
 │   ├── layout/              Menú lateral, cabecera y estructura de pantalla
 │   ├── navigation/menu.ts   Ítems del menú; `disponible: true` cuando el módulo tiene pantalla
-│   ├── services/            Sesión y avisos (toasts)
+│   ├── services/            Sesión (login, token, renovar, cerrar sesión) y avisos (toasts)
+│   ├── auth/auth.guard.ts   Pide sesión en todas las pantallas; sin ella lleva a /login
 │   ├── interceptors/        Cliente HTTP: errores, token, desempaquetar ApiResponse, datos de ejemplo
 │   ├── http/error-api.ts    Lee los errores del backend (ProblemDetails) para mostrarlos al usuario
 │   └── mocks/               Datos de ejemplo, uno por módulo (ver sección 4)
 ├── features/                Un módulo por sección del menú
+│   ├── auth/                Pantalla de login (/login)
 │   ├── dashboard/           Inicio
 │   ├── colaboradores/       Lista y ficha del colaborador
 │   │   ├── pages/lista/     Pantalla de la lista
@@ -111,6 +114,20 @@ La pantalla nunca ve un `Be*`. Detalle por pantalla: `../docs/CONEXIONES.md`, se
 `features/notificaciones`: `components/campana` (cabecera, top 5 y "Ver más") y `components/bandeja` (ventana con búsqueda,
 severidad, tipo y 20 por página). Datos: `GET /api/notificaciones?periodo=`. Otra pantalla puede abrir la bandeja filtrada con
 `NotificacionesService.abrir('Configuracion')` (lo usa el aviso de pendientes de Liquidaciones).
+
+### Pantalla de Inicio: qué muestra cada sección
+
+Las explicaciones que antes salían debajo del título de cada sección viven aquí, para que la pantalla quede limpia.
+Archivos: `features/dashboard/pages/inicio` (pantalla) y `core/mocks/dashboard.mock.ts` (datos de ejemplo).
+Orden en escritorio: indicadores arriba; luego **Vencimientos de contratos** (izquierda) y **Requiere atención** (derecha), siempre con la misma altura; al final **Preparación del período** a todo el ancho.
+
+| Sección | Qué muestra | Reglas |
+|---|---|---|
+| Vencimientos de contratos | Contratos que vencen en los próximos 30 días y vencidos que siguen con la asignación activa, del más urgente al menos. Chip rojo: vencido o 7 días o menos · ámbar: 15 días o menos · azul: hasta 30 días. **Ver todos** abre Contratos; **Ver contrato** (columna Acciones) abre Contratos filtrado por esa persona y con ese contrato seleccionado (`/contratos?colaborador=<ID TMR>&contrato=<id>`), donde se ve el fin vigente, las adendas y los datos del contrato. La lista la arma el backend: `GET /api/dashboard/vencimientos` | Alertas a 30, 15 y 7 días. El vencimiento **no bloquea** la liquidación (RN 14). Vencido con asignación activa en TMR: "requiere revisión" (RN 15) |
+| Preparación del período | Una fila por colaborador con su liquidación del mes: proyectos, tipo de pago (quincena y fin de mes, o solo fin de mes), neto calculado, descuento de anticipos y valor a pagar. *Pendiente*: ya se calculó, pero Contabilidad no la revisó · *Revisado*: se marcó "Revisado para envío" · *Por recalcular*: algo cambió después del cálculo. **Ver detalle** abre esa persona en Liquidaciones (`/liquidaciones?periodo=&liquidacion=<id>`) para revisar días, impuestos, cortes y anticipos. **Generar exportación** abre Exportaciones con el mes elegido. 10 por página. Datos: los mismos de Liquidaciones (`LiquidacionesService.listar`) | RN 31, RN 36 a 40, RN 49, RN 50. Exportar no marca el pago como realizado (RN 56). Si el mes no está calculado, se ofrece ir a Liquidaciones |
+| Requiere atención | Un botón por tipo de alerta (como en el mockup): ícono, título, frase corta y cuántas hay. El color del ícono es el de la alerta más grave del grupo (rojo crítica · ámbar advertencia · azul informativa). Al pulsar un botón se abren las personas de ese tipo; cada una lleva a la pantalla donde se resuelve. Si no caben, el panel tiene barra de desplazamiento | Tipos: cambios de TMR (RN 50), contrato vencido con proyecto activo (RN 15), documento tributario pendiente (RN 35, no bloquea la exportación), datos incompletos (sin cuenta bancaria no entra al archivo de pago; proyecto sin honorario, RN 06) y anticipos con cuotas del mes |
+
+Antes Inicio mostraba "Cortes del período" (totales por quincena y fin de mes); se cambió por la lista por persona. Los totales por corte siguen en Liquidaciones y Exportaciones.
 
 ## 3b. Cómo se calcula una liquidación
 

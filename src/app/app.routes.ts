@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { AppLayout } from './core/layout/app-layout/app-layout';
 import { MENU } from './core/navigation/menu';
+import { authGuard, soloSinSesionGuard } from './core/auth/auth.guard';
 
 // Módulos que todavía no tienen pantalla: muestran su nombre y descripción.
 const pendientes: Routes = MENU.filter((m) => !m.disponible).map((m) => ({
@@ -12,8 +13,16 @@ const pendientes: Routes = MENU.filter((m) => !m.disponible).map((m) => ({
 
 export const routes: Routes = [
   {
+    path: 'login',
+    title: 'Iniciar sesión · RPS',
+    canActivate: [soloSinSesionGuard],
+    loadComponent: () => import('./features/auth/pages/login/login').then((c) => c.Login),
+  },
+  {
     path: '',
     component: AppLayout,
+    // RC 01: todas las pantallas piden sesión (el backend exige token en todas sus rutas).
+    canActivate: [authGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'inicio' },
       {

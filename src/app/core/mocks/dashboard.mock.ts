@@ -1,4 +1,4 @@
-import { AlertaDashboard, DashboardResumen, VencimientoContrato } from '../../features/dashboard/models/dashboard.models';
+import { AlertaDashboard, DashboardResumen } from '../../features/dashboard/models/dashboard.models';
 
 // Datos ficticios, con los mismos nombres de los mockups. Las fechas se calculan desde hoy
 // para que los vencimientos siempre tengan sentido.
@@ -7,18 +7,6 @@ function haceDias(dias: number): string {
   const d = new Date();
   d.setDate(d.getDate() - dias);
   return d.toISOString();
-}
-
-/** Fecha local yyyy-MM-dd. No usa toISOString() porque esa da la fecha en UTC
- *  y en Ecuador, después de las 19:00, ya sería el día siguiente. */
-function fechaLocal(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function fechaEnDias(dias: number): { fecha: string; dias: number } {
-  const d = new Date();
-  d.setDate(d.getDate() + dias);
-  return { fecha: fechaLocal(d), dias };
 }
 
 function nombreMes(periodo: string): string {
@@ -43,20 +31,6 @@ export function mockResumen(periodo: string): DashboardResumen {
     ],
     origenTmr: { disponible: true, ultimaConsulta: haceDias(0) },
   };
-}
-
-export function mockVencimientos(): VencimientoContrato[] {
-  const v = (contratoId: number, colaboradorId: number, colaborador: string, proyecto: string, dias: number, asignacionActiva = true) => {
-    const f = fechaEnDias(dias);
-    return { contratoId, colaboradorId, colaborador, proyecto, fechaFinVigente: f.fecha, diasRestantes: f.dias, asignacionActiva };
-  };
-  return [
-    v(14, 4, 'Diego Rivas', 'Consultoría Tributaria', -8),
-    v(21, 7, 'Valentina Ramírez', 'Rediseño Portal Clientes', 5),
-    v(22, 8, 'Carlos Mora', 'Asesoría Legal Contratos', 12),
-    v(9, 5, 'Sofía Cordero', 'Análisis Financiero Q4', 27),
-    v(3, 1, 'Ana Pérez', 'Consultoría RPS', 29),
-  ];
 }
 
 export function mockAlertas(periodo: string): AlertaDashboard[] {

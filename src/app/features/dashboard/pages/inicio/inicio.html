@@ -112,115 +112,64 @@
 }
 
 <div class="grid">
-  <div class="col">
-    <!-- ── Cortes ─────────────────────────────────────────────── -->
-    <section class="card panel">
-      <header class="panel__head">
-        <h2>Cortes del período</h2>
-        <span class="panel__sub">Distribución del neto y descuentos de anticipos adicionales</span>
-      </header>
+  <!-- ── Vencimientos ───────────────────────────────────────── -->
+  <section class="card panel panel--alto">
+    <header class="panel__head panel__head--accion">
+      <h2>Vencimientos de contratos</h2>
+      <a class="ver-todos" routerLink="/contratos">Ver todos <app-icon name="chevronRight" [size]="16" /></a>
+    </header>
 
-      @if (datos(); as d) {
-        @if (d.cortes.length === 0) {
-          <p class="pad muted">Todavía no hay liquidaciones calculadas para {{ nombrePeriodo() }}.</p>
-        } @else {
-        <div class="table-wrap">
-          <table class="tbl">
-            <thead>
-              <tr>
-                <th>Corte</th>
-                <th class="r">Base</th>
-                <th class="r">Desc. anticipos</th>
-                <th class="r">Valor preparado</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (c of d.cortes; track c.corte) {
-                <tr>
-                  <td><strong>{{ etiquetaCorte(c) }}</strong><br /><span class="muted">{{ c.colaboradores }} colaboradores</span></td>
-                  <td class="r num">{{ c.base | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                  <td class="r num">{{ c.descuentoAnticipos | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                  <td class="r num"><strong>{{ c.valorPreparado | currency: 'USD' : 'symbol' : '1.2-2' }}</strong></td>
-                  <td>
-                    @if (c.versionExportada) {
-                      <app-estado-chip tono="ok">Exportado v{{ c.versionExportada }}</app-estado-chip>
-                    } @else {
-                      <app-estado-chip tono="neutral">Sin exportar</app-estado-chip>
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+    @switch (vencimientos().estado) {
+      @case ('cargando') { <div class="pad"><div class="skeleton" style="height: 140px"></div></div> }
+      @case ('error') {
+        <div class="pad error">
+          <app-icon name="alert" [size]="18" /> {{ $any(vencimientos()).mensaje }}
         </div>
-        <p class="panel__note">
-          <app-icon name="info" [size]="15" />
-          Exportar no marca el pago como realizado; la transferencia ocurre fuera de RPS.
-        </p>
-        }
-      } @else if (resumen().estado === 'cargando') {
-        <div class="pad"><div class="skeleton" style="height: 96px"></div></div>
-      } @else {
-        <p class="pad muted">Sin datos del resumen.</p>
       }
-    </section>
-
-    <!-- ── Vencimientos ───────────────────────────────────────── -->
-    <section class="card panel">
-      <header class="panel__head">
-        <h2>Vencimientos de contratos</h2>
-        <span class="panel__sub">Alertas a 30, 15 y 7 días. El vencimiento no bloquea la liquidación.</span>
-      </header>
-
-      @switch (vencimientos().estado) {
-        @case ('cargando') { <div class="pad"><div class="skeleton" style="height: 140px"></div></div> }
-        @case ('error') {
-          <div class="pad error">
-            <app-icon name="alert" [size]="18" /> {{ $any(vencimientos()).mensaje }}
+      @case ('ok') {
+        @if (listaVencimientos().length === 0) {
+          <p class="pad muted">No hay contratos por vencer en los próximos 30 días.</p>
+        } @else {
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th>Colaborador</th><th>Proyecto</th><th>Fin vigente</th><th>Plazo</th><th>Acciones</th></tr>
+              </thead>
+              <tbody>
+                @for (v of listaVencimientos(); track v.contratoId) {
+                  <tr>
+                    <td><strong>{{ v.colaborador }}</strong></td>
+                    <td>{{ v.proyecto }}</td>
+                    <td class="num">{{ v.fechaFinVigente | date: 'dd MMM yyyy' }}</td>
+                    <td>
+                      <app-estado-chip [tono]="tonoVencimiento(v)">{{ textoVencimiento(v) }}</app-estado-chip>
+                      @if (v.diasRestantes < 0 && v.asignacionActiva) { <span class="aviso-fila">Asignación activa: requiere revisión</span> }
+                    </td>
+                    <td>
+                      <a class="btn btn--sm" [routerLink]="['/contratos']"
+                         [queryParams]="{ colaborador: v.tmrColaboradorId, contrato: v.contratoId }"
+                         [attr.aria-label]="'Ver contrato de ' + v.colaborador + ' en ' + v.proyecto">Ver contrato</a>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
           </div>
         }
-        @case ('ok') {
-          @if (listaVencimientos().length === 0) {
-            <p class="pad muted">No hay contratos por vencer en los próximos 30 días.</p>
-          } @else {
-            <div class="table-wrap">
-              <table class="tbl">
-                <thead>
-                  <tr><th>Colaborador</th><th>Proyecto</th><th>Fin vigente</th><th>Plazo</th><th></th></tr>
-                </thead>
-                <tbody>
-                  @for (v of listaVencimientos(); track v.contratoId) {
-                    <tr>
-                      <td><strong>{{ v.colaborador }}</strong></td>
-                      <td>{{ v.proyecto }}</td>
-                      <td class="num">{{ v.fechaFinVigente | date: 'dd MMM yyyy' }}</td>
-                      <td><app-estado-chip [tono]="tonoVencimiento(v)">{{ textoVencimiento(v) }}</app-estado-chip></td>
-                      <td class="muted small">
-                        @if (v.diasRestantes < 0 && v.asignacionActiva) { Asignación activa: requiere revisión }
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          }
-        }
       }
-    </section>
-  </div>
+    }
+  </section>
 
-  <!-- ── Alertas ───────────────────────────────────────────────── -->
+  <!-- ── Requiere atención: un botón por tipo de alerta; al abrirlo se ven las personas ── -->
   <section class="card panel alertas">
     <header class="panel__head">
-      <h2>Alertas <span class="count">{{ totalAlertas() }}</span></h2>
-      <span class="panel__sub">Asignaciones, documentación, datos incompletos y cambios de TMR</span>
+      <h2>Requiere atención <span class="count">{{ totalAlertas() }}</span></h2>
     </header>
 
     @switch (alertas().estado) {
       @case ('cargando') {
         <div class="pad stack">
-          @for (i of [1, 2, 3]; track i) { <div class="skeleton" style="height: 64px"></div> }
+          @for (i of [1, 2, 3]; track i) { <div class="skeleton" style="height: 56px"></div> }
         </div>
       }
       @case ('error') {
@@ -231,34 +180,41 @@
       }
       @case ('ok') {
         @if (totalAlertas() === 0) {
-          <p class="pad muted">Sin alertas para {{ nombrePeriodo() }}.</p>
+          <p class="pad muted">Nada pendiente de atención para {{ nombrePeriodo() }}.</p>
         } @else {
-          <div class="filtros" role="group" aria-label="Filtrar alertas">
-            <button type="button" class="filtro" [class.is-on]="filtroAlerta() === 'Todas'"
-                    (click)="filtroAlerta.set('Todas')">Todas · {{ totalAlertas() }}</button>
-            @for (t of conteoAlertas(); track t.tipo) {
-              <button type="button" class="filtro" [class.is-on]="filtroAlerta() === t.tipo"
-                      (click)="filtroAlerta.set(t.tipo)">{{ t.etiqueta }} · {{ t.total }}</button>
-            }
-          </div>
+          <ul class="grupos" aria-label="Requiere atención, por tipo">
+            @for (g of gruposAlertas(); track g.tipo) {
+              <li class="grupo">
+                <button type="button" class="grupo__btn" [class.is-open]="abierto() === g.tipo"
+                        [attr.aria-expanded]="abierto() === g.tipo" [attr.aria-controls]="'alertas-' + g.tipo"
+                        (click)="alternar(g.tipo)">
+                  <span [class]="'grupo__icon grupo__icon--' + g.tono"><app-icon [name]="g.icono" [size]="20" /></span>
+                  <span class="grupo__txt">
+                    <strong>{{ g.etiqueta }}</strong>
+                    <span>{{ g.descripcion }}</span>
+                  </span>
+                  <span class="grupo__num num">{{ g.total }}</span>
+                  <span class="grupo__chev" aria-hidden="true"><app-icon name="chevronRight" [size]="18" /></span>
+                </button>
 
-          <ul class="lista">
-            @for (a of alertasFiltradas(); track a.id) {
-              <li class="alerta" [class]="'alerta alerta--' + a.severidad">
-                <span class="alerta__icon"><app-icon [name]="tiposAlerta[a.tipo].icono" [size]="18" /></span>
-                <div class="alerta__body">
-                  <div class="alerta__top">
-                    <strong>{{ a.colaborador ?? 'General' }}</strong>
-                    @if (a.proyecto) { <span class="muted">· {{ a.proyecto }}</span> }
-                    <app-estado-chip [tono]="tonoSeveridad(a.severidad)">{{ tiposAlerta[a.tipo].etiqueta }}</app-estado-chip>
-                  </div>
-                  <p>{{ a.mensaje }}</p>
-                  <span class="muted small">Detectado {{ a.fechaDeteccion | date: 'dd MMM yyyy' }}</span>
-                </div>
-                @if (a.ruta) {
-                  <a class="alerta__go" [routerLink]="a.ruta" aria-label="Revisar">
-                    <app-icon name="chevronRight" [size]="18" />
-                  </a>
+                @if (abierto() === g.tipo) {
+                  <ul class="items" [id]="'alertas-' + g.tipo">
+                    @for (a of g.alertas; track a.id) {
+                      <li>
+                        @if (a.ruta) {
+                          <a class="item" [routerLink]="a.ruta" [title]="a.mensaje">
+                            <span class="item__quien"><strong>{{ a.colaborador ?? 'General' }}</strong>@if (a.proyecto) { · {{ a.proyecto }} }</span>
+                            <span class="item__msg">{{ a.mensaje }}</span>
+                          </a>
+                        } @else {
+                          <div class="item" [title]="a.mensaje">
+                            <span class="item__quien"><strong>{{ a.colaborador ?? 'General' }}</strong>@if (a.proyecto) { · {{ a.proyecto }} }</span>
+                            <span class="item__msg">{{ a.mensaje }}</span>
+                          </div>
+                        }
+                      </li>
+                    }
+                  </ul>
                 }
               </li>
             }
@@ -268,6 +224,92 @@
     }
   </section>
 </div>
+
+<!-- ── Preparación del período: una fila por colaborador, a todo el ancho ── -->
+<section class="card panel">
+  <header class="panel__head panel__head--accion">
+    <h2>Preparación del período</h2>
+    <a class="btn btn--primary btn--sm" routerLink="/exportaciones" [queryParams]="{ periodo: periodo() }">
+      <app-icon name="upload" [size]="16" /> Generar exportación
+    </a>
+  </header>
+
+  @switch (preparacion().estado) {
+    @case ('cargando') { <div class="pad"><div class="skeleton" style="height: 140px"></div></div> }
+    @case ('error') {
+      <div class="pad error">
+        <app-icon name="alert" [size]="18" /> {{ $any(preparacion()).mensaje }}
+        <button type="button" class="btn btn--sm" (click)="actualizar()">Reintentar</button>
+      </div>
+    }
+    @case ('ok') {
+      @if (filasPreparacion().length === 0) {
+        <p class="pad muted">
+          Todavía no se calcula {{ nombrePeriodo() }}.
+          <a routerLink="/liquidaciones" [queryParams]="{ periodo: periodo() }">Ir a Liquidaciones para calcular</a>
+        </p>
+      } @else {
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Colaborador</th>
+                <th>Proyectos</th>
+                <th>Tipo de pago</th>
+                <th class="r">Neto calculado</th>
+                <th class="r">Desc. anticipos</th>
+                <th class="r">Valor a pagar</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (l of filasPreparacionPagina(); track l.id) {
+                <tr>
+                  <td><strong>{{ l.colaborador }}</strong></td>
+                  <td>{{ l.proyectos }} {{ l.proyectos === 1 ? 'proyecto' : 'proyectos' }}</td>
+                  <td>{{ l.frecuencia === 'DosPagos' ? 'Quincena y fin de mes' : 'Fin de mes' }}</td>
+                  <td class="r num">{{ l.netoConsolidado | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                  <td class="r num">{{ descuentoDe(l) | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
+                  <td class="r num"><strong>{{ valorDe(l) | currency: 'USD' : 'symbol' : '1.2-2' }}</strong></td>
+                  <td>
+                    @if (l.requiereRecalculo) {
+                      <app-estado-chip tono="danger">Por recalcular</app-estado-chip>
+                    } @else if (l.revisado) {
+                      <app-estado-chip tono="ok">Revisado</app-estado-chip>
+                    } @else {
+                      <app-estado-chip tono="warn">Pendiente</app-estado-chip>
+                    }
+                  </td>
+                  <td>
+                    <a class="btn btn--sm" routerLink="/liquidaciones" [queryParams]="{ periodo: periodo(), liquidacion: l.id }"
+                       [attr.aria-label]="'Ver detalle de ' + l.colaborador">Ver detalle</a>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="pie">
+          <span>Mostrando {{ rangoPreparacion().desde }} a {{ rangoPreparacion().hasta }} de {{ filasPreparacion().length }}
+            {{ filasPreparacion().length === 1 ? 'colaborador' : 'colaboradores' }}</span>
+          @if (totalPaginasPreparacion() > 1) {
+            <nav class="paginas" aria-label="Páginas de Preparación del período">
+              <button type="button" class="btn btn--sm" [disabled]="paginaPreparacion() === 1"
+                      (click)="paginaPreparacion.set(paginaPreparacion() - 1)" aria-label="Página anterior">‹</button>
+              @for (n of numerosPaginaPreparacion(); track n) {
+                <button type="button" class="btn btn--sm" [class.is-on]="paginaPreparacion() === n"
+                        [attr.aria-current]="paginaPreparacion() === n ? 'page' : null" (click)="paginaPreparacion.set(n)">{{ n }}</button>
+              }
+              <button type="button" class="btn btn--sm" [disabled]="paginaPreparacion() === totalPaginasPreparacion()"
+                      (click)="paginaPreparacion.set(paginaPreparacion() + 1)" aria-label="Página siguiente">›</button>
+            </nav>
+          }
+        </div>
+      }
+    }
+  }
+</section>
 
 @if (datos(); as d) {
   <p class="origen">

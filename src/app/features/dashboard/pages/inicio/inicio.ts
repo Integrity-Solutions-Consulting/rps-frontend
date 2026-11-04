@@ -5,8 +5,10 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, Observable, catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
 
 import { DashboardService } from '../../services/dashboard.service';
+import { LiquidacionesService } from '../../../liquidaciones/services/liquidaciones.service';
+import { LiquidacionResumen } from '../../../liquidaciones/models/liquidacion.models';
 import {
-  AlertaDashboard, CorteResumen, DashboardResumen, Severidad, TipoAlerta, VencimientoContrato,
+  AlertaDashboard, DashboardResumen, Severidad, TipoAlerta, VencimientoContrato,
 } from '../../models/dashboard.models';
 import { mensajeError } from '../../../../core/http/mensaje-error';
 import { Icon, IconName } from '../../../../shared/components/icon/icon';
@@ -19,13 +21,25 @@ type Estado<T> =
   | { estado: 'ok'; datos: T }
   | { estado: 'error'; mensaje: string };
 
-const TIPOS_ALERTA: Record<TipoAlerta, { etiqueta: string; icono: IconName }> = {
-  CambioTmr: { etiqueta: 'Cambios de TMR', icono: 'sync' },
-  Asignacion: { etiqueta: 'Asignación', icono: 'users' },
-  Documentacion: { etiqueta: 'Documentación', icono: 'file' },
-  DatosIncompletos: { etiqueta: 'Datos incompletos', icono: 'sliders' },
-  Anticipo: { etiqueta: 'Anticipos', icono: 'card' },
+/** Botones de Alertas: título y frase corta de cada tipo (detalle en docs/GUIA-FRONTEND.md, "Pantalla de Inicio"). */
+const TIPOS_ALERTA: Record<TipoAlerta, { etiqueta: string; descripcion: string; icono: IconName }> = {
+  CambioTmr: { etiqueta: 'Cambios de TMR', descripcion: 'Cambios que afectan la liquidación', icono: 'sync' },
+  Asignacion: { etiqueta: 'Contrato vencido con proyecto activo', descripcion: 'Continúan en el proyecto sin renovación', icono: 'users' },
+  Documentacion: { etiqueta: 'Documento pendiente', descripcion: 'Sin documento tributario del mes', icono: 'file' },
+  DatosIncompletos: { etiqueta: 'Datos incompletos', descripcion: 'Falta cuenta bancaria u honorario', icono: 'sliders' },
+  Anticipo: { etiqueta: 'Anticipos', descripcion: 'Cuotas que se descuentan este mes', icono: 'card' },
 };
+
+/** Un botón de Alertas: todas las alertas de un tipo, con el color de la más grave. */
+interface GrupoAlertas {
+  tipo: TipoAlerta;
+  etiqueta: string;
+  descripcion: string;
+  icono: IconName;
+  tono: 'danger' | 'warn' | 'info';
+  total: number;
+  alertas: AlertaDashboard[];
+}
 
 const ORDEN_SEVERIDAD: Record<Severidad, number> = { Critica: 0, Advertencia: 1, Info: 2 };
 
@@ -38,6 +52,7 @@ const ORDEN_SEVERIDAD: Record<Severidad, number> = { Critica: 0, Advertencia: 1,
 })
 export class Inicio {
   private readonly api = inject(DashboardService);
+  private readonly liquidaciones = inject(LiquidacionesService);
   private readonly recargar$ = new BehaviorSubject<void>(undefined);
 
   protected readonly periodo = signal(periodoActual());
@@ -48,6 +63,8 @@ export class Inicio {
   protected readonly resumen = this.cargar((p) => this.api.resumen(p));
   protected readonly vencimientos = this.cargar((p) => this.api.vencimientos(p));
   protected readonly alertas = this.cargar((p) => this.api.alertas(p));
+  /** Preparación del período: las mismas liquidaciones de la pantalla Liquidaciones (mock o backend real). */
+  protected readonly preparacion = this.cargar((p) => this.liquidaciones.listar(p));
 
   // ── Datos derivados ─────────────────────────────────────────────────
   protected readonly datos = computed<DashboardResumen | null>(() => {
@@ -56,7 +73,7 @@ export class Inicio {
   });
 
   protected readonly cargando = computed(() =>
-    [this.resumen(), this.vencimientos(), this.alertas()].some((s) => s.estado === 'cargando'),
+    [this.resumen(), this.vencimientos(), this.alertas(), this.preparacion()].some((s) => s.estado === 'cargando'),
   );
 
   protected readonly avanceRevision = computed(() => {
@@ -73,7 +90,8 @@ export class Inicio {
   protected readonly porVencer = computed(() => this.listaVencimientos().filter((v) => v.diasRestantes >= 0).length);
   protected readonly vencidos = computed(() => this.listaVencimientos().filter((v) => v.diasRestantes < 0).length);
 
-  protected readonly filtroAlerta = signal<TipoAlerta | 'Todas'>('Todas');
+  /** Tipo de alerta abierto en el panel (uno a la vez), o null si todos están cerrados. */
+  protected readonly abierto = signal<TipoAlerta | null>(null);
 
   private readonly listaAlertas = computed<AlertaDashboard[]>(() => {
     const a = this.alertas();
@@ -82,25 +100,52 @@ export class Inicio {
       : [];
   });
 
-  protected readonly conteoAlertas = computed(() => {
-    const conteo = new Map<TipoAlerta, number>();
-    for (const a of this.listaAlertas()) conteo.set(a.tipo, (conteo.get(a.tipo) ?? 0) + 1);
-    return [...conteo.entries()].map(([tipo, total]) => ({ tipo, total, ...TIPOS_ALERTA[tipo] }));
-  });
-
-  protected readonly alertasFiltradas = computed(() => {
-    const f = this.filtroAlerta();
-    return f === 'Todas' ? this.listaAlertas() : this.listaAlertas().filter((a) => a.tipo === f);
+  protected readonly gruposAlertas = computed<GrupoAlertas[]>(() => {
+    const grupos = new Map<TipoAlerta, AlertaDashboard[]>();
+    // listaAlertas ya viene ordenada por severidad: la primera de cada grupo es la más grave.
+    for (const a of this.listaAlertas()) grupos.set(a.tipo, [...(grupos.get(a.tipo) ?? []), a]);
+    return [...grupos.entries()]
+      .map(([tipo, alertas]): GrupoAlertas => ({
+        tipo, alertas, total: alertas.length, tono: this.tonoSeveridad(alertas[0].severidad), ...TIPOS_ALERTA[tipo],
+      }))
+      .sort((x, y) =>
+        ORDEN_SEVERIDAD[x.alertas[0].severidad] - ORDEN_SEVERIDAD[y.alertas[0].severidad] || y.total - x.total);
   });
 
   protected readonly totalAlertas = computed(() => this.listaAlertas().length);
 
+  // ── Preparación del período (10 por página, como Contratos) ──────────
+  protected readonly filasPreparacion = computed<LiquidacionResumen[]>(() => {
+    const p = this.preparacion();
+    return p.estado === 'ok' ? p.datos.filas : [];
+  });
+  private readonly porPagina = 10;
+  protected readonly paginaPreparacion = signal(1);
+  protected readonly totalPaginasPreparacion = computed(() =>
+    Math.max(1, Math.ceil(this.filasPreparacion().length / this.porPagina)));
+  protected readonly numerosPaginaPreparacion = computed(() =>
+    Array.from({ length: this.totalPaginasPreparacion() }, (_, i) => i + 1));
+  protected readonly filasPreparacionPagina = computed(() => {
+    const inicio = (Math.min(this.paginaPreparacion(), this.totalPaginasPreparacion()) - 1) * this.porPagina;
+    return this.filasPreparacion().slice(inicio, inicio + this.porPagina);
+  });
+  protected readonly rangoPreparacion = computed(() => {
+    const total = this.filasPreparacion().length;
+    const desde = total === 0 ? 0 : (Math.min(this.paginaPreparacion(), this.totalPaginasPreparacion()) - 1) * this.porPagina + 1;
+    return { desde, hasta: Math.min(desde + this.porPagina - 1, total) };
+  });
+
   // ── Acciones ────────────────────────────────────────────────────────
   protected cambiarPeriodo(valor: string): void {
     if (esPeriodoValido(valor) && valor !== this.periodo()) {
-      this.filtroAlerta.set('Todas');
+      this.abierto.set(null);
+      this.paginaPreparacion.set(1);
       this.periodo.set(valor);
     }
+  }
+
+  protected alternar(tipo: TipoAlerta): void {
+    this.abierto.update((actual) => (actual === tipo ? null : tipo));
   }
 
   protected actualizar(): void {
@@ -108,8 +153,14 @@ export class Inicio {
   }
 
   // ── Presentación ────────────────────────────────────────────────────
-  protected etiquetaCorte(c: CorteResumen): string {
-    return c.corte === 'Quincena' ? 'Quincena (1–15)' : 'Fin de mes (16–fin)';
+  /** Cuotas de anticipos adicionales de todos los cortes del mes (RN 38). */
+  protected descuentoDe(l: LiquidacionResumen): number {
+    return l.cortes.reduce((t, c) => t + c.descuento, 0);
+  }
+
+  /** Lo que irá en los archivos de pago del mes: neto menos anticipos. */
+  protected valorDe(l: LiquidacionResumen): number {
+    return l.cortes.reduce((t, c) => t + c.valor, 0);
   }
 
   protected tonoVencimiento(v: VencimientoContrato): TonoChip {
@@ -125,7 +176,7 @@ export class Inicio {
     return `${v.diasRestantes} días`;
   }
 
-  protected tonoSeveridad(s: Severidad): TonoChip {
+  private tonoSeveridad(s: Severidad): 'danger' | 'warn' | 'info' {
     return s === 'Critica' ? 'danger' : s === 'Advertencia' ? 'warn' : 'info';
   }
 

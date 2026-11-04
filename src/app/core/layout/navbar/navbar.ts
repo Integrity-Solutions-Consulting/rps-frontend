@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, output, signal } from '@angular/core';
 import { SessionService } from '../../services/session.service';
 import { Icon } from '../../../shared/components/icon/icon';
 import { hayMocks, textoMocks } from '../../mocks/mock-config';
@@ -10,10 +10,18 @@ import { Campana } from '../../../features/notificaciones/components/campana/cam
   imports: [Icon, Campana],
   templateUrl: './navbar.html',
   styleUrl: './navbar.scss',
+  host: { '(document:keydown.escape)': 'menuAbierto.set(false)' },
 })
 export class Navbar {
   protected readonly session = inject(SessionService);
   protected readonly usaMocks = hayMocks;
   protected readonly textoMocks = textoMocks;
   readonly toggleMenu = output<void>();
+  protected readonly menuAbierto = signal(false);
+
+  /** POST /api/auth/logout y vuelta al login. */
+  protected salir(): void {
+    this.menuAbierto.set(false);
+    this.session.cerrarSesion();
+  }
 }

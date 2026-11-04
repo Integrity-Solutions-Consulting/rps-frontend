@@ -2,7 +2,7 @@ import { HttpErrorResponse, HttpInterceptorFn, HttpRequest, HttpResponse } from 
 import { Observable, delay, mergeMap, of, throwError, timer } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response';
-import { mockAlertas, mockResumen, mockVencimientos } from '../mocks/dashboard.mock';
+import { mockAlertas, mockResumen } from '../mocks/dashboard.mock';
 import { RespuestaMock, colaboradoresMock } from '../mocks/colaboradores.mock';
 import { rutaConMock } from '../mocks/mock-config';
 import { contratosMock } from '../mocks/contratos.mock';
@@ -14,6 +14,7 @@ import { liquidacionesMock } from '../mocks/liquidaciones.mock';
 import { documentosMock } from '../mocks/documentos.mock';
 import { exportacionesMock } from '../mocks/exportaciones.mock';
 import { notificaciones } from '../mocks/notificaciones.mock';
+import { mockAuth } from '../mocks/auth.mock';
 import { EventoHistorial } from '../../features/colaboradores/models/colaborador.models';
 
 const LATENCIA_MS = 300;
@@ -30,6 +31,7 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   const ruta = req.url.slice(environment.apiUrl.length);
   if (!rutaConMock(ruta)) return next(req);
 
+  if (ruta.startsWith('/auth/')) return entregar(req, mockAuth(req.method, ruta, req.body as Record<string, unknown> | null));
   if (ruta.startsWith('/dashboard')) return responderDashboard(req, ruta);
   if (ruta.startsWith('/colaboradores')) return entregar(req, rutearColaboradores(req, ruta));
   if (ruta.startsWith('/contratos')) return entregar(req, rutearContratos(req, ruta));
@@ -54,7 +56,7 @@ function responderDashboard(req: HttpRequest<unknown>, ruta: string): Observable
 
   switch (ruta) {
     case '/dashboard/resumen': return responder(mockResumen(periodo));
-    case '/dashboard/vencimientos': return responder(mockVencimientos());
+    case '/dashboard/vencimientos': return responder(contratosMock.vencimientos());
     case '/dashboard/alertas': return responder(mockAlertas(periodo));
     default: return entregar(req, { status: 404, body: { title: 'No encontrado', status: 404, detail: `Sin datos de ejemplo para ${ruta}.` } });
   }

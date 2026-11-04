@@ -41,9 +41,13 @@ export interface DashboardResumen {
   origenTmr: { disponible: boolean; ultimaConsulta: string | null };
 }
 
+/** GET /api/dashboard/vencimientos (VencimientosContratosService del backend), con el nombre ya completado. */
 export interface VencimientoContrato {
-  contratoId: number;
-  colaboradorId: number;
+  /** Mismo ID que usa la pantalla Contratos (?contrato=). */
+  contratoId: string;
+  colaboradorId: string;
+  /** ID de TMR: filtra la pantalla Contratos (?colaborador=) y da el nombre. */
+  tmrColaboradorId: string;
   colaborador: string;
   proyecto: string;
   fechaFinVigente: string;

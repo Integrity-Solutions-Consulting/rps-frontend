@@ -6,6 +6,7 @@ import { RespuestaMock, colaboradoresMock } from './colaboradores.mock';
 import { TMR_ASIGNACIONES, asignacionTmr, nombreTmr } from './tmr.mock';
 import { diasEntre, enDias, hoy, sumarDias } from './fechas';
 import { configuracionMock } from './configuracion.mock';
+import { VencimientoContrato } from '../../features/dashboard/models/dashboard.models';
 
 /**
  * Contratos y adendas en memoria, con las reglas de la sección 4 de los requisitos (RN 08 a 16).
@@ -143,6 +144,23 @@ class ContratosMock {
         c.tmrColaboradorId === a.tmrColaboradorId && c.tmrProyectoId === a.tmrProyectoId && this.finVigente(c) >= hoy()),
     })).sort((x, y) => x.colaborador.localeCompare(y.colaborador) || x.proyecto.localeCompare(y.proyecto));
     return { status: 200, body: lista };
+  }
+
+  /**
+   * Inicio · Vencimientos (misma regla que VencimientosContratosService del backend, RN 13 a 15):
+   * por vencer dentro del mayor plazo de alerta, y vencidos con asignación activa sin otro contrato vigente.
+   */
+  vencimientos(): VencimientoContrato[] {
+    const resumenes = this.contratos.map((c) => this.resumen(c));
+    const renovado = (r: ContratoResumen) => resumenes.some((o) =>
+      o.id !== r.id && o.tmrColaboradorId === r.tmrColaboradorId && o.tmrProyectoId === r.tmrProyectoId && o.estado !== 'Vencido');
+    return resumenes
+      .filter((r) => r.estado === 'ProximoAVencer' || (r.estado === 'Vencido' && r.asignacionActiva && !renovado(r)))
+      .map((r) => ({
+        contratoId: r.id, colaboradorId: r.colaboradorId, tmrColaboradorId: r.tmrColaboradorId, colaborador: r.colaborador,
+        proyecto: r.proyecto, fechaFinVigente: r.fechaFinVigente, diasRestantes: r.diasParaVencer, asignacionActiva: r.asignacionActiva,
+      }))
+      .sort((a, b) => a.diasRestantes - b.diasRestantes);
   }
 
   /** Para la liquidación: estado del último contrato de una relación colaborador y proyecto (RN 14: solo informa). */

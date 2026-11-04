@@ -25,19 +25,21 @@ Comprobar que compila sin abrir el navegador:
 node node_modules/@angular/compiler-cli/bundles/src/bin/ngc.js -p tsconfig.app.json --noEmit
 ```
 
-## Probar con el backend en local
+## Probar con el backend en desarrollo
 
 1. En `rps-backend`: `docker compose up -d`, `dotnet ef database update -- --environment Development`
    y `dotnet run --launch-profile http` (perfil **http**, no https).
-2. Con la base vacía, cargar datos de prueba: `powershell -ExecutionPolicy Bypass -File ..\docs\semilla-local.ps1`.
-3. Aquí: `npm run start:api`.
+2. Con la base vacía, cargar datos de prueba: `powershell -ExecutionPolicy Bypass -File ..\docs\semilla-desarrollo.ps1`
+   (también crea el usuario de desarrollo `admin@rps.test`; la contraseña está en el script).
+3. Aquí: `npm run start:api` y entrar con ese usuario.
 4. Liquidaciones → Calcular: Ana Pérez debe dar **$960,00** de neto (ejemplo de los requisitos).
 
 ## Pantallas
 
 | Pantalla | Con `start:api` |
 |---|---|
-| Inicio | Ejemplo |
+| Login | Backend (`/api/auth`) |
+| Inicio | Vencimientos y Preparación del período: backend · indicadores y Requiere atención: ejemplo |
 | Campana de notificaciones (cabecera) | Backend |
 | Colaboradores (lista y ficha con 6 pestañas) | Backend (nombres de ejemplo) |
 | Contratos y adendas | Backend |
