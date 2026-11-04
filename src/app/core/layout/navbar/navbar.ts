@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, output, signal } from '@angular/core';
 import { SessionService } from '../../services/session.service';
 import { Icon } from '../../../shared/components/icon/icon';
-import { hayMocks, textoMocks } from '../../mocks/mock-config';
 import { Campana } from '../../../features/notificaciones/components/campana/campana';
 
 @Component({
@@ -14,8 +13,6 @@ import { Campana } from '../../../features/notificaciones/components/campana/cam
 })
 export class Navbar {
   protected readonly session = inject(SessionService);
-  protected readonly usaMocks = hayMocks;
-  protected readonly textoMocks = textoMocks;
   readonly toggleMenu = output<void>();
   protected readonly menuAbierto = signal(false);
 

@@ -9,7 +9,6 @@
 
 .shell__main { display: flex; flex-direction: column; min-width: 0; }
 .shell__content { flex: 1; padding: 24px 32px 32px; max-width: 1440px; width: 100%; }
-.shell__footer { padding: 0 32px 16px; color: var(--rps-muted); font-size: 12px; text-align: right; }
 
 @media (max-width: 960px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
@@ -23,8 +22,7 @@
     background: rgba(19, 38, 61, .4); cursor: pointer;
   }
   .shell__content { padding: 20px 16px 24px; }
-  .shell__footer { padding: 0 16px 16px; }
-}
+  }
 
 .toasts {
   position: fixed; right: 20px; bottom: 20px; z-index: 50;

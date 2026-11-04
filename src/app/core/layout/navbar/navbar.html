@@ -3,12 +3,6 @@
     <app-icon name="menu" [size]="22" />
   </button>
 
-  @if (usaMocks) {
-    <span class="navbar__mock" title="Estas respuestas vienen de core/mocks, no del backend">
-      <app-icon name="info" [size]="16" /> {{ textoMocks }}
-    </span>
-  }
-
   <div class="navbar__right">
     <app-campana />
     @if (session.usuario(); as u) {

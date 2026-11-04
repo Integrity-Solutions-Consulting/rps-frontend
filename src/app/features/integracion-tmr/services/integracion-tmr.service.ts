@@ -1,16 +1,17 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { Observable, catchError, map, of, switchMap } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { TmrColaborador, TmrColaboradorDetalle } from '../models/tmr.models';
-import { BackendRps } from '../../../core/backend/backend-rps.service';
-import { BeAsignacion } from '../../../core/backend/backend-rps.models';
+import { BackendRps, aTmrColaborador } from '../../../core/backend/backend-rps.service';
+import { BeAsignacion, BeColaborador, BeEstadoTmr, BeSincronizacionTmr } from '../../../core/backend/backend-rps.models';
 
 /**
- * Datos de la persona y sus proyectos.
- *   - Nombre, identificación, correo: /api/integracion-tmr (copia de TMR; hoy datos de ejemplo de core/mocks/tmr.mock.ts).
- *   - Proyectos asignados: con el backend real salen de rps-backend (/api/colaboradores/{id}/asignaciones,
- *     cargados a mano en RPS hasta que TMR los envíe); con npm start, de core/mocks/tmr.mock.ts.
+ * Datos de TMR que usa RPS (solo lectura, RN 01).
+ *   - Backend real: rps-backend copia TMR en sus tablas con la sincronización (Features/IntegracionTmr).
+ *     Nombre, identificación y correo vienen en GET /api/colaboradores; los proyectos en
+ *     GET /api/colaboradores/{id}/asignaciones. Sincronizar: POST /api/integracion-tmr/sincronizar.
+ *   - npm start: core/mocks/tmr.mock.ts (/integracion-tmr/colaboradores y /colaboradores/{id}).
  */
 @Injectable({ providedIn: 'root' })
 export class IntegracionTmrService {
@@ -18,33 +19,58 @@ export class IntegracionTmrService {
   private readonly be = inject(BackendRps);
   private readonly base = `${environment.apiUrl}/integracion-tmr`;
 
-  /** GET /api/integracion-tmr/colaboradores · nombres e identificación para las listas */
+  /** true con el backend real: los datos de TMR ya están en rps-backend (no hay "vincular" a mano). */
+  get conBackend(): boolean {
+    return !this.be.usaMock('/integracion-tmr');
+  }
+
+  /** Personas de TMR con nombre e identificación, para las listas. */
   colaboradores(): Observable<TmrColaborador[]> {
+    if (this.conBackend) return this.be.colaboradores().pipe(map((l) => l.map(aTmrColaborador)));
     return this.http.get<TmrColaborador[]>(`${this.base}/colaboradores`);
   }
 
   /** Datos generales + proyectos de una persona, por su ID de TMR. */
   colaborador(tmrColaboradorId: string): Observable<TmrColaboradorDetalle> {
-    const persona = this.http.get<TmrColaboradorDetalle>(`${this.base}/colaboradores/${encodeURIComponent(tmrColaboradorId)}`);
-    if (this.be.usaMock('/colaboradores')) return persona;
+    if (!this.conBackend)
+      return this.http.get<TmrColaboradorDetalle>(`${this.base}/colaboradores/${encodeURIComponent(tmrColaboradorId)}`);
 
-    // Backend real: la persona puede no estar en la copia de TMR de ejemplo; los proyectos vienen de RPS.
-    const sinDatos: TmrColaboradorDetalle = {
-      tmrColaboradorId, nombres: `ID TMR ${tmrColaboradorId}`, apellidos: '', identificacion: '', correo: null,
-      activo: true, ultimaSincronizacion: new Date().toISOString(), asignaciones: [],
-    };
-    return forkJoin({
-      p: persona.pipe(catchError(() => of(sinDatos))),
-      asignaciones: this.be.idRps(tmrColaboradorId).pipe(
-        switchMap((id) => this.http.get<BeAsignacion[]>(`${this.be.api}/colaboradores/${id}/asignaciones`)),
-        catchError(() => of<BeAsignacion[]>([])),
-      ),
-    }).pipe(map(({ p, asignaciones }) => ({
-      ...p,
-      asignaciones: asignaciones.map((a) => ({
+    return this.be.colaboradores().pipe(
+      switchMap((lista) => {
+        const c = lista.find((x) => x.tmrColaboradorId === tmrColaboradorId);
+        if (!c) return this.be.error(404, 'Colaborador.NoVinculado', 'La persona no está en RPS.');
+        return this.http.get<BeAsignacion[]>(`${this.be.api}/colaboradores/${c.id}/asignaciones`).pipe(
+          catchError(() => of<BeAsignacion[]>([])),
+          map((asignaciones) => this.detalle(c, asignaciones)),
+        );
+      }),
+    );
+  }
+
+  /** POST /api/integracion-tmr/sincronizar · copia ahora colaboradores, proyectos y asignaciones de TMR. */
+  sincronizar(): Observable<BeSincronizacionTmr> {
+    return this.http.post<BeSincronizacionTmr>(`${this.base}/sincronizar`, null);
+  }
+
+  /** GET /api/integracion-tmr/estado · última sincronización y si está desactualizada (RC 05). */
+  estado(): Observable<BeEstadoTmr> {
+    return this.http.get<BeEstadoTmr>(`${this.base}/estado`);
+  }
+
+  /** GET /api/integracion-tmr/cambios?revisado=false · cuántos cambios de TMR faltan revisar (RN 50). */
+  cambiosSinRevisar(): Observable<number> {
+    return this.http.get<unknown[]>(`${this.base}/cambios`, { params: { revisado: 'false' } }).pipe(map((l) => l.length));
+  }
+
+  private detalle(c: BeColaborador, asignaciones: BeAsignacion[]): TmrColaboradorDetalle {
+    return {
+      ...aTmrColaborador(c),
+      nombres: c.nombres || `ID TMR ${c.tmrColaboradorId}`,
+      // Las asignaciones que ya no vienen de TMR no cuentan para cálculos nuevos (RN 22).
+      asignaciones: asignaciones.filter((a) => !a.eliminadaEnOrigen).map((a) => ({
         tmrAsignacionId: a.id, tmrProyectoId: a.proyectoId, proyecto: a.proyectoNombre, cliente: null,
         fechaAsignacion: a.fechaInicio, fechaFinAsignacion: a.fechaSalida,
       })),
-    })));
+    };
   }
 }

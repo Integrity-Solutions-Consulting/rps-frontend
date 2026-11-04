@@ -46,3 +46,7 @@
 .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none;
   background: var(--rps-info-50); color: var(--rps-info); font-weight: 600; font-size: 12.5px; }
 .persona__txt { display: grid; min-width: 0; small { color: var(--rps-muted); font-size: 12px; } }
+
+.spin { animation: girar 1s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }

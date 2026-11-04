@@ -16,8 +16,8 @@ npm start           # todo con datos de ejemplo, no necesita backend
 npm run start:api   # usa rps-backend en http://localhost:5203 (proxy /api)
 ```
 
-Abre `http://localhost:4200`. Con `start:api`, Inicio y los nombres de las personas siguen siendo de ejemplo
-(se ve una etiqueta amarilla) hasta que el backend tenga la integración con TMR.
+Abre `http://localhost:4200`. Con `start:api`, los indicadores y "Requiere atención" de Inicio y los nombres de las personas
+siguen siendo de ejemplo hasta que el backend los tenga (la lista exacta está en `src/environments/environment.development.ts`).
 
 Comprobar que compila sin abrir el navegador:
 
@@ -41,7 +41,7 @@ node node_modules/@angular/compiler-cli/bundles/src/bin/ngc.js -p tsconfig.app.j
 | Login | Backend (`/api/auth`) |
 | Inicio | Vencimientos y Preparación del período: backend · indicadores y Requiere atención: ejemplo |
 | Campana de notificaciones (cabecera) | Backend |
-| Colaboradores (lista y ficha con 6 pestañas) | Backend (nombres de ejemplo) |
+| Colaboradores (lista y ficha con 6 pestañas) | Backend |
 | Contratos y adendas | Backend |
 | Anticipos | Backend |
 | Liquidaciones | Backend |

@@ -95,7 +95,7 @@ export class ContratosService {
       switchMap(({ lista, nombres }) => lista.length === 0 ? of([]) : forkJoin(lista.map((c) => forkJoin({
         asignaciones: this.http.get<BeAsignacion[]>(`${this.be.api}/colaboradores/${c.id}/asignaciones`),
         contratos: this.http.get<BeContrato[]>(`${this.be.api}/colaboradores/${c.id}/contratos`),
-      }).pipe(map(({ asignaciones, contratos }) => asignaciones.map((a): AsignacionDisponible => ({
+      }).pipe(map(({ asignaciones, contratos }) => asignaciones.filter((a) => !a.eliminadaEnOrigen).map((a): AsignacionDisponible => ({
         tmrColaboradorId: c.tmrColaboradorId,
         colaborador: this.be.nombreDe(nombres, c.tmrColaboradorId),
         tmrProyectoId: a.proyectoId,

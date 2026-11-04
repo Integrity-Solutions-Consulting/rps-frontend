@@ -12,7 +12,7 @@ npm run start:api    # llama al backend real (rps-backend en http://localhost:52
 ```
 
 Abrir http://localhost:4200 e iniciar sesión (todas las pantallas lo piden). Con `npm start` el login de ejemplo muestra el usuario de prueba; con `start:api` se usa el usuario de desarrollo del backend (`../docs/CONEXIONES.md`, sección 2, Login).
-La etiqueta amarilla de la cabecera dice qué partes son datos de ejemplo.
+Qué partes son datos de ejemplo lo dice `environment.*.ts → mockRutas` (la pantalla ya no muestra una etiqueta).
 Con `npm start` lo que se guarda se pierde al recargar la página.
 
 ## 2. Carpetas
@@ -79,6 +79,8 @@ Pantalla (pages/…)  →  servicio (services/…)  →  HttpClient  →  interc
 
 La página de la ficha carga los datos una vez y se los pasa a cada pestaña. Cuando una pestaña guarda algo, avisa con `(actualizado)` y la ficha vuelve a leer.
 Otras pantallas pueden abrir una pestaña directo con `?tab=`: `/colaboradores/<id>?tab=condiciones`.
+
+**Colaboradores:** las personas vienen de TMR; RPS no da de alta colaboradores (RN 03). En RPS solo se completa lo que necesita Contabilidad: tipo de servicio, frecuencia de pago, honorarios y cuenta bancaria. (Este texto estaba como aviso arriba de la lista.)
 
 ### Las demás pantallas
 

@@ -10,7 +10,7 @@ import { BeColaborador, BeConfiguracion, BeProyecto } from './backend-rps.models
  * Piezas comunes para los servicios que hablan con rps-backend:
  *   - si una ruta se responde con datos de ejemplo o con el backend real;
  *   - colaboradores, proyectos y configuración (los usan casi todos los módulos);
- *   - nombres de TMR (el backend no los tiene hasta la integración con TMR);
+ *   - nombres de TMR: con el backend real vienen en GET /api/colaboradores (copia de TMR que guarda la sincronización);
  *   - errores con el mismo formato que el backend, para leerErrorApi.
  *
  * Patrón de cada servicio adaptado:
@@ -54,10 +54,13 @@ export class BackendRps {
   }
 
   /**
-   * Nombres por ID de TMR. Vienen de /integracion-tmr (hoy datos de ejemplo de core/mocks/tmr.mock.ts).
-   * Si no responde, se muestra "ID TMR x".
+   * Nombres por ID de TMR.
+   *   - Backend real: salen de GET /api/colaboradores (nombres, apellidos, identificación y correo de TMR).
+   *   - npm start: de core/mocks/tmr.mock.ts (/integracion-tmr/colaboradores).
+   * Si no hay nombre (colaborador creado a mano o TMR sin sincronizar), se muestra "ID TMR x".
    */
   nombres(): Observable<Map<string, TmrColaborador>> {
+    if (!this.usaMock('/integracion-tmr')) return this.colaboradores().pipe(map(mapaDeNombres));
     return this.http.get<TmrColaborador[]>(`${this.api}/integracion-tmr/colaboradores`).pipe(
       map((l) => new Map(l.map((p) => [p.tmrColaboradorId, p]))),
       catchError(() => of(new Map<string, TmrColaborador>())),
@@ -66,11 +69,14 @@ export class BackendRps {
 
   nombreDe(nombres: Map<string, TmrColaborador>, tmrColaboradorId: string): string {
     const p = nombres.get(tmrColaboradorId);
-    return p ? nombreCompleto(p) : `ID TMR ${tmrColaboradorId}`;
+    const nombre = p ? nombreCompleto(p) : '';
+    return nombre || `ID TMR ${tmrColaboradorId}`;
   }
 
-  /** Colaboradores + nombres en una sola llamada. */
+  /** Colaboradores + nombres. Con el backend real es una sola llamada: la lista ya trae los nombres. */
   colaboradoresConNombre(): Observable<{ lista: BeColaborador[]; nombres: Map<string, TmrColaborador> }> {
+    if (!this.usaMock('/integracion-tmr'))
+      return this.colaboradores().pipe(map((lista) => ({ lista, nombres: mapaDeNombres(lista) })));
     return forkJoin({ lista: this.colaboradores(), nombres: this.nombres() });
   }
 
@@ -81,6 +87,23 @@ export class BackendRps {
 }
 
 /** "2026-10" → "2026-10-01" (el backend recibe meses como DateOnly del primer día). */
+/** De la lista de colaboradores del backend (con la copia de TMR) a "persona de TMR" por su ID. */
+export function aTmrColaborador(c: BeColaborador): TmrColaborador {
+  return {
+    tmrColaboradorId: c.tmrColaboradorId,
+    nombres: c.nombres ?? '',
+    apellidos: c.apellidos ?? '',
+    identificacion: c.identificacion ?? '',
+    correo: c.correo,
+    activo: c.activoEnTmr ?? c.activo,
+    ultimaSincronizacion: c.sincronizadoEn ?? '',
+  };
+}
+
+function mapaDeNombres(lista: BeColaborador[]): Map<string, TmrColaborador> {
+  return new Map(lista.map((c) => [c.tmrColaboradorId, aTmrColaborador(c)]));
+}
+
 export const diaUno = (periodo: string): string => `${periodo.slice(0, 7)}-01`;
 /** "2026-10-01" → "2026-10" */
 export const mesDe = (fecha: string): string => fecha.slice(0, 7);

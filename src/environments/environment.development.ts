@@ -6,7 +6,6 @@ export const environment = {
   // Rutas que siguen con datos de ejemplo aunque el backend esté encendido:
   //   /dashboard/resumen y /dashboard/alertas → Inicio espera otro formato que el GET /api/dashboard actual
   //   (/dashboard/vencimientos ya existe en rps-backend)
-  //   /integracion-tmr  → nombres e identificación de TMR (falta la integración con TMR)
   // Todo lo demás va a rps-backend; los servicios adaptan sus rutas (ver core/backend).
-  mockRutas: ['/dashboard/resumen', '/dashboard/alertas', '/integracion-tmr'] as string[],
+  mockRutas: ['/dashboard/resumen', '/dashboard/alertas'] as string[],
 };

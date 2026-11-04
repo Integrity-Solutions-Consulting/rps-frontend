@@ -11,6 +11,15 @@ import { TipoCorte } from '../../shared/models/corte';
 export interface BeColaborador {
   id: string;
   tmrColaboradorId: string;
+  /** Copia de TMR (la llena la sincronización). Nulos si el colaborador se creó a mano en RPS. */
+  nombres: string | null;
+  apellidos: string | null;
+  identificacion: string | null;
+  correo: string | null;
+  activoEnTmr: boolean | null;
+  sincronizadoEn: string | null;
+  /** Ya no viene de TMR: se conserva para el historial (RN 07). */
+  eliminadoEnOrigen: boolean;
   clasificacion: Clasificacion | null;
   estadoConfiguracion: EstadoConfiguracion;
   activo: boolean;
@@ -20,11 +29,35 @@ export interface BeColaborador {
   cuentaBancaria?: { id: string; banco: string | null; tipoCuenta: string | null; numeroCuentaEnmascarado: string } | null;
 }
 
-export interface BeProyecto { id: string; nombre: string; cliente: string | null; activo: boolean; creadoEn: string }
+export interface BeProyecto {
+  id: string; tmrProyectoId: string | null; nombre: string; cliente: string | null; activo: boolean;
+  sincronizadoEn: string | null; eliminadoEnOrigen: boolean; creadoEn: string;
+}
 
 export interface BeAsignacion {
   id: string; colaboradorId: string; proyectoId: string; proyectoNombre: string;
   fechaInicio: string; fechaSalida: string | null;
+  /** null = creada a mano en RPS. eliminadaEnOrigen = ya no viene de TMR y no cuenta en cálculos nuevos (RN 22). */
+  sincronizadaEn: string | null; eliminadaEnOrigen: boolean;
+}
+
+/** POST /api/integracion-tmr/sincronizar */
+export interface BeSincronizacionTmr {
+  sincronizadoEn: string;
+  proyectos: BeConteoSincronizacion;
+  colaboradores: BeConteoSincronizacion;
+  asignaciones: BeConteoSincronizacion;
+  cambiosDetectados: number;
+  asignacionesOmitidas: { idEmpleado: number; idProyecto: number; motivo: string }[];
+}
+export interface BeConteoSincronizacion { creados: number; actualizados: number; marcadosEliminados: number }
+
+/** GET /api/integracion-tmr/estado */
+export interface BeEstadoTmr {
+  automaticaHabilitada: boolean;
+  intervaloMinutos: number;
+  ultimaSincronizacion: string | null;
+  desactualizada: boolean;
 }
 
 export interface BeContrato {

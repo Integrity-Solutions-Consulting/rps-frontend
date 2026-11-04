@@ -6,7 +6,6 @@ import { Sidebar } from '../sidebar/sidebar';
 import { Navbar } from '../navbar/navbar';
 import { NotificationService } from '../../services/notification.service';
 import { Icon } from '../../../shared/components/icon/icon';
-import { hayMocks, textoMocks } from '../../mocks/mock-config';
 
 @Component({
   selector: 'app-layout',
@@ -18,8 +17,6 @@ import { hayMocks, textoMocks } from '../../mocks/mock-config';
 export class AppLayout {
   protected readonly notifications = inject(NotificationService);
   protected readonly menuAbierto = signal(false);
-  protected readonly usaMocks = hayMocks;
-  protected readonly textoMocks = textoMocks;
 
   constructor() {
     // En pantallas pequeñas el menú se cierra al navegar.

@@ -8,11 +8,6 @@
   display: none; border: 0; background: none; color: var(--rps-text); cursor: pointer; padding: 6px;
 }
 
-.navbar__mock {
-  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px;
-  border-radius: 999px; background: var(--rps-warn-50); color: var(--rps-warn);
-  font-size: 12.5px; font-weight: 600;
-}
 
 .navbar__right { margin-left: auto; display: flex; align-items: center; gap: 14px; color: var(--rps-muted); }
 .navbar__area { color: var(--rps-text); font-weight: 500; }

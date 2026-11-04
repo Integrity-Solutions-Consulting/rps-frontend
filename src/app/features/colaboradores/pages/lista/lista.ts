@@ -1,3 +1,4 @@
+import { NotificationService } from '../../../../core/services/notification.service';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -39,6 +40,7 @@ export class ColaboradoresLista {
   private readonly api = inject(ColaboradoresService);
   private readonly tmrApi = inject(IntegracionTmrService);
   private readonly router = inject(Router);
+  private readonly avisos = inject(NotificationService);
   private readonly recargar$ = new BehaviorSubject<void>(undefined);
 
   protected readonly etiquetaClasificacion = ETIQUETA_CLASIFICACION;
@@ -159,6 +161,31 @@ export class ColaboradoresLista {
         const err = leerErrorApi(e);
         if (err.campos['tmrColaboradorId']) this.errorCampoTmr.set(err.campos['tmrColaboradorId']);
         else this.errorVincular.set(err.mensaje);
+      },
+    });
+  }
+
+  // ── Sincronizar con TMR (solo con el backend real) ─────────────────
+  protected readonly conBackend = this.tmrApi.conBackend;
+  protected readonly sincronizando = signal(false);
+
+  /** POST /api/integracion-tmr/sincronizar. TMR caído → 503; otra sincronización en curso → 409. */
+  protected sincronizar(): void {
+    this.sincronizando.set(true);
+    this.tmrApi.sincronizar().subscribe({
+      next: (r) => {
+        this.sincronizando.set(false);
+        const nuevos = r.colaboradores.creados;
+        const omitidas = r.asignacionesOmitidas.length;
+        this.avisos.ok(`TMR sincronizado: ${nuevos} colaborador${nuevos === 1 ? '' : 'es'} nuevo${nuevos === 1 ? '' : 's'}, `
+          + `${r.colaboradores.actualizados} actualizado${r.colaboradores.actualizados === 1 ? '' : 's'}`
+          + (r.cambiosDetectados ? `, ${r.cambiosDetectados} cambio(s) por revisar` : '')
+          + (omitidas ? `. ${omitidas} asignación(es) no se copiaron.` : '.'));
+        this.recargar$.next();
+      },
+      error: (e: unknown) => {
+        this.sincronizando.set(false);
+        this.avisos.error(leerErrorApi(e).mensaje);
       },
     });
   }
