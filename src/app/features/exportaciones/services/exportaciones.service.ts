@@ -2,22 +2,23 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { ArchivoDescargado, TipoExportacion } from '../models/exportacion.models';
+import { ArchivoDescargado, FormatoExportacion, TipoExportacion } from '../models/exportacion.models';
 import { diaUno } from '../../../core/backend/backend-rps.service';
 
-/** Descarga los CSV de /api/exportaciones (rps-backend). */
+/** Descarga los CSV (y el PDF de liquidaciones) de /api/exportaciones (rps-backend). */
 @Injectable({ providedIn: 'root' })
 export class ExportacionesService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/exportaciones`;
 
   /** El nombre del archivo lo pone el backend (Content-Disposition). `periodo` = "yyyy-MM" o null para todos. */
-  descargar(tipo: TipoExportacion, periodo: string | null): Observable<ArchivoDescargado> {
+  descargar(tipo: TipoExportacion, periodo: string | null, formato: FormatoExportacion = 'csv'): Observable<ArchivoDescargado> {
     let params = new HttpParams();
     if (periodo && tipo !== 'colaboradores') params = params.set('periodo', diaUno(periodo));
-    return this.http.get(`${this.base}/${tipo}`, { params, responseType: 'blob', observe: 'response' }).pipe(
+    const ruta = formato === 'pdf' ? `${this.base}/${tipo}/pdf` : `${this.base}/${tipo}`;
+    return this.http.get(ruta, { params, responseType: 'blob', observe: 'response' }).pipe(
       map((r) => ({
-        nombre: nombreDeArchivo(r.headers.get('Content-Disposition')) ?? `${tipo}.csv`,
+        nombre: nombreDeArchivo(r.headers.get('Content-Disposition')) ?? `${tipo}.${formato}`,
         contenido: r.body ?? new Blob(),
       })),
     );

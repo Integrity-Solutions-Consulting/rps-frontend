@@ -2,7 +2,7 @@
   <header class="pagina__head">
     <div>
       <h1>Documentos tributarios</h1>
-      <p>Un documento por colaborador y mes, aunque cobre en dos cortes o tenga varios proyectos (RN 32).</p>
+      <p>Un documento por colaborador y mes, aunque cobre en dos cortes o tenga varios proyectos.</p>
     </div>
   </header>
 
@@ -77,9 +77,6 @@
           <h2>{{ f.documento ? 'Corregir documento' : 'Registrar documento' }}</h2>
         </header>
 
-        @if (!f.documento) {
-          <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div><strong>Documento pendiente.</strong></div></div>
-        }
 
         <form class="formulario" (submit)="$event.preventDefault(); guardar()">
           <div class="field">
@@ -95,7 +92,6 @@
             <select id="d-tipo" name="tipo" class="select" [ngModel]="tipo()" (ngModelChange)="tipo.set($event)">
               @for (t of tipos; track t) { <option [value]="t">{{ etiquetaTipo[t] }}</option> }
             </select>
-            <span class="field__hint">Solo para el registro: no cambia el cálculo de impuestos (RN 33).</span>
           </div>
           <div class="field">
             <label for="d-numero">Número de documento</label>
@@ -121,10 +117,6 @@
             </div>
           }
 
-          <div class="adjunto" aria-disabled="true">
-            <app-icon name="paperclip" [size]="20" />
-            <span><strong>Adjuntar archivo</strong><br />Pendiente: falta definir dónde se guardan los archivos.</span>
-          </div>
 
           @if (errorGuardar(); as e) {
             <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>

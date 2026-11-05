@@ -196,7 +196,7 @@
             @if (det.documento === 'Pendiente') {
               <div class="aviso aviso--warn">
                 <app-icon name="alert" [size]="18" />
-                <div><strong>Documento pendiente.</strong> Falta registrar el documento tributario del mes. No impide exportar (RN 35).</div>
+                <div><strong>Documento pendiente.</strong> Falta registrar el documento tributario del mes.</div>
                 <a class="btn btn--sm" routerLink="/documentos" [queryParams]="{ periodo: det.periodo, colaborador: det.colaboradorId }">
                   <app-icon name="paperclip" [size]="15" /> Registrar
                 </a>
