@@ -12,12 +12,12 @@
 <section class="kpis" aria-label="Resumen de contratos">
   <button type="button" class="card kpi" [class.is-on]="filtroEstado() === 'Vigente'"
           (click)="filtroEstado.set(filtroEstado() === 'Vigente' ? '' : 'Vigente')">
-    <span class="kpi__icon kpi__icon--ok"><app-icon name="check" [size]="22" /></span>
+    <span class="kpi__icon kpi__icon--ok"><app-icon name="check" [size]="18" /></span>
     <span class="kpi__body"><span class="kpi__label">Vigentes</span><strong class="kpi__value num">{{ resumen()?.vigentes ?? '–' }}</strong></span>
   </button>
   <button type="button" class="card kpi" [class.is-on]="filtroEstado() === 'ProximoAVencer'"
           (click)="filtroEstado.set(filtroEstado() === 'ProximoAVencer' ? '' : 'ProximoAVencer')">
-    <span class="kpi__icon kpi__icon--warn"><app-icon name="clock" [size]="22" /></span>
+    <span class="kpi__icon kpi__icon--warn"><app-icon name="clock" [size]="18" /></span>
     <span class="kpi__body">
       <span class="kpi__label">Próximos a vencer</span>
       <strong class="kpi__value num">{{ resumen()?.proximosAVencer ?? '–' }}</strong>
@@ -26,7 +26,7 @@
   </button>
   <button type="button" class="card kpi" [class.is-on]="filtroEstado() === 'Vencido'"
           (click)="filtroEstado.set(filtroEstado() === 'Vencido' ? '' : 'Vencido')">
-    <span class="kpi__icon kpi__icon--danger"><app-icon name="alert" [size]="22" /></span>
+    <span class="kpi__icon kpi__icon--danger"><app-icon name="alert" [size]="18" /></span>
     <span class="kpi__body">
       <span class="kpi__label">Vencidos con asignación activa</span>
       <strong class="kpi__value num">{{ resumen()?.vencidos ?? '–' }}</strong>
@@ -34,7 +34,7 @@
   </button>
   <button type="button" class="card kpi" [class.is-on]="filtroEstado() === 'NoVigente'"
           (click)="filtroEstado.set(filtroEstado() === 'NoVigente' ? '' : 'NoVigente')">
-    <span class="kpi__icon"><app-icon name="file" [size]="22" /></span>
+    <span class="kpi__icon"><app-icon name="file" [size]="18" /></span>
     <span class="kpi__body"><span class="kpi__label">No vigentes</span><strong class="kpi__value num">{{ resumen()?.noVigentes ?? '–' }}</strong></span>
   </button>
 </section>
