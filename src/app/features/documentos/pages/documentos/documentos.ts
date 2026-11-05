@@ -10,8 +10,6 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { DineroPipe } from '../../../../shared/pipes/dinero.pipe';
-import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
-import { hoy } from '../../../../shared/utils/fechas';
 import { esPeriodoValido, nombrePeriodo, periodoActual } from '../../../../shared/utils/periodo';
 
 /**
@@ -19,12 +17,12 @@ import { esPeriodoValido, nombrePeriodo, periodoActual } from '../../../../share
  * La lista muestra a todos los liquidados del mes: con documento ("Registrado") o sin él ("Pendiente").
  * Al elegir uno, el panel derecho permite registrarlo o corregirlo.
  *
- * API propuesta: /api/documentos (hoy de ejemplo). Query params: ?periodo= y ?colaborador=.
+ * Datos: /api/colaboradores/{id}/documentos-mensuales. Query params: ?periodo= y ?colaborador=.
  */
 @Component({
   selector: 'app-documentos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, RouterLink, Icon, EstadoChip, DineroPipe, SoloNumeros],
+  imports: [DatePipe, FormsModule, RouterLink, Icon, EstadoChip, DineroPipe],
   templateUrl: './documentos.html',
   styleUrl: './documentos.scss',
 })
@@ -36,7 +34,6 @@ export class Documentos {
 
   protected readonly etiquetaTipo = ETIQUETA_TIPO_DOCUMENTO;
   protected readonly tipos: TipoDocumento[] = ['Factura', 'NotaDeVenta'];
-  protected readonly hoy = hoy();
   protected readonly nombrePeriodo = nombrePeriodo;
 
   // ── Lista y filtros ──────────────────────────────────────────────────
@@ -61,7 +58,6 @@ export class Documentos {
   protected readonly tipo = signal<TipoDocumento>('Factura');
   protected readonly numero = signal('');
   protected readonly fechaEmision = signal('');
-  protected readonly observaciones = signal('');
   protected readonly guardando = signal(false);
   protected readonly errores = signal<Record<string, string>>({});
   protected readonly errorGuardar = signal<string | null>(null);
@@ -92,15 +88,11 @@ export class Documentos {
   protected guardar(): void {
     const f = this.seleccionado();
     if (!f) return;
-    const errores: Record<string, string> = {};
-    if (!/^\d{3}-\d{3}-\d{9}$/.test(this.numero().trim())) errores['numero'] = 'Usa el formato 001-001-000001234.';
-    if (!this.fechaEmision()) errores['fechaEmision'] = 'Es obligatoria.';
-    this.errores.set(errores);
-    if (Object.keys(errores).length) return;
-
+    this.errores.set({});
+    // Las validaciones (número, fecha) las hace el backend y vuelven por campo.
     const request = {
       colaboradorId: f.colaboradorId, periodo: f.periodo, tipo: this.tipo(), numero: this.numero().trim(),
-      fechaEmision: this.fechaEmision(), observaciones: this.observaciones().trim() || null,
+      fechaEmision: this.fechaEmision(),
     };
     const llamada = f.documento ? this.api.corregir(f.documento.id, request) : this.api.registrar(request);
     this.guardando.set(true);
@@ -108,7 +100,7 @@ export class Documentos {
     llamada.subscribe({
       next: (d) => {
         this.guardando.set(false);
-        this.avisos.ok(f.documento ? `Documento corregido. La versión anterior queda en el historial.` : `${this.etiquetaTipo[d.tipo]} ${d.numero} registrada para ${f.colaborador}.`);
+        this.avisos.ok(f.documento ? 'Documento corregido.' : `${this.etiquetaTipo[d.tipo]} ${d.numero} registrada para ${f.colaborador}.`);
         this.cargar(this.periodo());
       },
       error: (e: unknown) => {
@@ -126,7 +118,6 @@ export class Documentos {
     this.tipo.set(f?.documento?.tipo ?? 'Factura');
     this.numero.set(f?.documento?.numero ?? '');
     this.fechaEmision.set(f?.documento?.fechaEmision ?? '');
-    this.observaciones.set(f?.documento?.observaciones ?? '');
   }
 
   private cargar(periodo: string): void {

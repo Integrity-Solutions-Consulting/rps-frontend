@@ -87,7 +87,7 @@
 .grupo__btn {
   width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 6px;
   border: 0; border-radius: 8px; background: transparent; color: var(--rps-text);
-  font: inherit; text-align: left; cursor: pointer;
+  font: inherit; text-align: left; cursor: pointer; text-decoration: none;
   &:hover { background: #f6f8fa; }
 }
 .grupo__icon { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none; }

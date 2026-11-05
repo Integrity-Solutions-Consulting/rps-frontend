@@ -1,17 +1,15 @@
 /**
- * Documento tributario mensual (sección 8 de los requisitos).
- * Uno por colaborador y mes, aunque tenga dos pagos o varios proyectos (RN 32).
- * Su falta se advierte pero no impide exportar (RN 35, RN 57).
- * Endpoint propuesto: /api/documentos.
+ * Documento tributario mensual, como lo guarda rps-backend
+ * (/api/colaboradores/{id}/documentos-mensuales): tipo, número y fecha de emisión.
  */
 
 export type TipoDocumento = 'Factura' | 'NotaDeVenta';
 
-/** Qué proyecto y qué valor cubre el documento, para no duplicarlos (RN 34). */
+/** Un honorario del mes que cubre el documento. */
 export interface DetalleDocumento {
   tmrProyectoId: string;
   proyecto: string;
-  /** Total del documento calculado para ese proyecto (subtotal + IVA). */
+  /** Total del documento de ese honorario (subtotal + IVA, calculado por el backend). */
   importe: number;
 }
 
@@ -23,12 +21,8 @@ export interface DocumentoMensual {
   /** Formato del SRI: 001-001-000001234. */
   numero: string;
   fechaEmision: string;
-  observaciones: string | null;
   detalle: DetalleDocumento[];
   registradoEn: string;
-  usuario: string;
-  /** Veces que se corrigió. Las versiones anteriores se conservan. */
-  correcciones: number;
 }
 
 /** Una fila de la lista: el documento esperado de un colaborador en el mes. */
@@ -36,9 +30,7 @@ export interface FilaDocumento {
   colaboradorId: string;
   colaborador: string;
   periodo: string;
-  /** Total de documento calculado en la liquidación (lo que se espera recibir). */
-  totalCalculado: number | null;
-  /** Proyectos y valores de la liquidación que debe cubrir el documento. */
+  /** Honorarios del mes del colaborador, con su total de documento. */
   proyectos: DetalleDocumento[];
   documento: DocumentoMensual | null;
 }
@@ -49,7 +41,6 @@ export interface RegistrarDocumentoRequest {
   tipo: TipoDocumento;
   numero: string;
   fechaEmision: string;
-  observaciones: string | null;
 }
 
 export const ETIQUETA_TIPO_DOCUMENTO: Record<TipoDocumento, string> = {

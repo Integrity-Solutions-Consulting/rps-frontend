@@ -1,74 +1,37 @@
 /**
- * Parámetros del sistema que administra Contabilidad (sección 13, pantalla Configuración).
- * Cada cambio crea una vigencia nueva; los cálculos ya hechos guardan los valores que usaron (RN 29).
- * Endpoint propuesto: /api/configuracion (hoy responde el mock).
+ * Configuración global de rps-backend (Features/Configuracion): un solo registro.
+ * GET /api/configuracion y PUT /api/configuracion (se envía el registro completo).
+ * Los cambios rigen de inmediato; el backend valida rangos y largos.
  */
-
-export type ClaveParametro =
-  | 'AlertasDias'
-  | 'LimiteAnticiposPct'
-  | 'IvaPct'
-  | 'RetencionFuentePct'
-  | 'RetencionIvaProfesionalPct'
-  | 'RetencionIvaJuniorPct';
-
-/** Desde cuándo rige un cambio. Las alertas no cambian importes: rigen de inmediato. */
-export type AplicaDesde = 'Inmediato' | 'SiguienteMes';
-
-export interface ParametroVigente {
-  clave: ClaveParametro;
-  /** Un solo número para porcentajes; varios para los días de alerta (30, 15, 7). */
-  valores: number[];
-  /** Mes "yyyy-MM" desde el que rige el valor actual. */
-  vigenteDesde: string;
-  /** Cambio registrado para un mes que aún no empieza. */
-  programado: { valores: number[]; vigenteDesde: string } | null;
-  aplicaDesde: AplicaDesde;
-}
-
-export interface CambioParametro {
-  clave: ClaveParametro;
-  anterior: number[] | null;
-  nuevo: number[];
-  vigenteDesde: string;
-  registradoEn: string;
-  usuario: string;
-}
-
-/** Qué sabe guardar quien responde (los datos de ejemplo sí; rps-backend todavía no). */
-export interface CapacidadesConfiguracion {
-  /** Cambios que rigen desde el mes siguiente y se pueden programar o cancelar. */
-  vigencias: boolean;
-  /** Días de alerta de vencimiento editables. */
-  alertas: boolean;
-  /** Catálogo de bancos editable. */
-  bancos: boolean;
-}
-
 export interface Configuracion {
-  capacidades: CapacidadesConfiguracion;
-  parametros: ParametroVigente[];
-  /** Catálogo de bancos para la pestaña Datos bancarios. */
-  bancos: string[];
-  historial: CambioParametro[];
+  id: string;
+  razonSocial: string;
+  ruc: string;
+  moneda: string;
+  diaPagoFinDeMes: number;
+  diaPagoDosPagos1: number;
+  diaPagoDosPagos2: number;
+  porcentajeMaximoAnticipo: number;
+  porcentajeIva: number;
+  porcentajeRetencionFuente: number;
+  porcentajeRetencionIvaProfesional: number;
+  porcentajeRetencionIvaJunior: number;
+  actualizadoEn: string;
 }
 
-export interface CambiarParametroRequest {
-  valores: number[];
-}
+export type ActualizarConfiguracionRequest = Omit<Configuracion, 'id' | 'actualizadoEn'>;
 
-export const PARAMETROS: Record<ClaveParametro, { nombre: string; unidad: '%' | 'días'; ayuda: string }> = {
-  AlertasDias: { nombre: 'Alertas de vencimiento', unidad: 'días', ayuda: 'Con cuántos días de anticipación se avisa que vence un contrato (RN 13).' },
-  LimiteAnticiposPct: { nombre: 'Límite de anticipos adicionales', unidad: '%', ayuda: 'Porcentaje del neto mensual completo que pueden sumar los anticipos pendientes (RN 42, RN 43).' },
-  IvaPct: { nombre: 'IVA', unidad: '%', ayuda: 'Sobre el subtotal del servicio.' },
-  RetencionFuentePct: { nombre: 'Retención en la fuente', unidad: '%', ayuda: 'Sobre el subtotal del servicio.' },
-  RetencionIvaProfesionalPct: { nombre: 'Retención de IVA · profesional', unidad: '%', ayuda: 'Sobre el IVA, para servicios profesionales.' },
-  RetencionIvaJuniorPct: { nombre: 'Retención de IVA · junior', unidad: '%', ayuda: 'Sobre el IVA, para servicios junior.' },
-};
-
-/** "30, 15, 7 días" o "15 %". */
-export function textoValores(clave: ClaveParametro, valores: number[] | null): string {
-  if (!valores?.length) return '—';
-  const unidad = PARAMETROS[clave].unidad;
-  return unidad === '%' ? `${valores.join(', ')} %` : `${valores.join(', ')} días`;
-}
+/** Campos del formulario, en el orden en que se muestran. */
+export const CAMPOS_CONFIGURACION: { clave: keyof ActualizarConfiguracionRequest; etiqueta: string; tipo: 'texto' | 'entero' | 'porcentaje'; grupo: string }[] = [
+  { clave: 'razonSocial', etiqueta: 'Razón social', tipo: 'texto', grupo: 'Empresa' },
+  { clave: 'ruc', etiqueta: 'RUC', tipo: 'texto', grupo: 'Empresa' },
+  { clave: 'moneda', etiqueta: 'Moneda', tipo: 'texto', grupo: 'Empresa' },
+  { clave: 'diaPagoDosPagos1', etiqueta: 'Día de pago de la quincena', tipo: 'entero', grupo: 'Días de pago' },
+  { clave: 'diaPagoDosPagos2', etiqueta: 'Día de pago de fin de mes (dos pagos)', tipo: 'entero', grupo: 'Días de pago' },
+  { clave: 'diaPagoFinDeMes', etiqueta: 'Día de pago (solo fin de mes)', tipo: 'entero', grupo: 'Días de pago' },
+  { clave: 'porcentajeMaximoAnticipo', etiqueta: 'Límite de anticipos (% del neto mensual)', tipo: 'porcentaje', grupo: 'Anticipos' },
+  { clave: 'porcentajeIva', etiqueta: 'IVA', tipo: 'porcentaje', grupo: 'Impuestos' },
+  { clave: 'porcentajeRetencionFuente', etiqueta: 'Retención en la fuente', tipo: 'porcentaje', grupo: 'Impuestos' },
+  { clave: 'porcentajeRetencionIvaProfesional', etiqueta: 'Retención de IVA · profesional', tipo: 'porcentaje', grupo: 'Impuestos' },
+  { clave: 'porcentajeRetencionIvaJunior', etiqueta: 'Retención de IVA · junior', tipo: 'porcentaje', grupo: 'Impuestos' },
+];

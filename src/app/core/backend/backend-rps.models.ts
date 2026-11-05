@@ -60,6 +60,30 @@ export interface BeEstadoTmr {
   desactualizada: boolean;
 }
 
+/** GET /api/integracion-tmr/cambios · aviso de un cambio detectado en TMR (RN 50). */
+export type TipoCambioTmr =
+  | 'AsignacionNueva' | 'AsignacionEliminada' | 'AsignacionRestaurada' | 'FechaSalida'
+  | 'EstadoColaborador' | 'ColaboradorEliminado' | 'ColaboradorRestaurado';
+
+export interface BeCambioTmr {
+  id: string; colaboradorId: string; nombres: string | null; apellidos: string | null;
+  proyectoId: string | null; proyectoNombre: string | null; tipo: TipoCambioTmr;
+  valorAnterior: string | null; valorNuevo: string | null; periodoDesde: string | null; detectadoEn: string;
+  /** Hay una liquidación (revisada o no) desde periodoDesde en adelante. */
+  tieneLiquidacion: boolean; tieneLiquidacionRevisada: boolean;
+  revisado: boolean; revisadoEn: string | null; revisadoPorUsuarioId: string | null;
+}
+
+/** GET /api/dashboard?periodo=2026-11-01 (DashboardService de rps-backend). */
+export interface BeDashboard {
+  periodo: string | null;
+  colaboradores: { configurados: number; pendientes: number; activos: number; inactivos: number };
+  honorarios: { cantidad: number; netoTotal: number };
+  liquidaciones: { revisadas: number; sinRevisar: number };
+  anticipos: { conSaldoPendiente: number; montoPendiente: number };
+  contratosPorVencer: { en30Dias: number; en15Dias: number; en7Dias: number };
+}
+
 export interface BeContrato {
   id: string; colaboradorId: string; proyectoId: string; proyectoNombre: string;
   fechaInicio: string; fechaFin: string; fechaFinVigente: string;
@@ -68,11 +92,10 @@ export interface BeContrato {
 
 export interface BeAdenda { id: string; contratoId: string; nuevaFechaFin: string; fechaRegistro: string; observaciones: string | null }
 
-/** GET /api/colaboradores/{id}/condiciones-economicas/historial (incluye canceladas). */
+/** GET /api/colaboradores/{id}/condiciones-economicas (de la más reciente a la más antigua). */
 export interface BeCondicion {
   id: string; colaboradorId: string; proyectoId: string; proyectoNombre: string; contratoId: string;
   importeMensual: number; modalidad: Modalidad; mesInicioVigencia: string; observaciones: string | null;
-  creadoEn: string; canceladoEn: string | null;
 }
 
 export interface BeHonorario {
@@ -96,6 +119,12 @@ export interface BeCuota { id: string; periodo: string; corte: TipoCorte; import
 export interface BeAnticipo {
   id: string; colaboradorId: string; monto: number; fecha: string; observaciones: string | null;
   saldoPendiente: number; cuotas: BeCuota[]; creadoEn: string;
+}
+
+/** GET /api/colaboradores/{id}/anticipos/resumen · mismos cálculos con los que el backend valida. */
+export interface BeResumenAnticipos {
+  colaboradorId: string; activo: boolean; netoMensualCompleto: number; porcentajeMaximoAnticipo: number;
+  limite: number; saldoPendiente: number; disponible: number; periodo: string; cortesPermitidos: TipoCorte[];
 }
 
 export interface BeDocumento {

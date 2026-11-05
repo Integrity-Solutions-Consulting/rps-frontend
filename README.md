@@ -2,22 +2,25 @@
 
 Frontend de **RPS**, el sistema de Contabilidad para preparar los honorarios mensuales de colaboradores
 por servicios profesionales: contratos, honorarios por proyecto, anticipos, liquidaciones, documentos
-tributarios y el archivo de pago. RPS **no paga**: prepara y deja constancia.
+tributarios y archivos CSV. RPS **no paga**: prepara y deja constancia.
 
 Angular 21 (standalone, signals, sin zone.js), SCSS propio, idioma `es-EC`.
 
+**Regla del proyecto:** el frontend no tiene lógica de negocio. Muestra lo que devuelve `rps-backend`
+y envía lo que la persona escribe; las validaciones, cálculos y estados los decide el backend.
+Si algo no está en el backend, no se muestra.
+
 ## Arrancar
 
-Necesitas Node 20 o superior.
+Necesitas Node 20 o superior y `rps-backend` corriendo en `http://localhost:5203`.
 
 ```bash
 npm install
-npm start           # todo con datos de ejemplo, no necesita backend
-npm run start:api   # usa rps-backend en http://localhost:5203 (proxy /api)
+npm start           # igual que npm run start:api: proxy /api → http://localhost:5203
 ```
 
-Abre `http://localhost:4200`. Con `start:api`, los indicadores y "Requiere atención" de Inicio y los nombres de las personas
-siguen siendo de ejemplo hasta que el backend los tenga (la lista exacta está en `src/environments/environment.development.ts`).
+Abre `http://localhost:4200` y entra con el usuario de desarrollo del backend.
+No hay datos de ejemplo: si el backend no responde, las pantallas muestran el error.
 
 Comprobar que compila sin abrir el navegador:
 
@@ -30,46 +33,43 @@ node node_modules/@angular/compiler-cli/bundles/src/bin/ngc.js -p tsconfig.app.j
 1. En `rps-backend`: `docker compose up -d`, `dotnet ef database update -- --environment Development`
    y `dotnet run --launch-profile http` (perfil **http**, no https).
 2. Con la base vacía, cargar datos de prueba: `powershell -ExecutionPolicy Bypass -File ..\docs\semilla-desarrollo.ps1`
-   (también crea el usuario de desarrollo `admin@rps.test`; la contraseña está en el script).
-3. Aquí: `npm run start:api` y entrar con ese usuario.
-4. Liquidaciones → Calcular: Ana Pérez debe dar **$960,00** de neto (ejemplo de los requisitos).
+   (también crea el usuario de desarrollo; la contraseña está en el script, no aquí).
+3. Aquí: `npm start` y entrar con ese usuario.
 
-## Pantallas
+## Pantallas y endpoints
 
-| Pantalla | Con `start:api` |
+| Pantalla | Endpoints de rps-backend |
 |---|---|
-| Login | Backend (`/api/auth`) |
-| Inicio | Vencimientos y Preparación del período: backend · indicadores y Requiere atención: ejemplo |
-| Campana de notificaciones (cabecera) | Backend |
-| Colaboradores (lista y ficha con 6 pestañas) | Backend |
-| Contratos y adendas | Backend |
-| Anticipos | Backend |
-| Liquidaciones | Backend |
-| Documentos tributarios | Backend |
-| Exportaciones (archivo de pago por corte) | Backend |
-| Configuración | Backend (solo lo que el backend guarda hoy) |
+| Login | `/api/auth/login`, `/refresh-token`, `/logout` |
+| Inicio | `GET /api/dashboard?periodo=`, `GET /api/dashboard/vencimientos`, `GET /api/integracion-tmr/estado`, `/cambios`, `GET /api/liquidaciones` |
+| Campana (cabecera) | `GET /api/integracion-tmr/cambios?revisado=false`, `POST /cambios/{id}/revisar` |
+| Colaboradores (lista y ficha) | `/api/colaboradores` (+ `/frecuencias`, `/clasificacion`, `/cuenta-bancaria`, `/asignaciones`, `/condiciones-economicas`, `/historial`), `POST /api/integracion-tmr/sincronizar` |
+| Contratos y adendas | `/api/colaboradores/{id}/contratos` y `/adendas`, `GET /api/dashboard/vencimientos` |
+| Anticipos | `/api/colaboradores/{id}/anticipos` (+ `/resumen`, `/{id}/plan`) |
+| Liquidaciones | `POST /api/honorarios/generar`, `POST /api/liquidaciones/generar`, `GET /api/liquidaciones`, `POST /{id}/revisar` |
+| Documentos tributarios | `/api/colaboradores/{id}/documentos-mensuales`, `GET /api/honorarios?periodo=` |
+| Exportaciones | `GET /api/exportaciones/honorarios`, `/liquidaciones`, `/colaboradores` (CSV) |
+| Configuración | `GET` y `PUT /api/configuracion` |
 
 ## Dónde está cada cosa
 
 ```
 src/app/
-  core/        backend/ (adaptadores a rps-backend), mocks/ (datos de ejemplo), interceptors/, http/, layout/
+  core/        backend/ (tipos crudos y adaptadores a rps-backend), interceptors/ (errores y token), http/, layout/
   features/    un módulo por pantalla: models/, services/, pages/, components/
-  shared/      componentes, pipes (dinero), directivas (appSoloNumeros), utilidades de fechas y períodos
+  shared/      componentes, pipes (dinero), directivas (appSoloNumeros), utilidades de períodos
 ```
 
-Cada servicio decide si responde con datos de ejemplo o con el backend real
-(`environment.*.ts → mockRutas`) y convierte la respuesta del backend al modelo de la pantalla.
+Cada servicio llama al backend y convierte su respuesta al modelo de la pantalla; no calcula nada de negocio.
 
 ## Documentación
 
-- `CLAUDE.md`: contexto del proyecto, reglas de negocio que más se olvidan y lo que falta.
-- `docs/GUIA-FRONTEND.md`: carpetas, cómo viaja un dato, convenciones, diferencias con los mockups.
-- `docs/UX-FRONTEND.md`: reglas de experiencia de usuario.
-- `../docs/CONEXIONES.md`: qué ruta del backend usa cada pantalla, lo agregado al backend y las diferencias pendientes.
+- `docs/GUIA-FRONTEND.md`: carpetas, cómo viaja un dato, convenciones y lo que falta en el backend.
+- `docs/API.md`: endpoints que usa el frontend y los que harían falta para lo pendiente.
+- `../docs/CONEXIONES.md`: qué ruta del backend usa cada pantalla.
 
 ## Acuerdos
 
-- No subir `.env` ni claves.
+- No subir `.env`, `appsettings.Development.json` ni claves.
 - Textos de pantalla en español, sin jerga técnica.
 - Campos de valor con `appSoloNumeros`, nunca `type="number"`.

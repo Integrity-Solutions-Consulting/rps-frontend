@@ -3,17 +3,20 @@
 Para cualquier persona del equipo que abra este proyecto por primera vez.
 Explica cómo está organizado, de dónde sale cada dato y cómo agregar una pantalla nueva.
 
+> **Regla principal:** el frontend no tiene lógica de negocio, solo interfaz.
+> Validaciones, cálculos, límites, estados (vencido, revisado, pendiente, saldo…) los decide `rps-backend`.
+> El frontend muestra lo que el backend devuelve, envía lo que la persona escribe y muestra los errores del backend
+> junto a cada campo. Si una función no está en el backend, no se muestra en pantalla.
+
 ## 1. Arrancar
 
 ```powershell
 npm install          # solo la primera vez
-npm start            # todo con datos de ejemplo: no necesita backend
-npm run start:api    # llama al backend real (rps-backend en http://localhost:5203)
+npm start            # proxy /api → rps-backend en http://localhost:5203
 ```
 
-Abrir http://localhost:4200 e iniciar sesión (todas las pantallas lo piden). Con `npm start` el login de ejemplo muestra el usuario de prueba; con `start:api` se usa el usuario de desarrollo del backend (`../docs/CONEXIONES.md`, sección 2, Login).
-Qué partes son datos de ejemplo lo dice `environment.*.ts → mockRutas` (la pantalla ya no muestra una etiqueta).
-Con `npm start` lo que se guarda se pierde al recargar la página.
+Abrir http://localhost:4200 e iniciar sesión con el usuario de desarrollo del backend (`../docs/CONEXIONES.md`, sección Login).
+No hay datos de ejemplo: el backend tiene que estar corriendo.
 
 ## 2. Carpetas
 
@@ -21,180 +24,125 @@ Con `npm start` lo que se guarda se pierde al recargar la página.
 src/app/
 ├── core/                    Lo que usa toda la aplicación (no es de ningún módulo)
 │   ├── layout/              Menú lateral, cabecera y estructura de pantalla
-│   ├── navigation/menu.ts   Ítems del menú; `disponible: true` cuando el módulo tiene pantalla
+│   ├── navigation/menu.ts   Ítems del menú
 │   ├── services/            Sesión (login, token, renovar, cerrar sesión) y avisos (toasts)
 │   ├── auth/auth.guard.ts   Pide sesión en todas las pantallas; sin ella lleva a /login
-│   ├── interceptors/        Cliente HTTP: errores, token, desempaquetar ApiResponse, datos de ejemplo
-│   ├── http/error-api.ts    Lee los errores del backend (ProblemDetails) para mostrarlos al usuario
-│   └── mocks/               Datos de ejemplo, uno por módulo (ver sección 4)
+│   ├── interceptors/        errorInterceptor y authTokenInterceptor
+│   ├── http/error-api.ts    Lee los errores del backend (ProblemDetails: codigo, errors{campo}) para mostrarlos
+│   └── backend/             Respuestas crudas del backend (Be*) y utilidades comunes
 ├── features/                Un módulo por sección del menú
-│   ├── auth/                Pantalla de login (/login)
+│   ├── auth/                Login (/login)
 │   ├── dashboard/           Inicio
-│   ├── colaboradores/       Lista y ficha del colaborador
-│   │   ├── pages/lista/     Pantalla de la lista
-│   │   ├── pages/ficha/     Pantalla de la ficha: carga datos, cabecera y pestañas
-│   │   ├── components/      Una carpeta por pestaña de la ficha (tab-*)
-│   │   ├── models/          Tipos que coinciden con los DTO del backend
-│   │   └── services/        Llamadas HTTP del módulo
+│   ├── notificaciones/      Campana y bandeja: cambios detectados en TMR (RN 50)
+│   ├── colaboradores/       Lista y ficha (pages/ficha + components/tab-*)
 │   ├── contratos/           Contratos y adendas
-│   ├── anticipos/           Anticipos adicionales: límite, cortes y plan de recuperación
-│   ├── liquidaciones/       Cálculo del mes: proyectos, impuestos, cortes y "Revisado para envío"
+│   ├── anticipos/           Anticipos adicionales y plan de cuotas
+│   ├── liquidaciones/       Cálculo del mes y "Revisado para envío"
 │   ├── documentos/          Documento tributario mensual por colaborador
-│   ├── exportaciones/       Preparar el archivo de pago por corte y descargar versiones
-│   ├── configuracion/       Parámetros con vigencia: alertas, límite, impuestos, bancos
-│   ├── honorarios/          Modelos y servicio de honorarios por proyecto (los usa la ficha)
-│   ├── integracion-tmr/     Lectura de la copia de TMR: nombres, identificación, asignaciones
-│   └── proximamente/        Pantalla temporal para módulos futuros (hoy no se usa)
+│   ├── exportaciones/       Descarga de CSV del backend
+│   ├── configuracion/       Configuración global (un solo registro)
+│   ├── honorarios/          Servicio y modelos de condiciones económicas (los usa la ficha)
+│   └── integracion-tmr/     Copia de TMR que guarda el backend: nombres, asignaciones, sincronizar
 ├── shared/                  Piezas reutilizables sin lógica de negocio
 │   ├── components/          icon, estado-chip
-│   ├── models/corte.ts      Quincena / Fin de mes y sus rangos de días
+│   ├── models/corte.ts      Quincena / Fin de mes (etiquetas)
 │   ├── pipes/dinero.pipe.ts {{ 1066.67 | dinero }} → $ 1.066,67
-│   └── utils/               periodo.ts (meses "yyyy-MM"), fechas.ts (fechas locales, días del mes)
-└── (src/styles/)            formularios.scss: campos, avisos, pestañas · paginas.scss: encabezados, indicadores, panel lateral
+│   └── utils/periodo.ts     Meses "yyyy-MM" para los selectores
+└── (src/styles/)            formularios.scss y paginas.scss
 ```
 
-Regla general: **cada módulo tiene `models`, `services` y `pages`**. Si una pantalla crece mucho, sus partes van en `components` (como las pestañas de la ficha).
+Cada módulo tiene `models`, `services` y `pages`. Si una pantalla crece, sus partes van en `components`.
 
 ## 3. Cómo viaja un dato
 
 ```
-Pantalla (pages/…)  →  servicio (services/…)  →  HttpClient  →  interceptores  →  backend o datos de ejemplo
+Pantalla (pages/…)  →  servicio (services/…)  →  HttpClient  →  interceptores  →  rps-backend
 ```
 
-- Las pantallas **nunca** llaman a `HttpClient` directamente: usan el servicio de su módulo.
+- Las pantallas **nunca** llaman a `HttpClient`: usan el servicio de su módulo.
 - Cada método del servicio tiene un comentario con el endpoint exacto (`GET /api/...`).
-- Los tipos de `models/` deben coincidir con lo que devuelve el backend. Si el backend cambia un campo, se cambia aquí.
+- Las respuestas crudas están tipadas en `core/backend/backend-rps.models.ts` (`Be*`). El servicio solo **renombra o junta**
+  campos para la pantalla (por ejemplo, pone el nombre de TMR junto al colaborador). No calcula valores de negocio.
+- Los errores llegan como ProblemDetails; `leerErrorApi` devuelve el mensaje y los errores por campo para mostrarlos.
 
-### Ficha del colaborador: de dónde sale cada pestaña
+### Ficha del colaborador
 
 | Pestaña | Componente | Datos |
 |---|---|---|
-| Cabecera | `pages/ficha/ficha.ts` | `/api/colaboradores/{id}` + nombre de TMR (ejemplo) + contratos del colaborador |
-| Datos generales | `components/tab-datos-generales` | Copia de TMR (solo lectura) |
-| Proyectos | `components/tab-proyectos` | Asignaciones (`/api/colaboradores/{id}/asignaciones`); calcula días por proyecto en el mes elegido |
-| Condiciones económicas | `components/tab-condiciones` | Tipo de servicio y frecuencia: `/api/colaboradores`. Honorarios por proyecto: `.../condiciones-economicas/historial`, cancelar y restaurar |
-| Datos bancarios | `components/tab-bancarios` | `PUT /api/colaboradores/{id}/cuenta-bancaria` |
-| Contratos | `components/tab-contratos` | `.../contratos` y `.../adendas` del colaborador; para registrar, lleva a la pantalla Contratos |
+| Cabecera | `pages/ficha/ficha.ts` | `/api/colaboradores/{id}`, `/asignaciones`, `/contratos` |
+| Datos generales | `components/tab-datos-generales` | Copia de TMR del backend (solo lectura) |
+| Proyectos | `components/tab-proyectos` | `/api/colaboradores/{id}/asignaciones` y los contratos de cada proyecto. Los días los calcula el backend al generar honorarios |
+| Condiciones económicas | `components/tab-condiciones` | Clasificación (`PUT /clasificacion`), frecuencias (`/frecuencias`: GET, POST, PUT, DELETE) y honorarios (`GET`/`POST /condiciones-economicas`, con proyecto y contrato) |
+| Datos bancarios | `components/tab-bancarios` | `PUT /api/colaboradores/{id}/cuenta-bancaria` (banco y tipo son texto libre en el backend) |
+| Contratos | `components/tab-contratos` | `.../contratos` y `.../adendas`; para registrar lleva a la pantalla Contratos |
 | Historial | `components/tab-historial` | `/api/colaboradores/{id}/historial` |
 
-La página de la ficha carga los datos una vez y se los pasa a cada pestaña. Cuando una pestaña guarda algo, avisa con `(actualizado)` y la ficha vuelve a leer.
-Otras pantallas pueden abrir una pestaña directo con `?tab=`: `/colaboradores/<id>?tab=condiciones`.
-
-**Colaboradores:** las personas vienen de TMR; RPS no da de alta colaboradores (RN 03). En RPS solo se completa lo que necesita Contabilidad: tipo de servicio, frecuencia de pago, honorarios y cuenta bancaria. (Este texto estaba como aviso arriba de la lista.)
+La ficha carga los datos una vez y se los pasa a cada pestaña. Cuando una pestaña guarda algo, la ficha vuelve a leer.
+Otras pantallas abren una pestaña con `?tab=`: `/colaboradores/<id>?tab=condiciones`.
 
 ### Las demás pantallas
 
-| Pantalla | Archivo | Datos | Llega con |
-|---|---|---|---|
-| Anticipos | `features/anticipos/pages/anticipos` | `.../anticipos` y `.../anticipos/{id}/plan` | `?colaborador=<id>` |
-| Liquidaciones | `features/liquidaciones/pages/liquidaciones` | `/api/honorarios/generar` + `/api/liquidaciones/generar`, `/api/liquidaciones` | `?periodo=2026-10&liquidacion=<id>` |
-| Documentos | `features/documentos/pages/documentos` | `.../documentos-mensuales` | `?periodo=&colaborador=` |
-| Exportaciones | `features/exportaciones/pages/exportaciones` | `/api/exportaciones` | `?periodo=&corte=Quincena` |
-| Configuración | `features/configuracion/pages/configuracion` | `/api/configuracion` (un solo registro; `capacidades` dice qué se puede editar) | — |
-
-### El flujo del mes (sección 14 de los requisitos) en pantallas
-
-1. **Colaboradores**: revisar personas, proyectos y configuración.
-2. **Contratos** y **ficha → Condiciones económicas**: contratos, adendas y honorarios por proyecto.
-3. **Anticipos**: registrar anticipos y su plan de recuperación del mismo mes.
-4. **Liquidaciones → Calcular período**: días y valores por proyecto, total por colaborador.
-5. **Documentos**: registrar el documento mensual (si falta, solo es advertencia).
-6. **Liquidaciones**: revisar cortes y descuentos; marcar "Revisado para envío".
-7. **Exportaciones**: elegir colaboradores y generar el archivo. Queda guardada la versión.
-8. **Historial** del colaborador: todo lo anterior, con fecha y usuario.
-
-### Adaptadores al backend real
-
-Las rutas reales de rps-backend no siempre tienen la forma que usa la pantalla. Por eso cada servicio tiene dos caminos:
-`if (this.be.usaMock('/x'))` devuelve el mock; si no, llama a las rutas reales y **convierte** su respuesta
-(sección `// ── Conversión desde rps-backend ──` del servicio). Las respuestas crudas están tipadas en
-`core/backend/backend-rps.models.ts` (`Be*`) y las utilidades comunes en `core/backend/backend-rps.service.ts`.
-La pantalla nunca ve un `Be*`. Detalle por pantalla: `../docs/CONEXIONES.md`, sección 2.
-
-### Campana de notificaciones
-
-`features/notificaciones`: `components/campana` (cabecera, top 5 y "Ver más") y `components/bandeja` (ventana con búsqueda,
-severidad, tipo y 20 por página). Datos: `GET /api/notificaciones?periodo=`. Otra pantalla puede abrir la bandeja filtrada con
-`NotificacionesService.abrir('Configuracion')` (lo usa el aviso de pendientes de Liquidaciones).
-
-### Pantalla de Inicio: qué muestra cada sección
-
-Las explicaciones que antes salían debajo del título de cada sección viven aquí, para que la pantalla quede limpia.
-Archivos: `features/dashboard/pages/inicio` (pantalla) y `core/mocks/dashboard.mock.ts` (datos de ejemplo).
-Orden en escritorio: indicadores arriba; luego **Vencimientos de contratos** (izquierda) y **Requiere atención** (derecha), siempre con la misma altura; al final **Preparación del período** a todo el ancho.
-
-| Sección | Qué muestra | Reglas |
+| Pantalla | Datos | Llega con |
 |---|---|---|
-| Vencimientos de contratos | Contratos que vencen en los próximos 30 días y vencidos que siguen con la asignación activa, del más urgente al menos. Chip rojo: vencido o 7 días o menos · ámbar: 15 días o menos · azul: hasta 30 días. **Ver todos** abre Contratos; **Ver contrato** (columna Acciones) abre Contratos filtrado por esa persona y con ese contrato seleccionado (`/contratos?colaborador=<ID TMR>&contrato=<id>`), donde se ve el fin vigente, las adendas y los datos del contrato. La lista la arma el backend: `GET /api/dashboard/vencimientos` | Alertas a 30, 15 y 7 días. El vencimiento **no bloquea** la liquidación (RN 14). Vencido con asignación activa en TMR: "requiere revisión" (RN 15) |
-| Preparación del período | Una fila por colaborador con su liquidación del mes: proyectos, tipo de pago (quincena y fin de mes, o solo fin de mes), neto calculado, descuento de anticipos y valor a pagar. *Pendiente*: ya se calculó, pero Contabilidad no la revisó · *Revisado*: se marcó "Revisado para envío" · *Por recalcular*: algo cambió después del cálculo. **Ver detalle** abre esa persona en Liquidaciones (`/liquidaciones?periodo=&liquidacion=<id>`) para revisar días, impuestos, cortes y anticipos. **Generar exportación** abre Exportaciones con el mes elegido. 10 por página. Datos: los mismos de Liquidaciones (`LiquidacionesService.listar`) | RN 31, RN 36 a 40, RN 49, RN 50. Exportar no marca el pago como realizado (RN 56). Si el mes no está calculado, se ofrece ir a Liquidaciones |
-| Requiere atención | Un botón por tipo de alerta (como en el mockup): ícono, título, frase corta y cuántas hay. El color del ícono es el de la alerta más grave del grupo (rojo crítica · ámbar advertencia · azul informativa). Al pulsar un botón se abren las personas de ese tipo; cada una lleva a la pantalla donde se resuelve. Si no caben, el panel tiene barra de desplazamiento | Tipos: cambios de TMR (RN 50), contrato vencido con proyecto activo (RN 15), documento tributario pendiente (RN 35, no bloquea la exportación), datos incompletos (sin cuenta bancaria no entra al archivo de pago; proyecto sin honorario, RN 06) y anticipos con cuotas del mes |
+| Inicio | `GET /api/dashboard?periodo=yyyy-MM-01` (indicadores), `GET /api/dashboard/vencimientos`, `GET /api/integracion-tmr/estado` y `/cambios`, liquidaciones del mes | — |
+| Campana | `GET /api/integracion-tmr/cambios?revisado=false` y `POST /cambios/{id}/revisar` | — |
+| Contratos | contratos y adendas por colaborador + vencimientos | `?colaborador=<ID TMR>&contrato=<id>` |
+| Anticipos | `.../anticipos/resumen?periodo=` (neto, límite, saldo, disponible, cortes permitidos), `POST .../anticipos`, `PUT .../{id}/plan`, `DELETE .../{id}` | `?colaborador=<id>` |
+| Liquidaciones | `POST /api/honorarios/generar` + `POST /api/liquidaciones/generar`, `GET /api/liquidaciones`, `POST /{id}/revisar` | `?periodo=2026-10&liquidacion=<id>` |
+| Documentos | `.../documentos-mensuales` (tipo, número ≤ 50, fecha de emisión) | `?periodo=&colaborador=` |
+| Exportaciones | `GET /api/exportaciones/honorarios?periodo=`, `/liquidaciones?periodo=`, `/colaboradores` (CSV) | `?periodo=` |
+| Configuración | `GET`/`PUT /api/configuracion` | — |
 
-Antes Inicio mostraba "Cortes del período" (totales por quincena y fin de mes); se cambió por la lista por persona. Los totales por corte siguen en Liquidaciones y Exportaciones.
+### El flujo del mes
 
-## 3b. Cómo se calcula una liquidación
+1. **Colaboradores → Sincronizar con TMR**: el backend copia personas, proyectos y asignaciones.
+2. **Ficha → Condiciones económicas**: clasificación, frecuencia y honorario por proyecto y contrato.
+3. **Contratos**: contratos y adendas.
+4. **Anticipos**: registrar el anticipo y luego su plan de cuotas (dos pasos del backend).
+5. **Liquidaciones → Calcular período**: genera honorarios y liquidaciones (el backend no rehace las ya generadas).
+6. **Documentos**: registrar el documento mensual.
+7. **Liquidaciones → Marcar revisada para envío** (el backend no permite desmarcar).
+8. **Exportaciones**: descargar los CSV.
 
-El cálculo lo hará el backend. Mientras tanto, `core/mocks/calculo.mock.ts` hace lo mismo para que las pantallas muestren números coherentes. Paso a paso, con Ana Pérez en octubre (31 días, servicios profesionales):
+### Inicio
 
-| Paso | Regla | Marketing Digital (neto $600) | Consultoría RPS (más IVA $400) |
-|---|---|---|---|
-| Días del proyecto | RN 22 a 25: **cada proyecto cuenta sus propios días**; dos proyectos a la vez pagan los dos | 31 de 31 | 31 de 31 |
-| Proporcional | honorario ÷ días del mes × días | $600,00 | $400,00 |
-| Subtotal | Neto: se busca hacia atrás (÷ 0,90) · Más IVA: es el mismo valor | $666,67 | $400,00 |
-| IVA 15 % | sobre el subtotal | $100,00 | $60,00 |
-| Retención fuente 10 % + retención IVA 100 % | | $166,67 | $100,00 |
-| **Neto del proyecto** | | **$600,00** | **$360,00** |
+| Sección | Qué muestra |
+|---|---|
+| Indicadores | Neto del período, liquidaciones revisadas / sin revisar, contratos por vencer (30/15/7 días), colaboradores pendientes de configurar, anticipos con saldo. Todo de `GET /api/dashboard` |
+| Aviso de TMR | Sin sincronizar, desactualizada o con error, según `GET /api/integracion-tmr/estado` |
+| Vencimientos de contratos | Lista que arma el backend (`GET /api/dashboard/vencimientos`): vencidos con asignación activa y por vencer |
+| Requiere atención | Cambios de TMR sin revisar, colaboradores pendientes de configurar, contratos vencidos y liquidaciones sin revisar |
+| Preparación del período | Una fila por liquidación del mes: neto, valor de cada corte y si está revisada |
 
-Neto del mes = $600 + $360 = **$960** (RN 31). Frecuencia "quincena y fin de mes": $480 y $480; si sobra un centavo va a la quincena (RN 39).
-Luego se restan las cuotas de anticipos de cada corte (RN 38): con $200 en quincena y $300 a fin de mes quedan $280 y $180.
-Es el mismo ejemplo de la sección 8 de los requisitos.
+## 4. Convenciones
 
-## 4. Datos de ejemplo
-
-`core/interceptors/mock-api.interceptor.ts` decide qué responder. Qué rutas se simulan depende del entorno:
-
-| Entorno | Archivo | Rutas simuladas |
-|---|---|---|
-| `npm start` | `environments/environment.mock.ts` | todas (`['*']`) |
-| `npm run start:api` | `environments/environment.development.ts` | `/dashboard` y `/integracion-tmr` (todo lo demás va al backend) |
-| producción | `environments/environment.ts` | ninguna |
-
-Cuando el backend publique un endpoint, **se quita su ruta de `mockRutas` en `environment.development.ts`** y listo: la pantalla no cambia.
-
-Los datos de ejemplo siguen las mismas reglas y códigos de error que el backend (por ejemplo, `Colaborador.Desactivado`), para que la pantalla se comporte igual con datos reales.
-
-## 5. Convenciones
-
-- **Angular 21 standalone, con signals y sin zone.js.** Estado con `signal()` y `computed()`; entradas con `input()`; salidas con `output()`.
+- **Angular 21 standalone, con signals y sin zone.js.** `signal()`, `computed()`, `input()`, `output()`.
 - **Plantillas con `@if`, `@for` y `@switch`.**
-- **Textos para Contabilidad:** mensajes claros, sin términos técnicos. Los errores dicen qué pasó y qué hacer.
-- **Reglas de negocio:** se citan con su código del documento de requisitos (RN 19, RC 05…) en comentarios y avisos.
-- **Fechas:** usar `shared/utils/fechas.ts`. No usar `toISOString()` para fechas sin hora: da UTC y en Ecuador, después de las 19:00, cambia de día.
-- **Dinero:** `currency: 'USD' : 'symbol' : '1.2-2'` con el idioma `es-EC` ($ 1.066,67).
-- **Estilos:** cada componente tiene su `.scss`; lo que se repite va en `styles/formularios.scss`. Colores en variables `--rps-*` (`src/styles.scss`).
+- **Textos para Contabilidad:** claros, sin términos técnicos. Los errores dicen qué pasó y qué hacer.
+- **Validaciones:** no se duplican en el frontend. Se envía y se muestra el error del backend debajo del campo (`errors{campo}`).
+- **Dinero:** pipe `dinero` (`es-EC`, $ 1.066,67). Campos de valor con `appSoloNumeros`, nunca `type="number"`.
+- **Estilos:** cada componente tiene su `.scss`; lo que se repite va en `styles/formularios.scss`. Colores en variables `--rps-*`.
 
-## 6. Agregar una pantalla nueva
+## 5. Agregar una pantalla nueva
 
-1. Crear `features/<modulo>/` con `models/`, `services/`, `pages/` y `<modulo>.routes.ts`.
-2. Registrar la ruta en `app.routes.ts` (copiar el bloque de `contratos`).
-3. Poner `disponible: true` en `core/navigation/menu.ts`.
-4. Si el backend no tiene el endpoint: crear `core/mocks/<modulo>.mock.ts`, enrutar en `mock-api.interceptor.ts` y agregar la ruta a `mockRutas` de `environment.development.ts`.
-5. Anotar los endpoints en `docs/CONEXIONES.md` (carpeta `RPS/docs`).
+1. Confirmar que el backend ya tiene los endpoints. Si no los tiene, primero se hacen en `rps-backend`.
+2. Agregar los tipos crudos en `core/backend/backend-rps.models.ts`.
+3. Crear `features/<modulo>/` con `models/`, `services/`, `pages/` y `<modulo>.routes.ts`.
+4. Registrar la ruta en `app.routes.ts` y el ítem en `core/navigation/menu.ts`.
+5. Anotar los endpoints en `../docs/CONEXIONES.md`.
 
-## 7. Diferencias con los mockups
+## 6. Lo que falta en el backend (por eso no está en pantalla)
 
-Donde un mockup y el documento de requisitos no coinciden, se siguió el documento:
-
-| Mockup | Se hizo | Motivo |
+| Función | Regla | Qué falta |
 |---|---|---|
-| "El honorario es único por colaborador" | Un honorario por proyecto | RN 17: cada relación colaborador y proyecto tiene su honorario |
-| "Días de proyectos simultáneos se cuentan una sola vez" | Días por proyecto | RN 25: los proyectos simultáneos generan cada uno su honorario |
-| Tipo de servicio y frecuencia junto al honorario | Separados: una sola para el colaborador | RN 05 y RN 36 (decisión del 27 oct 2026) |
-| Alertas con interruptores y envío por correo | Fechas de alerta, sin interruptores | El correo no está confirmado (sección 14); los plazos se configuran en Configuración |
-| Archivos PDF de contrato y adendas | No incluido | Falta definir el almacenamiento de archivos (Propuesta de arquitectura, pendientes) |
-| Liquidaciones: "30 días reconocidos" para la persona | Días **por proyecto** (Marketing Digital 23 de 30, Consultoría RPS 30 de 30) | RN 22 y RN 25: los días se cuentan por proyecto y no se juntan |
-| Liquidaciones: un solo "Base del período" | Desglose de cada proyecto (subtotal, IVA, retenciones, neto) y luego el total | RN 17, RN 28, RN 31 |
-| Historial: todo con estado "Exportado" | Estado exacto: Registrado, Programado, Calculada, Exportado v1, Recuperado… | Sección 12: un cambio de honorario no es una exportación, y exportar no es pagar |
-| Anticipos: se elige el mes de cada cuota | El mes es el de la fecha del anticipo | RN 45: se recupera completo en el mismo mes |
-| Documentos: adjuntar archivo | Recuadro visible pero desactivado | Falta definir el almacenamiento de archivos |
-| Configuración: "Aplicar cambios desde" se elige | Regla fija: alertas de inmediato; límite e impuestos desde el mes siguiente | RN 29: un parámetro no debe cambiar cálculos del mes en curso |
-| Exportaciones | No había mockup; se armó con RN 52 a 57 | — |
+| Recalcular una liquidación y guardar versiones | RN 50 | `liquidaciones/generar` no rehace las ya generadas; no hay versiones |
+| Quitar "Revisado para envío" | RN 49 | Solo existe `POST /{id}/revisar`, que marca |
+| Saldo de anticipos según RN 42 | RN 42 | El backend descuenta todas las cuotas planificadas, no solo las ya aplicadas |
+| Configuración con vigencias | RN 29 | `PUT /api/configuracion` reemplaza el único registro |
+| Frecuencias que no se borren | RN 36, RN 48 | `DELETE /frecuencias/{id}` borra |
+| Cancelar y restaurar un honorario programado | RN 19, RN 48 | Las condiciones económicas solo tienen GET y POST |
+| Validar honorario "desde el mes siguiente" | RN 19, RN 20 | El backend no lo valida |
+| Lista general de contratos | — | No hay `GET /api/contratos`; se lee colaborador por colaborador |
+| Archivo de pago por corte con versiones | RN 52 a 57 | Solo hay CSV de honorarios, liquidaciones y colaboradores |
+| Notificaciones propias de RPS | — | Solo existen los cambios de TMR (`/integracion-tmr/cambios`) |
+| Adjuntar archivos (contratos, documentos) | — | Falta definir el almacenamiento |

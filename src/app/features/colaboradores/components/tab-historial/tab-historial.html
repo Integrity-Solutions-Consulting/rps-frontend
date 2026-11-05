@@ -30,10 +30,6 @@
           <span class="contador__icono contador__icono--info"><app-icon name="card" [size]="20" /></span>
           <span><small>Anticipos registrados</small><strong>{{ contadores().anticipos }}</strong></span>
         </button>
-        <button type="button" class="card contador" [class.is-on]="tipo() === 'Exportación'" (click)="tipo.set(tipo() === 'Exportación' ? '' : 'Exportación')">
-          <span class="contador__icono contador__icono--lila"><app-icon name="upload" [size]="20" /></span>
-          <span><small>Exportaciones</small><strong>{{ contadores().exportaciones }}</strong></span>
-        </button>
       </div>
 
       @if (visibles().length === 0) {
@@ -72,7 +68,7 @@
   <aside class="nota">
     <div class="aviso aviso--info">
       <app-icon name="info" [size]="18" />
-      <div>Este historial registra cálculos y preparación de archivos, <strong>no confirma transferencias bancarias</strong>. Nada se borra: cada cambio queda con fecha y usuario.</div>
+      <div>Este historial junta lo que el backend tiene guardado (contratos, honorarios, liquidaciones, anticipos y documentos). <strong>No confirma transferencias bancarias.</strong></div>
     </div>
   </aside>
 </div>

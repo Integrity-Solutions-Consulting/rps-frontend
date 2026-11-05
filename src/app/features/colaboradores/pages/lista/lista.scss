@@ -6,13 +6,6 @@
   p { margin: 4px 0 0; color: var(--rps-muted); }
 }
 
-.vincular {
-  padding: 18px; display: grid; gap: 14px;
-  header { display: grid; gap: 4px;
-    h2 { font-size: 16.5px; font-weight: 700; }
-    p { margin: 0; color: var(--rps-muted); font-size: 13px; max-width: 70ch; } }
-}
-.vincular__actions { align-self: end; }
 
 .panel { overflow: hidden; }
 

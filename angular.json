@@ -64,17 +64,6 @@
                   "with": "src/environments/environment.development.ts"
                 }
               ]
-            },
-            "mock": {
-              "optimization": false,
-              "extractLicenses": false,
-              "sourceMap": true,
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.mock.ts"
-                }
-              ]
             }
           },
           "defaultConfiguration": "production"
@@ -90,12 +79,9 @@
             },
             "development": {
               "buildTarget": "rps-frontend:build:development"
-            },
-            "mock": {
-              "buildTarget": "rps-frontend:build:mock"
             }
           },
-          "defaultConfiguration": "mock"
+          "defaultConfiguration": "development"
         }
       }
     }

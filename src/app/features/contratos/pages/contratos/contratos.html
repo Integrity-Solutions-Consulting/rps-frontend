@@ -21,13 +21,21 @@
     <span class="kpi__body">
       <span class="kpi__label">Próximos a vencer</span>
       <strong class="kpi__value num">{{ resumen()?.proximosAVencer ?? '–' }}</strong>
-      <span class="kpi__hint">en {{ resumen()?.diasAlerta ?? 30 }} días o menos</span>
+      <span class="kpi__hint">en 30 días o menos</span>
     </span>
   </button>
   <button type="button" class="card kpi" [class.is-on]="filtroEstado() === 'Vencido'"
           (click)="filtroEstado.set(filtroEstado() === 'Vencido' ? '' : 'Vencido')">
     <span class="kpi__icon kpi__icon--danger"><app-icon name="alert" [size]="22" /></span>
-    <span class="kpi__body"><span class="kpi__label">Vencidos</span><strong class="kpi__value num">{{ resumen()?.vencidos ?? '–' }}</strong></span>
+    <span class="kpi__body">
+      <span class="kpi__label">Vencidos con asignación activa</span>
+      <strong class="kpi__value num">{{ resumen()?.vencidos ?? '–' }}</strong>
+    </span>
+  </button>
+  <button type="button" class="card kpi" [class.is-on]="filtroEstado() === 'NoVigente'"
+          (click)="filtroEstado.set(filtroEstado() === 'NoVigente' ? '' : 'NoVigente')">
+    <span class="kpi__icon"><app-icon name="file" [size]="22" /></span>
+    <span class="kpi__body"><span class="kpi__label">No vigentes</span><strong class="kpi__value num">{{ resumen()?.noVigentes ?? '–' }}</strong></span>
   </button>
 </section>
 
@@ -45,7 +53,7 @@
                 [disabled]="cargandoAsignaciones()" [ngModel]="asignacionForm()" (ngModelChange)="elegirAsignacion($event)">
           <option value="">{{ cargandoAsignaciones() ? 'Cargando asignaciones…' : 'Elige una asignación' }}</option>
           @for (a of asignaciones(); track clave(a)) {
-            <option [value]="clave(a)" [disabled]="!a.vinculadoEnRps">{{ etiquetaAsignacion(a) }}</option>
+            <option [value]="clave(a)">{{ etiquetaAsignacion(a) }}</option>
           }
         </select>
         @if (erroresContrato()['asignacion']; as e) { <span class="field__error">{{ e }}</span> }
@@ -53,7 +61,6 @@
           <span class="field__hint">
             Asignación en TMR desde {{ a.fechaAsignacion ? (a.fechaAsignacion | date: 'dd MMM yyyy') : 'sin fecha' }}
             {{ a.fechaFinAsignacion ? 'hasta ' + (a.fechaFinAsignacion | date: 'dd MMM yyyy') : '· sin fecha de salida' }}
-            @if (a.cliente) { · {{ a.cliente }} }
           </span>
         }
       </div>
@@ -114,7 +121,8 @@
           <option value="">Todos</option>
           <option value="Vigente">Vigente</option>
           <option value="ProximoAVencer">Próximo a vencer</option>
-          <option value="Vencido">Vencido</option>
+          <option value="Vencido">Vencido con asignación activa</option>
+          <option value="NoVigente">No vigente</option>
         </select>
       </div>
       <button type="button" class="btn filtros__refrescar" (click)="actualizar()" aria-label="Actualizar">
@@ -191,11 +199,11 @@
           <h2>{{ d.colaborador }}</h2>
           <span class="muted">{{ d.proyecto }}{{ d.cliente ? ' · ' + d.cliente : '' }}</span>
         </div>
-        <app-estado-chip [tono]="tono(d.estado)">{{ etiquetaEstado[d.estado] }} · {{ textoPlazo(d) }}</app-estado-chip>
+        <app-estado-chip [tono]="tono(d.estado)">{{ etiquetaEstado[d.estado] }}@if (textoPlazo(d); as p) { · {{ p }} }</app-estado-chip>
       </header>
 
-      @for (a of d.advertencias; track a) {
-        <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>{{ a }}</div></div>
+      @if (d.estado === 'Vencido' && d.asignacionActiva) {
+        <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>Asignación activa: requiere revisión.</div></div>
       }
 
       <dl class="datos">
@@ -208,7 +216,6 @@
           <dd>
             {{ d.asignacionInicio ? (d.asignacionInicio | date: 'dd MMM yyyy') : 'sin fecha' }} →
             {{ d.asignacionSalida ? (d.asignacionSalida | date: 'dd MMM yyyy') : 'sin salida' }}
-            <app-estado-chip [tono]="d.asignacionActiva ? 'info' : 'neutral'">{{ d.asignacionActiva ? 'Activa' : 'Terminada' }}</app-estado-chip>
           </dd>
         </div>
         @if (d.observaciones) { <div><dt>Observaciones</dt><dd>{{ d.observaciones }}</dd></div> }
@@ -227,14 +234,9 @@
             <div class="field">
               <label for="nueva-fin">Nueva fecha de fin</label>
               <input id="nueva-fin" name="nuevaFin" type="date" class="input" [class.is-invalid]="errorAdendaCampo()"
-                     [min]="d.fechaFinVigente" [ngModel]="nuevaFinForm()" (ngModelChange)="nuevaFinForm.set($event)" />
+                     [ngModel]="nuevaFinForm()" (ngModelChange)="nuevaFinForm.set($event)" />
               @if (errorAdendaCampo(); as e) { <span class="field__error">{{ e }}</span> }
-              @else { <span class="field__hint">Posterior al fin vigente ({{ d.fechaFinVigente | date: 'dd MMM yyyy' }}).</span> }
-            </div>
-            <div class="field">
-              <label for="ref-adenda">Referencia (opcional)</label>
-              <input id="ref-adenda" name="refAdenda" class="input" maxlength="100"
-                     [ngModel]="referenciaAdendaForm()" (ngModelChange)="referenciaAdendaForm.set($event)" />
+              @else { <span class="field__hint">Fin vigente actual: {{ d.fechaFinVigente | date: 'dd MMM yyyy' }}.</span> }
             </div>
           </div>
           <div class="field">
@@ -257,14 +259,13 @@
       } @else {
         <div class="table-wrap adendas">
           <table class="tbl">
-            <thead><tr><th>#</th><th>Desde</th><th>Nuevo fin</th><th>Referencia</th><th>Registrada</th></tr></thead>
+            <thead><tr><th>#</th><th>Nuevo fin</th><th>Observaciones</th><th>Registrada</th></tr></thead>
             <tbody>
-              @for (a of d.adendas; track a.id; let i = $index) {
+              @for (a of d.adendas; track a.id) {
                 <tr>
                   <td class="num">{{ a.numero }}</td>
-                  <td class="num">{{ inicioAdenda(d, i) | date: 'dd MMM yyyy' }}</td>
                   <td class="num">{{ a.nuevaFechaFin | date: 'dd MMM yyyy' }}</td>
-                  <td>{{ a.referencia ?? '—' }}@if (a.observaciones) { <br /><small class="muted">{{ a.observaciones }}</small> }</td>
+                  <td>{{ a.observaciones ?? '—' }}</td>
                   <td class="num muted">{{ a.fechaRegistro | date: 'dd MMM yyyy' }}</td>
                 </tr>
               }

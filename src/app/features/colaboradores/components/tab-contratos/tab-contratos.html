@@ -19,15 +19,14 @@
           <p>{{ d.cliente ?? '' }}{{ d.referencia ? ' · Referencia ' + d.referencia : '' }}</p>
         </header>
 
-        @for (a of d.advertencias; track a) {
-          <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>{{ a }}</div></div>
+        @if (d.estado === 'Vencido' && d.asignacionActiva) {
+          <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>Asignación activa: requiere revisión.</div></div>
         }
 
         <div class="fechas">
           <div><span>Inicio</span><strong><app-icon name="calendar" [size]="16" /> {{ d.fechaInicio | date: 'dd MMM yyyy' }}</strong></div>
           <div><span>Fin original</span><strong><app-icon name="calendar" [size]="16" /> {{ d.fechaFinOriginal | date: 'dd MMM yyyy' }}</strong></div>
           <div><span>Fin vigente</span><strong><app-icon name="calendar" [size]="16" /> {{ d.fechaFinVigente | date: 'dd MMM yyyy' }}</strong></div>
-          <div><span>Tipo de contrato</span><strong>Prestación de servicios</strong></div>
         </div>
 
         <h3 class="sub"><app-icon name="file" [size]="18" /> Adendas</h3>
@@ -36,13 +35,13 @@
         } @else {
           <div class="table-wrap marco">
             <table class="tbl">
-              <thead><tr><th>N.º</th><th>Nuevo fin</th><th>Referencia</th><th>Registrada</th></tr></thead>
+              <thead><tr><th>N.º</th><th>Nuevo fin</th><th>Observaciones</th><th>Registrada</th></tr></thead>
               <tbody>
                 @for (a of d.adendas; track a.id) {
                   <tr>
                     <td class="num">{{ a.numero }}</td>
                     <td class="num">{{ a.nuevaFechaFin | date: 'dd MMM yyyy' }}</td>
-                    <td>{{ a.referencia ?? '—' }}@if (a.observaciones) { <br /><small class="muted">{{ a.observaciones }}</small> }</td>
+                    <td>{{ a.observaciones ?? '—' }}</td>
                     <td class="num muted">{{ a.fechaRegistro | date: 'dd MMM yyyy' }}</td>
                   </tr>
                 }
@@ -66,7 +65,7 @@
               <button type="button" class="anterior__fila" [attr.aria-expanded]="anteriorAbierto() === d.id"
                       (click)="anteriorAbierto.set(anteriorAbierto() === d.id ? null : d.id)">
                 <span>{{ d.fechaInicio | date: 'dd MMM yyyy' }} – {{ d.fechaFinVigente | date: 'dd MMM yyyy' }} · {{ d.proyecto }}</span>
-                <app-estado-chip tono="neutral">Finalizado</app-estado-chip>
+                <app-estado-chip tono="neutral">No vigente</app-estado-chip>
                 <app-icon [name]="anteriorAbierto() === d.id ? 'chevronDown' : 'chevronRight'" [size]="18" />
               </button>
               @if (anteriorAbierto() === d.id) {
@@ -83,27 +82,4 @@
     }
   </div>
 
-  <aside class="card bloque alertas">
-    <header class="bloque__head"><h2><app-icon name="alert" [size]="20" /> Alertas de vencimiento</h2></header>
-    @if (proximo(); as c) {
-      <div class="aviso aviso--info">
-        <app-icon name="info" [size]="18" />
-        <div>Avisos antes del fin vigente de <strong>{{ c.proyecto }}</strong> ({{ c.fechaFinVigente | date: 'dd MMM yyyy' }}).</div>
-      </div>
-      <ul class="plazos">
-        @for (a of alertas(); track a.dias) {
-          <li [class.pasada]="a.pasada">
-            <app-icon [name]="a.pasada ? 'check' : 'clock'" [size]="18" />
-            <div><strong>{{ a.dias }} días antes</strong><span>{{ a.fecha | date: 'dd MMM yyyy' }}{{ a.pasada ? ' · ya se mostró' : '' }}</span></div>
-          </li>
-        }
-      </ul>
-    } @else {
-      <p class="muted small">Sin contratos vigentes por vencer.</p>
-    }
-    <div class="aviso aviso--warn">
-      <app-icon name="info" [size]="18" />
-      <div>Las alertas se muestran en Inicio. El envío por correo no está confirmado (sección 14 de los requisitos). Los plazos se cambiarán en Configuración.</div>
-    </div>
-  </aside>
 </div>

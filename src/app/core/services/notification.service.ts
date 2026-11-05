@@ -16,13 +16,13 @@ export interface Aviso {
 }
 
 const DURACION_NORMAL = 7000;
-/** Con "Deshacer" se da más tiempo para reaccionar. */
+/** Con un botón se da más tiempo para reaccionar. */
 const DURACION_CON_ACCION = 10000;
 
 /**
  * Avisos breves en la esquina inferior derecha (los muestra core/layout/app-layout).
  *   avisos.ok('Guardado.')
- *   avisos.ok('Se canceló el cambio.', { texto: 'Deshacer', ejecutar: () => this.restaurar(id) })
+ *   avisos.error('No se pudo guardar.', { texto: 'Reintentar', ejecutar: () => this.guardar() })
  */
 @Injectable({ providedIn: 'root' })
 export class NotificationService {

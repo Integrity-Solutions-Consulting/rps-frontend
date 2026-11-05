@@ -30,7 +30,7 @@
             <span class="muted">desde {{ nombrePeriodo(periodoDeFecha(f.vigenteDesdeMes)) }}</span>
           </div>
         } @else {
-          <div class="aviso aviso--warn"><app-icon name="clock" [size]="18" /><div>Sin frecuencia vigente. Prográmala abajo en “Cambio programado”.</div></div>
+          <div class="aviso aviso--warn"><app-icon name="clock" [size]="18" /><div>Sin frecuencia vigente. Regístrala abajo, en “Registrar honorario o frecuencia”.</div></div>
         }
       </div>
 
@@ -57,22 +57,6 @@
       }
     </div>
 
-    <aside class="distribucion">
-      <div class="distribucion__head">
-        <span class="distribucion__icono"><app-icon name="calendar" [size]="22" /></span>
-        <div><strong>Distribución ordinaria</strong><small>Antes de anticipos adicionales</small></div>
-      </div>
-      @if (distribucion().length) {
-        <table class="tbl tbl--blanca">
-          <thead><tr><th>Corte</th><th class="r">Porcentaje del neto</th></tr></thead>
-          <tbody>
-            @for (d of distribucion(); track d.corte) { <tr><td>{{ d.corte }}</td><td class="r num">{{ d.porcentaje }}</td></tr> }
-          </tbody>
-        </table>
-      } @else {
-        <p class="muted small">Se muestra cuando tenga una frecuencia vigente.</p>
-      }
-    </aside>
   </div>
 </section>
 
@@ -101,7 +85,7 @@
             <tr [class.fila-finalizada]="!h.asignacionActiva">
               <td>
                 <strong>{{ h.proyecto }}</strong>
-                <br /><small class="muted">{{ h.cliente ?? '' }}{{ h.asignacionActiva ? '' : ' · asignación finalizada' }}</small>
+                <br /><small class="muted">{{ h.cliente ?? '' }}{{ h.asignacionActiva ? '' : ' · ya no viene de TMR' }}</small>
               </td>
               @if (h.vigente; as v) {
                 <td class="r num"><strong>{{ v.importe | currency: 'USD' : 'symbol' : '1.2-2' }}</strong></td>
@@ -112,10 +96,7 @@
               }
               <td>
                 @if (h.programado; as p) {
-                  <div class="programado">
-                    <app-estado-chip tono="info">{{ p.importe | currency: 'USD' : 'symbol' : '1.2-2' }} {{ etiquetaModalidad[p.modalidad] }} desde {{ nombrePeriodo(periodoDeFecha(p.vigenteDesdeMes)) }}</app-estado-chip>
-                    @if (!bloqueado()) { <button type="button" class="btn btn--sm btn--ghost" (click)="cancelarHonorario(h)">Cancelar</button> }
-                  </div>
+                  <app-estado-chip tono="info">{{ p.importe | currency: 'USD' : 'symbol' : '1.2-2' }} {{ etiquetaModalidad[p.modalidad] }} desde {{ nombrePeriodo(periodoDeFecha(p.vigenteDesdeMes)) }}</app-estado-chip>
                 } @else { <span class="muted">—</span> }
               </td>
               <td class="r">
@@ -131,13 +112,9 @@
                 <td colspan="6">
                   <ul>
                     @for (v of h.historial; track v.id) {
-                      <li [class.cancelado]="v.canceladoEn">
+                      <li>
                         <span class="num">{{ v.importe | currency: 'USD' : 'symbol' : '1.2-2' }}</span> {{ etiquetaModalidad[v.modalidad] }}
                         desde {{ nombrePeriodo(periodoDeFecha(v.vigenteDesdeMes)) }}
-                        <span class="muted">· registrado {{ v.registradoEn | date: 'dd MMM yyyy' }}</span>
-                        @if (v.canceladoEn) {
-                          <app-estado-chip tono="neutral">Cancelado el {{ v.canceladoEn | date: 'dd MMM yyyy' }}</app-estado-chip>
-                        }
                       </li>
                     }
                   </ul>
@@ -151,14 +128,9 @@
   }
 </section>
 
-<!-- ── 3. Cambio programado ──────────────────────────────────────── -->
+<!-- ── 3. Registrar honorario o frecuencia ───────────────────────── -->
 <section class="card bloque">
-  <header class="bloque__head"><h2>Cambio programado</h2></header>
-
-  <div class="aviso aviso--warn">
-    <app-icon name="info" [size]="18" />
-    <div>Los cambios aplican desde el <strong>siguiente mes</strong>. El mes en curso no se modifica (RN 19, RN 20).</div>
-  </div>
+  <header class="bloque__head"><h2>Registrar honorario o frecuencia</h2></header>
 
   <div class="selector" role="radiogroup" aria-label="Qué quieres cambiar">
     <label class="selector__opcion" [class.is-on]="queCambia() === 'honorario'">
@@ -175,23 +147,37 @@
     @if (queCambia() === 'honorario') {
       <div class="field">
         <label for="c-proyecto">Proyecto</label>
-        <select id="c-proyecto" name="proyecto" class="select" [disabled]="bloqueado()" [class.is-invalid]="erroresCambio()['tmrProyectoId']"
+        <select id="c-proyecto" name="proyecto" class="select" [disabled]="bloqueado()" [class.is-invalid]="erroresCambio()['proyectoId']"
                 [ngModel]="proyectoForm()" (ngModelChange)="elegirProyecto($event)">
           <option value="">Elige un proyecto</option>
           @for (h of honorarios(); track h.tmrProyectoId) {
             <option [value]="h.tmrProyectoId" [disabled]="!h.asignacionActiva">{{ h.proyecto }}{{ h.asignacionActiva ? '' : ' (finalizado)' }}</option>
           }
         </select>
-        @if (erroresCambio()['tmrProyectoId']; as e) { <span class="field__error">{{ e }}</span> }
+        @if (erroresCambio()['proyectoId']; as e) { <span class="field__error">{{ e }}</span> }
+      </div>
+      <div class="field">
+        <label for="c-contrato">Contrato</label>
+        <select id="c-contrato" name="contrato" class="select" [disabled]="bloqueado() || !proyectoForm()"
+                [class.is-invalid]="erroresCambio()['contratoId']" [ngModel]="contratoForm()" (ngModelChange)="contratoForm.set($event)">
+          <option value="">Elige el contrato</option>
+          @for (c of proyectoElegido()?.contratos ?? []; track c.id) {
+            <option [value]="c.id">{{ c.referencia ?? 'Sin referencia' }} · {{ c.fechaInicio | date: 'dd MMM yyyy' }} a {{ c.fechaFinVigente | date: 'dd MMM yyyy' }}</option>
+          }
+        </select>
+        @if (proyectoForm() && !(proyectoElegido()?.contratos?.length)) {
+          <span class="field__hint">Este proyecto no tiene contratos. Regístralo primero en Contratos.</span>
+        }
+        @if (erroresCambio()['contratoId']; as e) { <span class="field__error">{{ e }}</span> }
       </div>
       <div class="field">
         <label for="c-importe">Nuevo honorario mensual</label>
-        <div class="dinero" [class.is-invalid]="erroresCambio()['importe']">
+        <div class="dinero" [class.is-invalid]="erroresCambio()['importeMensual']">
           <span>$</span>
           <input id="c-importe" name="importe" class="input num" appSoloNumeros="monto" placeholder="0,00" [disabled]="bloqueado()"
                  [ngModel]="importeForm()" (ngModelChange)="importeForm.set($event)" />
         </div>
-        @if (erroresCambio()['importe']; as e) { <span class="field__error">{{ e }}</span> }
+        @if (erroresCambio()['importeMensual']; as e) { <span class="field__error">{{ e }}</span> }
       </div>
       <div class="field">
         <label for="c-modalidad">Modalidad económica</label>
@@ -215,9 +201,9 @@
     }
     <div class="field">
       <label for="c-mes">Aplicar desde</label>
-      <input id="c-mes" name="mes" type="month" class="input" [min]="mesMinimo()" [disabled]="bloqueado()"
-             [class.is-invalid]="erroresCambio()['vigenteDesdeMes']" [ngModel]="mesForm()" (ngModelChange)="mesForm.set($event)" />
-      @if (erroresCambio()['vigenteDesdeMes']; as e) { <span class="field__error">{{ e }}</span> }
+      <input id="c-mes" name="mes" type="month" class="input" [disabled]="bloqueado()"
+             [class.is-invalid]="erroresCambio()['vigenteDesdeMes'] || erroresCambio()['mesInicioVigencia']" [ngModel]="mesForm()" (ngModelChange)="mesForm.set($event)" />
+      @if (erroresCambio()['vigenteDesdeMes'] || erroresCambio()['mesInicioVigencia']; as e) { <span class="field__error">{{ e }}</span> }
     </div>
 
     @if (errorCambio(); as e) {
@@ -225,7 +211,7 @@
     }
     <div class="form-actions ancho">
       <button type="submit" class="btn btn--primary" [disabled]="bloqueado() || guardandoCambio()">
-        <app-icon name="calendar" [size]="17" /> {{ guardandoCambio() ? 'Guardando…' : 'Programar cambio' }}
+        <app-icon name="calendar" [size]="17" /> {{ guardandoCambio() ? 'Guardando…' : 'Registrar' }}
       </button>
     </div>
   </form>

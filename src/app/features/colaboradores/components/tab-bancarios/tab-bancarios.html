@@ -1,23 +1,17 @@
 <div class="grid">
   <section class="card bloque">
-    <header class="bloque__head"><h2>Cuenta para exportación</h2></header>
+    <header class="bloque__head"><h2>Cuenta bancaria</h2></header>
 
     @if (!colaborador().cuentaBancaria) {
-      <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>Sin cuenta registrada: no podrá incluirse en el Excel de pago.</div></div>
+      <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>Sin cuenta bancaria registrada.</div></div>
     }
 
     <form class="formulario" (submit)="$event.preventDefault(); guardar()">
       <label for="b-banco">Banco</label>
       <div class="field">
-        <select id="b-banco" name="banco" class="select" [disabled]="bloqueado()" [class.is-invalid]="errores()['banco']"
-                [ngModel]="bancoForm()" (ngModelChange)="bancoForm.set($event)">
-          <option value="">Elige un banco</option>
-          @for (b of bancos(); track b) { <option [value]="b">{{ b }}</option> }
-        </select>
-        @if (bancoForm() === 'Otro') {
-          <input name="otroBanco" class="input" maxlength="100" placeholder="Nombre del banco" aria-label="Nombre del banco"
-                 [disabled]="bloqueado()" [ngModel]="otroBancoForm()" (ngModelChange)="otroBancoForm.set($event)" />
-        }
+        <input id="b-banco" name="banco" class="input" maxlength="100" placeholder="Nombre del banco"
+               [disabled]="bloqueado()" [class.is-invalid]="errores()['banco']"
+               [ngModel]="bancoForm()" (ngModelChange)="bancoForm.set($event)" />
         @if (errores()['banco']; as e) { <span class="field__error">{{ e }}</span> }
       </div>
 
@@ -47,11 +41,6 @@
         <span class="field__hint">Viene de TMR y no se edita aquí.</span>
       </div>
 
-      <div class="aviso aviso--info ancho">
-        <app-icon name="info" [size]="18" />
-        <div>Propuesta: datos administrados por Contabilidad. Falta confirmar el responsable oficial y los campos de la plantilla del banco (PA 02).</div>
-      </div>
-
       @if (error(); as e) { <div class="aviso aviso--danger ancho"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div> }
 
       <div class="acciones ancho">
@@ -63,19 +52,9 @@
     </form>
   </section>
 
-  <aside class="card previa">
-    <header><app-icon name="file" [size]="24" /><strong>Vista previa en exportación</strong></header>
-    <dl>
-      <div><dt>Colaborador</dt><dd>{{ titular() ?? 'ID TMR ' + colaborador().tmrColaboradorId }}</dd></div>
-      <div><dt>Banco</dt><dd>{{ vistaPrevia().banco }}</dd></div>
-      <div><dt>Tipo de cuenta</dt><dd>{{ vistaPrevia().tipo }}</dd></div>
-      <div><dt>Número de cuenta</dt><dd class="num">{{ vistaPrevia().numero }}</dd></div>
-    </dl>
-    @if (hayCambios()) { <span class="muted small">Muestra los cambios sin guardar.</span> }
-  </aside>
 </div>
 
 <div class="card pie">
   <app-icon name="clock" [size]="18" />
-  Última modificación: {{ colaborador().actualizadoEn | date: 'dd MMM yyyy, HH:mm' }} · Contabilidad
+  Última modificación: {{ colaborador().actualizadoEn | date: 'dd MMM yyyy, HH:mm' }}
 </div>

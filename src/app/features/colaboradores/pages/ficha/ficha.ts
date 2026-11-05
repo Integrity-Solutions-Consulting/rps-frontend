@@ -5,7 +5,7 @@ import { ColaboradoresService } from '../../services/colaboradores.service';
 import { ColaboradorDetalle, FrecuenciaVigencia } from '../../models/colaborador.models';
 import { IntegracionTmrService } from '../../../integracion-tmr/services/integracion-tmr.service';
 import {
-  TmrColaboradorDetalle, asignacionActiva, identificacionEnmascarada, nombreCompleto,
+  TmrColaboradorDetalle, identificacionEnmascarada, nombreCompleto,
 } from '../../../integracion-tmr/models/tmr.models';
 import { ContratosService } from '../../../contratos/services/contratos.service';
 import { ContratoResumen } from '../../../contratos/models/contrato.models';
@@ -13,7 +13,6 @@ import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
-import { hoy } from '../../../../shared/utils/fechas';
 
 import { TabDatosGenerales } from '../../components/tab-datos-generales/tab-datos-generales';
 import { TabProyectos } from '../../components/tab-proyectos/tab-proyectos';
@@ -30,8 +29,8 @@ export type PestanaFicha = 'generales' | 'proyectos' | 'condiciones' | 'bancario
  *
  * De dónde sale cada dato:
  *   - Clasificación, frecuencia, cuenta, estado → /api/colaboradores (backend real de RPS)
- *   - Nombre, identificación, proyectos         → /api/integracion-tmr (copia de TMR; hoy de ejemplo)
- *   - Contratos                                 → /api/contratos (hoy de ejemplo)
+ *   - Nombre, identificación, proyectos         → /api/colaboradores y /asignaciones (copia de TMR)
+ *   - Contratos                                 → /api/colaboradores/{id}/contratos
  */
 @Component({
   selector: 'app-colaborador-ficha',
@@ -88,8 +87,8 @@ export class ColaboradorFicha {
     return t ? identificacionEnmascarada(t.identificacion) : `ID TMR ${this.colaborador()?.tmrColaboradorId ?? ''}`;
   });
 
-  protected readonly proyectosActivos = computed(() =>
-    (this.datosTmr()?.asignaciones ?? []).filter((a) => asignacionActiva(a, hoy())).length);
+  /** Asignaciones que el backend tiene copiadas de TMR (sin las eliminadas en origen). */
+  protected readonly proyectos = computed(() => this.datosTmr()?.asignaciones.length ?? 0);
 
   /** Etiqueta de contrato de la cabecera: vigente, vencido con asignación activa o sin contrato. */
   protected readonly chipContrato = computed<{ texto: string; tono: TonoChip }>(() => {

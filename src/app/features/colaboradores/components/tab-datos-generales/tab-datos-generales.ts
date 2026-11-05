@@ -23,7 +23,7 @@ export class TabDatosGenerales {
   /** null si la copia de TMR no tiene a esta persona o no respondió. */
   readonly datosTmr = input<TmrColaboradorDetalle | null>(null);
   readonly errorTmr = input<string | null>(null);
-  readonly proyectosActivos = input(0);
+  readonly proyectos = input(0);
   readonly irA = output<Destino>();
 
   protected readonly enmascarar = identificacionEnmascarada;
@@ -31,6 +31,6 @@ export class TabDatosGenerales {
   protected readonly accesos: { destino: Destino; titulo: string; texto: string; icono: 'file' | 'sliders' | 'card' }[] = [
     { destino: 'contratos', titulo: 'Contratos', texto: 'Contratos por proyecto, adendas y vencimientos.', icono: 'file' },
     { destino: 'condiciones', titulo: 'Condiciones económicas', texto: 'Tipo de servicio, frecuencia de pago y honorarios.', icono: 'sliders' },
-    { destino: 'bancarios', titulo: 'Datos bancarios', texto: 'Cuenta que se usa en el Excel de pago.', icono: 'card' },
+    { destino: 'bancarios', titulo: 'Datos bancarios', texto: 'Banco, tipo y número de cuenta.', icono: 'card' },
   ];
 }

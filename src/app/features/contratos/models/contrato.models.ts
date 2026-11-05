@@ -1,17 +1,16 @@
 /**
- * Contrato propuesto para Features/Contratos del backend (tabla rps.contrato y rps.adenda de la
- * "Propuesta de arquitectura"). El backend todavía no lo tiene: hoy responde el mock.
- * Un contrato por colaborador y proyecto (RN 08); una persona con dos proyectos tiene dos contratos.
+ * Contratos y adendas de rps-backend (Features/Contratos). Un contrato por colaborador y proyecto.
+ * Estado: Vencido y ProximoAVencer salen de GET /api/dashboard/vencimientos; Vigente / NoVigente,
+ * del campo `vigente` del contrato (inicio ≤ hoy ≤ fin vigente, según el backend).
  */
 
-export type EstadoContrato = 'Vigente' | 'ProximoAVencer' | 'Vencido';
+export type EstadoContrato = 'Vigente' | 'ProximoAVencer' | 'Vencido' | 'NoVigente';
 
 export interface Adenda {
   id: string;
   numero: number;
   /** Nueva fecha de fin que establece la adenda. */
   nuevaFechaFin: string;
-  referencia: string | null;
   observaciones: string | null;
   fechaRegistro: string;
 }
@@ -20,7 +19,7 @@ export interface ContratoResumen {
   id: string;
   colaboradorId: string;
   tmrColaboradorId: string;
-  /** Nombre que viene de TMR (tabla espejo tmr_colaborador). */
+  /** Nombre copiado de TMR. */
   colaborador: string;
   tmrProyectoId: string;
   proyecto: string;
@@ -31,10 +30,10 @@ export interface ContratoResumen {
   fechaFinOriginal: string;
   /** Refleja la última adenda (RN 12). */
   fechaFinVigente: string;
-  /** Negativo si ya venció. */
-  diasParaVencer: number;
+  /** Solo para los que el backend lista en vencimientos; negativo si ya venció. */
+  diasParaVencer: number | null;
   estado: EstadoContrato;
-  /** RN 15: vencido con asignación activa requiere revisión. */
+  /** RN 15: el backend lo marca en vencimientos (vencido con asignación activa requiere revisión). */
   asignacionActiva: boolean;
   numeroAdendas: number;
 }
@@ -42,18 +41,16 @@ export interface ContratoResumen {
 export interface ContratoDetalle extends ContratoResumen {
   observaciones: string | null;
   adendas: Adenda[];
-  /** Fechas de la asignación en TMR, para advertir huecos sin cobertura. */
+  /** Fechas de la asignación que vienen de TMR. */
   asignacionInicio: string | null;
   asignacionSalida: string | null;
-  advertencias: string[];
 }
 
 export interface ResumenContratos {
   vigentes: number;
   proximosAVencer: number;
   vencidos: number;
-  /** Mayor plazo de alerta configurado (30 días por defecto, RN 13). */
-  diasAlerta: number;
+  noVigentes: number;
 }
 
 /** Combinación colaborador + proyecto asignada en TMR, para elegir al registrar un contrato. */
@@ -62,13 +59,9 @@ export interface AsignacionDisponible {
   colaborador: string;
   tmrProyectoId: string;
   proyecto: string;
-  cliente: string | null;
   fechaAsignacion: string | null;
   fechaFinAsignacion: string | null;
-  activa: boolean;
-  /** false si la persona aún no está vinculada en RPS (no se le puede registrar contrato). */
-  vinculadoEnRps: boolean;
-  /** Ya tiene contrato con fin vigente igual o posterior a hoy. */
+  /** El backend marca un contrato de ese proyecto como vigente. */
   tieneContratoVigente: boolean;
 }
 
@@ -83,12 +76,12 @@ export interface RegistrarContratoRequest {
 
 export interface RegistrarAdendaRequest {
   nuevaFechaFin: string;
-  referencia: string | null;
   observaciones: string | null;
 }
 
 export const ETIQUETA_ESTADO_CONTRATO: Record<EstadoContrato, string> = {
   Vigente: 'Vigente',
   ProximoAVencer: 'Próximo a vencer',
-  Vencido: 'Vencido',
+  Vencido: 'Vencido con asignación activa',
+  NoVigente: 'No vigente',
 };

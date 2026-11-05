@@ -2,68 +2,60 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, u
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { forkJoin, of, catchError } from 'rxjs';
 
 import { AnticiposService } from '../../services/anticipos.service';
 import { Anticipo, ResumenAnticipos } from '../../models/anticipo.models';
 import { ColaboradoresService } from '../../../colaboradores/services/colaboradores.service';
-import { ETIQUETA_CLASIFICACION, ETIQUETA_FRECUENCIA } from '../../../colaboradores/models/colaborador.models';
-import { IntegracionTmrService } from '../../../integracion-tmr/services/integracion-tmr.service';
-import { TmrColaborador, identificacionEnmascarada, nombreCompleto } from '../../../integracion-tmr/models/tmr.models';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
-import { EstadoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { DineroPipe } from '../../../../shared/pipes/dinero.pipe';
 import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
 import { ETIQUETA_CORTE, TipoCorte } from '../../../../shared/models/corte';
-import { hoy } from '../../../../shared/utils/fechas';
-import { nombrePeriodo } from '../../../../shared/utils/periodo';
+import { esPeriodoValido, nombrePeriodo, periodoActual, periodoDeFecha, primerDia } from '../../../../shared/utils/periodo';
 
 interface OpcionColaborador { id: string; nombre: string }
-interface CuotaForm { clave: number; corte: TipoCorte; monto: string }
+interface CuotaForm { clave: number; corte: TipoCorte; importe: string }
 
-const r2 = (v: number) => Math.round(v * 100) / 100;
-const numero = (texto: string) => {
-  const v = Number(texto.replace(',', '.'));
-  return Number.isFinite(v) ? v : 0;
+/** "1250,50" o "1250.5" → 1250.5 (el campo solo acepta esos formatos); vacío → null y el backend responde que falta. */
+const aNumero = (texto: string): number | null => {
+  const limpio = texto.trim().replace(',', '.');
+  if (!limpio) return null;
+  const v = Number(limpio);
+  return Number.isFinite(v) ? v : null;
 };
 
 /**
- * Anticipos adicionales (sección 10). Se elige al colaborador y la fecha; la pantalla muestra
- * su neto de referencia, saldo pendiente, límite y lo que queda en cada corte, y valida el plan
- * de recuperación mientras se escribe. El backend vuelve a validar todo al guardar.
- *
- * API propuesta: /api/anticipos (hoy de ejemplo). Query param: ?colaborador=<id de RPS>.
+ * Anticipos adicionales. Sigue el flujo de rps-backend:
+ *   1. Registrar el anticipo (monto y observaciones).
+ *   2. Registrar o reemplazar su plan de cuotas para un mes.
+ *   3. Eliminarlo si todavía no tiene cuotas.
+ * Neto, límite, saldo y disponible vienen de GET .../anticipos/resumen; las validaciones las hace el backend.
+ * Query param: ?colaborador=<id de RPS>.
  */
 @Component({
   selector: 'app-anticipos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, RouterLink, Icon, EstadoChip, DineroPipe, SoloNumeros],
+  imports: [DatePipe, FormsModule, RouterLink, Icon, DineroPipe, SoloNumeros],
   templateUrl: './anticipos.html',
   styleUrl: './anticipos.scss',
 })
 export class Anticipos {
   private readonly api = inject(AnticiposService);
   private readonly colaboradoresApi = inject(ColaboradoresService);
-  private readonly tmrApi = inject(IntegracionTmrService);
   private readonly avisos = inject(NotificationService);
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
   protected readonly etiquetaCorte = ETIQUETA_CORTE;
-  protected readonly etiquetaClasificacion = ETIQUETA_CLASIFICACION;
-  protected readonly etiquetaFrecuencia = ETIQUETA_FRECUENCIA;
-  protected readonly enmascarar = identificacionEnmascarada;
+  protected readonly nombrePeriodo = nombrePeriodo;
+  protected readonly mesDeFecha = (fecha: string) => nombrePeriodo(periodoDeFecha(fecha));
 
   // ── Colaborador y mes ────────────────────────────────────────────────
   protected readonly opciones = signal<OpcionColaborador[]>([]);
   protected readonly colaboradorId = signal<string>(this.ruta.snapshot.queryParamMap.get('colaborador') ?? '');
-  protected readonly fecha = signal(hoy());
-  /** Desde el primer día del mes en curso: los meses pasados ya no admiten anticipos. */
-  protected readonly minFecha = `${hoy().slice(0, 7)}-01`;
-  /** El anticipo se recupera en el mes de su fecha (RN 45). */
-  protected readonly periodo = computed(() => (this.fecha() || hoy()).slice(0, 7));
+  /** Mes del resumen y del plan de cuotas ("yyyy-MM"). */
+  protected readonly periodo = signal(periodoActual());
   protected readonly nombreMes = computed(() => nombrePeriodo(this.periodo()));
 
   protected readonly resumen = signal<ResumenAnticipos | null>(null);
@@ -71,45 +63,20 @@ export class Anticipos {
   protected readonly errorResumen = signal<string | null>(null);
   protected readonly anticipos = signal<Anticipo[]>([]);
 
-  // ── Formulario ───────────────────────────────────────────────────────
+  // ── 1. Registrar anticipo ────────────────────────────────────────────
   protected readonly monto = signal('');
   protected readonly observaciones = signal('');
-  protected readonly cuotas = signal<CuotaForm[]>([]);
   protected readonly guardando = signal(false);
   protected readonly errorGuardar = signal<string | null>(null);
+
+  // ── 2. Plan de cuotas de un anticipo ─────────────────────────────────
+  protected readonly planDe = signal<string | null>(null);
+  protected readonly cuotas = signal<CuotaForm[]>([]);
+  protected readonly guardandoPlan = signal(false);
+  protected readonly errorPlan = signal<string | null>(null);
   private siguienteClave = 1;
 
-  /** Cortes en los que se puede programar una cuota: los del colaborador que aún no se exportan. */
-  protected readonly cortesPermitidos = computed(() =>
-    (this.resumen()?.cortes ?? []).filter((c) => !c.versionExportada).map((c) => c.corte));
-
-  /** Cuentas del formulario y validación en vivo (las mismas reglas que el backend). */
-  protected readonly validacion = computed(() => {
-    const r = this.resumen();
-    const monto = r2(numero(this.monto()));
-    const cuotas = this.cuotas().map((c) => ({ ...c, valor: r2(numero(c.monto)) }));
-    const distribuido = r2(cuotas.reduce((s, c) => s + c.valor, 0));
-    const saldo = r?.saldoPendiente ?? 0;
-    const proyectado = r2(saldo + monto);
-    const limite = r?.limite ?? null;
-    const disponibleDespues = limite === null ? null : r2(limite - proyectado);
-
-    const porCorte = (r?.cortes ?? []).map((c) => {
-      const pedido = r2(cuotas.filter((q) => q.corte === c.corte).reduce((s, q) => s + q.valor, 0));
-      return { ...c, pedido, queda: r2(c.disponible - pedido) };
-    });
-
-    const errores: string[] = [];
-    if (monto <= 0) errores.push('Escribe el monto del anticipo.');
-    if (cuotas.length === 0) errores.push('Agrega al menos una cuota al plan de recuperación.');
-    if (cuotas.some((c) => c.valor <= 0)) errores.push('Cada cuota debe ser mayor que cero.');
-    if (monto > 0 && distribuido !== monto) errores.push('Las cuotas deben sumar exactamente el monto del anticipo (RN 47).');
-    if (limite !== null && proyectado > limite) errores.push('Supera el límite: el total pendiente no puede pasar del límite (RN 42).');
-    for (const c of porCorte) if (c.queda < 0) errores.push(`${ETIQUETA_CORTE[c.corte]} no alcanza para la cuota (RN 47).`);
-
-    return { monto, distribuido, porDistribuir: r2(monto - distribuido), saldo, proyectado, limite, disponibleDespues,
-      dentroLimite: limite !== null && proyectado <= limite, porCorte, errores };
-  });
+  protected readonly anticipoDelPlan = computed(() => this.anticipos().find((a) => a.id === this.planDe()) ?? null);
 
   constructor() {
     this.cargarColaboradores();
@@ -128,15 +95,52 @@ export class Anticipos {
   protected elegirColaborador(id: string): void {
     this.colaboradorId.set(id);
     this.limpiarFormulario();
+    this.cerrarPlan();
     void this.router.navigate([], { relativeTo: this.ruta, queryParams: id ? { colaborador: id } : {} });
   }
 
+  protected cambiarPeriodo(valor: string): void {
+    if (esPeriodoValido(valor)) this.periodo.set(valor);
+  }
+
+  /** POST .../anticipos */
+  protected registrar(): void {
+    if (!this.colaboradorId()) return;
+    this.guardando.set(true);
+    this.errorGuardar.set(null);
+    this.api.registrar(this.colaboradorId(), aNumero(this.monto()), this.observaciones().trim() || null).subscribe({
+      next: (a) => {
+        this.guardando.set(false);
+        this.avisos.ok('Anticipo registrado. Ahora registra su plan de cuotas.');
+        this.limpiarFormulario();
+        this.recargar(a.id);
+      },
+      error: (e: unknown) => {
+        this.guardando.set(false);
+        const err = leerErrorApi(e);
+        this.errorGuardar.set(Object.values(err.campos)[0] ?? err.mensaje);
+      },
+    });
+  }
+
+  /** Abre el plan de un anticipo; si ya tiene cuotas, se cargan para corregirlas. */
+  protected abrirPlan(a: Anticipo): void {
+    if (this.planDe() === a.id) { this.cerrarPlan(); return; }
+    this.planDe.set(a.id);
+    this.errorPlan.set(null);
+    if (a.cuotas.length) this.periodo.set(periodoDeFecha(a.cuotas[0].periodo));
+    this.cuotas.set(a.cuotas.map((c) => ({ clave: this.siguienteClave++, corte: c.corte, importe: String(c.importe).replace('.', ',') })));
+  }
+
+  protected cerrarPlan(): void {
+    this.planDe.set(null);
+    this.cuotas.set([]);
+    this.errorPlan.set(null);
+  }
+
   protected agregarCuota(): void {
-    const permitidos = this.cortesPermitidos();
-    const usados = this.cuotas().map((c) => c.corte);
-    const corte = permitidos.find((c) => !usados.includes(c)) ?? permitidos[0] ?? 'FinDeMes';
-    const pendiente = this.validacion().porDistribuir;
-    this.cuotas.update((l) => [...l, { clave: this.siguienteClave++, corte, monto: pendiente > 0 ? String(pendiente) : '' }]);
+    const corte = this.resumen()?.cortesPermitidos[0] ?? 'FinDeMes';
+    this.cuotas.update((l) => [...l, { clave: this.siguienteClave++, corte, importe: '' }]);
   }
 
   protected cambiarCuota(clave: number, cambio: Partial<CuotaForm>): void {
@@ -147,57 +151,63 @@ export class Anticipos {
     this.cuotas.update((l) => l.filter((c) => c.clave !== clave));
   }
 
-  protected guardar(): void {
-    const v = this.validacion();
-    if (v.errores.length || !this.colaboradorId()) return;
-    this.guardando.set(true);
-    this.errorGuardar.set(null);
-    this.api.registrar({
-      colaboradorId: this.colaboradorId(),
-      fecha: this.fecha(),
-      monto: v.monto,
-      observaciones: this.observaciones().trim() || null,
-      cuotas: this.cuotas().map((c) => ({ corte: c.corte, monto: r2(numero(c.monto)) })),
-    }).subscribe({
-      next: (a) => {
-        this.guardando.set(false);
-        this.avisos.ok(`Anticipo de ${a.monto.toLocaleString('es-EC', { style: 'currency', currency: 'USD' })} registrado. Recalcula la liquidación de ${this.nombreMes().toLowerCase()} para que se descuente.`);
-        this.limpiarFormulario();
-        this.cargarResumen(this.colaboradorId(), this.periodo());
-        this.cargarAnticipos(this.colaboradorId());
+  /** PUT .../anticipos/{id}/plan (reemplaza el plan completo). */
+  protected guardarPlan(): void {
+    const id = this.planDe();
+    if (!id) return;
+    const periodo = primerDia(this.periodo());
+    this.guardandoPlan.set(true);
+    this.errorPlan.set(null);
+    this.api.registrarPlan(this.colaboradorId(), id,
+      this.cuotas().map((c) => ({ periodo, corte: c.corte, importe: aNumero(c.importe) ?? 0 }))).subscribe({
+      next: () => {
+        this.guardandoPlan.set(false);
+        this.avisos.ok(`Plan guardado para ${this.nombreMes().toLowerCase()}.`);
+        this.cerrarPlan();
+        this.recargar(null);
       },
       error: (e: unknown) => {
-        this.guardando.set(false);
+        this.guardandoPlan.set(false);
         const err = leerErrorApi(e);
-        this.errorGuardar.set(Object.values(err.campos)[0] ?? err.mensaje);
+        this.errorPlan.set(Object.values(err.campos)[0] ?? err.mensaje);
       },
+    });
+  }
+
+  /** DELETE .../anticipos/{id} */
+  protected eliminar(a: Anticipo): void {
+    this.api.eliminar(this.colaboradorId(), a.id).subscribe({
+      next: () => {
+        this.avisos.ok('Anticipo eliminado.');
+        if (this.planDe() === a.id) this.cerrarPlan();
+        this.recargar(null);
+      },
+      error: (e: unknown) => this.avisos.error(leerErrorApi(e).mensaje),
     });
   }
 
   protected limpiarFormulario(): void {
     this.monto.set('');
     this.observaciones.set('');
-    this.cuotas.set([]);
     this.errorGuardar.set(null);
   }
 
   protected textoCuotas(a: Anticipo): string {
-    return a.cuotas.map((c) => `${ETIQUETA_CORTE[c.corte]} ${c.monto.toLocaleString('es-EC', { style: 'currency', currency: 'USD' })}`).join(' · ');
+    return a.cuotas.map((c) => `${this.mesDeFecha(c.periodo)} · ${ETIQUETA_CORTE[c.corte]} ${c.importe.toLocaleString('es-EC', { style: 'currency', currency: 'USD' })}`).join(' · ');
   }
 
-  protected nombrePeriodo = nombrePeriodo;
-
   // ── Carga ────────────────────────────────────────────────────────────
+  private recargar(abrirPlanDe: string | null): void {
+    this.cargarResumen(this.colaboradorId(), this.periodo());
+    this.cargarAnticipos(this.colaboradorId(), abrirPlanDe);
+  }
+
   private cargarColaboradores(): void {
-    forkJoin({
-      rps: this.colaboradoresApi.listar({ estado: null, activo: true }),
-      tmr: this.tmrApi.colaboradores().pipe(catchError(() => of<TmrColaborador[]>([]))),
-    }).subscribe({
-      next: ({ rps, tmr }) => {
-        const opciones = rps.map((c) => {
-          const p = tmr.find((t) => t.tmrColaboradorId === c.tmrColaboradorId);
-          return { id: c.id, nombre: p ? nombreCompleto(p) : `ID TMR ${c.tmrColaboradorId}` };
-        }).sort((a, b) => a.nombre.localeCompare(b.nombre));
+    this.colaboradoresApi.listar({ estado: null, activo: true }).subscribe({
+      next: (rps) => {
+        const opciones = rps.map((c) => ({
+          id: c.id, nombre: `${c.nombres ?? ''} ${c.apellidos ?? ''}`.trim() || `ID TMR ${c.tmrColaboradorId}`,
+        }));
         this.opciones.set(opciones);
         if (!this.colaboradorId() && opciones.length) this.colaboradorId.set(opciones[0].id);
       },
@@ -210,21 +220,19 @@ export class Anticipos {
     this.cargandoResumen.set(true);
     this.errorResumen.set(null);
     this.api.resumen(id, periodo).subscribe({
-      next: (r) => {
-        this.resumen.set(r);
-        this.cargandoResumen.set(false);
-        // Quita del plan los cortes que ya no se pueden usar (por ejemplo, al cambiar de mes).
-        const permitidos = this.cortesPermitidos();
-        this.cuotas.update((l) => l.map((c) => (permitidos.includes(c.corte) ? c : { ...c, corte: permitidos[0] ?? c.corte })));
-      },
+      next: (r) => { this.resumen.set(r); this.cargandoResumen.set(false); },
       error: (e: unknown) => { this.cargandoResumen.set(false); this.errorResumen.set(leerErrorApi(e).mensaje); },
     });
   }
 
-  private cargarAnticipos(id: string): void {
+  private cargarAnticipos(id: string, abrirPlanDe: string | null = null): void {
     if (!id) { this.anticipos.set([]); return; }
     this.api.listar(id).subscribe({
-      next: (l) => this.anticipos.set(l),
+      next: (l) => {
+        this.anticipos.set(l);
+        const nuevo = abrirPlanDe ? l.find((a) => a.id === abrirPlanDe) : undefined;
+        if (nuevo) this.abrirPlan(nuevo);
+      },
       error: () => this.anticipos.set([]),
     });
   }

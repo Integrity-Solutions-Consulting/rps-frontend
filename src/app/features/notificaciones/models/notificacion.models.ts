@@ -1,38 +1,31 @@
+import { BeCambioTmr, TipoCambioTmr } from '../../../core/backend/backend-rps.models';
+
 /**
- * Bandeja de notificaciones (campana de la cabecera). Junta en un solo lugar lo que necesita
- * atención: configuración incompleta, contratos por vencer, documentos faltantes, liquidaciones
- * por recalcular y cambios de TMR (RN 13, RN 35, RN 50, RN 06).
- * Endpoint propuesto: GET /api/notificaciones?periodo=yyyy-MM.
+ * Campana de la cabecera: cambios detectados en TMR que Contabilidad no ha revisado (RN 50).
+ * Datos: GET /api/integracion-tmr/cambios?revisado=false · POST /api/integracion-tmr/cambios/{id}/revisar.
+ * El backend no tiene otras notificaciones.
  */
+export type CambioTmr = BeCambioTmr;
 
-export type TipoNotificacion = 'Configuracion' | 'Contrato' | 'Documento' | 'Liquidacion' | 'Tmr' | 'Anticipo';
-export type Severidad = 'Critica' | 'Advertencia' | 'Info';
-
-export interface Notificacion {
-  id: string;
-  tipo: TipoNotificacion;
-  severidad: Severidad;
-  /** Persona afectada; null si es general. */
-  colaboradorId: string | null;
-  /** Lo envía rps-backend para poner el nombre de TMR (el backend aún no conoce nombres). */
-  tmrColaboradorId?: string | null;
-  colaborador: string | null;
-  titulo: string;
-  mensaje: string;
-  fecha: string;
-  /** Pantalla donde se resuelve. */
-  ruta: string;
-  query: Record<string, string> | null;
-}
-
-export const ETIQUETA_TIPO: Record<TipoNotificacion, string> = {
-  Configuracion: 'Configuración incompleta',
-  Contrato: 'Contratos',
-  Documento: 'Documentos',
-  Liquidacion: 'Liquidaciones',
-  Tmr: 'Cambios de TMR',
-  Anticipo: 'Anticipos',
+/** Título corto de cada tipo de cambio, tal como lo nombra el backend. */
+export const ETIQUETA_CAMBIO: Record<TipoCambioTmr, string> = {
+  AsignacionNueva: 'Asignación nueva',
+  AsignacionEliminada: 'Asignación quitada en TMR',
+  AsignacionRestaurada: 'Asignación restaurada',
+  FechaSalida: 'Cambio de fecha de salida',
+  EstadoColaborador: 'Cambio de estado en TMR',
+  ColaboradorEliminado: 'Ya no está en TMR',
+  ColaboradorRestaurado: 'Volvió a TMR',
 };
 
-/** Orden: primero lo crítico, luego advertencias, luego informativo. */
-export const PESO_SEVERIDAD: Record<Severidad, number> = { Critica: 0, Advertencia: 1, Info: 2 };
+/** "Ana Pérez" o "ID ..." si el colaborador no tiene nombre copiado de TMR. */
+export function nombreCambio(c: CambioTmr): string {
+  return `${c.nombres ?? ''} ${c.apellidos ?? ''}`.trim() || 'Colaborador sin nombre';
+}
+
+/** Valor anterior → nuevo, tal como los guarda el backend. */
+export function detalleCambio(c: CambioTmr): string {
+  const proyecto = c.proyectoNombre ? `${c.proyectoNombre}: ` : '';
+  if (c.valorAnterior === null && c.valorNuevo === null) return c.proyectoNombre ?? '';
+  return `${proyecto}${c.valorAnterior ?? 'sin valor'} → ${c.valorNuevo ?? 'sin valor'}`;
+}

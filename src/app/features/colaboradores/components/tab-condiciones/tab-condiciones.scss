@@ -1,7 +1,6 @@
 :host { display: grid; gap: 18px; }
 
-.config { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
-@media (max-width: 1000px) { .config { grid-template-columns: minmax(0, 1fr); } }
+.config { display: grid; gap: 20px; align-items: start; }
 .config__campos { display: grid; gap: 18px; }
 
 .linea { display: flex; gap: 10px; .select { flex: 1; } }
@@ -9,14 +8,8 @@
   strong { font-size: 15px; } }
 .marco { border: 1px solid var(--rps-border); border-radius: 10px; }
 
-.distribucion { display: grid; gap: 14px; padding: 18px; border-radius: 10px; background: #eef8f8; border: 1px solid #d3ecec; }
-.distribucion__head { display: flex; align-items: center; gap: 12px;
-  div { display: grid; } small { color: var(--rps-muted); } }
-.distribucion__icono { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #d6eeee; color: var(--rps-teal); }
-.tbl--blanca { background: var(--rps-surface); border: 1px solid var(--rps-border); border-radius: 8px; overflow: hidden; }
 
 .fila-finalizada td { color: var(--rps-muted); }
-.programado { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .fila-historial td { background: #f8fafb;
   ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13px; } }
 
@@ -33,5 +26,3 @@
   &.is-invalid { border-color: var(--rps-danger); } }
 .ancho { grid-column: 1 / -1; }
 
-/* Cambios cancelados: se ven tachados en el historial del proyecto, pero no desaparecen. */
-.fila-historial li.cancelado > .num { text-decoration: line-through; color: var(--rps-muted); }

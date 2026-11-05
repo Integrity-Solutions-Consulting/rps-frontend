@@ -1,5 +1,4 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { esApiResponse } from '../models/api-response';
 
 /**
  * Error leído de la respuesta del backend. RPS responde los errores como ProblemDetails:
@@ -38,7 +37,6 @@ export function leerErrorApi(error: unknown): ErrorApi {
     }
 
     if (typeof b['detail'] === 'string') mensaje = b['detail'];
-    else if (esApiResponse(body) && body.message) mensaje = body.message;
     else if (Object.keys(campos).length > 0) mensaje = Object.values(campos)[0];
   }
 
@@ -59,7 +57,7 @@ function mensajePorEstado(error: HttpErrorResponse): string {
     case 403:
       return 'No tienes permiso para ver esta información.';
     case 404:
-      return 'No se encontró lo que buscabas, o el backend todavía no tiene este endpoint.';
+      return 'No se encontró lo que buscabas.';
     case 503:
       return 'No se pudo verificar la información de TMR. No se asumen valores en cero.';
     default:

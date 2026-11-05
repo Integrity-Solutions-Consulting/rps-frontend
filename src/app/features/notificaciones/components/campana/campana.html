@@ -1,33 +1,34 @@
 <button type="button" class="campana" (click)="alternar()" [attr.aria-expanded]="abierto()" aria-haspopup="true"
-        [attr.aria-label]="'Notificaciones: ' + notificaciones.total()">
+        [attr.aria-label]="'Cambios de TMR sin revisar: ' + notificaciones.total()">
   <app-icon name="bell" [size]="21" />
   @if (notificaciones.total() > 0) {
-    <span class="insignia" [class.insignia--critica]="notificaciones.criticas() > 0">{{ insignia() }}</span>
+    <span class="insignia" [class.insignia--critica]="notificaciones.afectanRevisadas() > 0">{{ insignia() }}</span>
   }
 </button>
 
 @if (abierto()) {
-  <div class="menu" role="dialog" aria-label="Notificaciones">
+  <div class="menu" role="dialog" aria-label="Cambios de TMR sin revisar">
     <header class="menu__head">
-      <strong>Notificaciones</strong>
-      <span class="muted small">{{ notificaciones.total() }} en total
-        @if (notificaciones.criticas()) { · <b class="t-danger">{{ notificaciones.criticas() }} críticas</b> }
+      <strong>Cambios de TMR</strong>
+      <span class="muted small">{{ notificaciones.total() }} sin revisar
+        @if (notificaciones.afectanRevisadas()) { · <b class="t-danger">{{ notificaciones.afectanRevisadas() }} con liquidación revisada</b> }
       </span>
     </header>
 
     @if (notificaciones.error()) {
-      <p class="menu__vacio">No se pudieron cargar las notificaciones.</p>
+      <p class="menu__vacio">No se pudieron cargar los cambios de TMR.</p>
     } @else if (notificaciones.total() === 0) {
-      <p class="menu__vacio"><app-icon name="check" [size]="18" /> Todo al día.</p>
+      <p class="menu__vacio"><app-icon name="check" [size]="18" /> No hay cambios de TMR por revisar.</p>
     } @else {
       <ul class="menu__lista">
-        @for (n of primeras(); track n.id) {
+        @for (c of primeros(); track c.id) {
           <li>
-            <a class="item" [class]="'item item--' + n.severidad" [routerLink]="n.ruta" [queryParams]="n.query ?? {}" (click)="abierto.set(false)">
-              <span class="item__icono"><app-icon [name]="icono(n)" [size]="16" /></span>
+            <a class="item" [class.item--critica]="c.tieneLiquidacionRevisada" [routerLink]="['/colaboradores', c.colaboradorId]"
+               [queryParams]="{ tab: 'proyectos' }" (click)="abierto.set(false)">
+              <span class="item__icono"><app-icon name="sync" [size]="16" /></span>
               <span class="item__texto">
-                <strong>{{ n.titulo }}</strong>
-                <small>{{ n.colaborador ? n.colaborador + ' · ' : '' }}{{ n.mensaje }}</small>
+                <strong>{{ etiqueta[c.tipo] }}</strong>
+                <small>{{ nombre(c) }}@if (detalle(c)) { · {{ detalle(c) }} }</small>
               </span>
             </a>
           </li>
@@ -36,8 +37,8 @@
     }
 
     <footer class="menu__pie">
-      <button type="button" class="btn btn--sm ver-mas" (click)="verTodas()" [disabled]="notificaciones.total() === 0">
-        {{ restantes() > 0 ? 'Ver más (' + restantes() + ')' : 'Ver todas' }}
+      <button type="button" class="btn btn--sm ver-mas" (click)="verTodos()" [disabled]="notificaciones.total() === 0">
+        {{ restantes() > 0 ? 'Ver más (' + restantes() + ')' : 'Ver todos' }}
       </button>
     </footer>
   </div>

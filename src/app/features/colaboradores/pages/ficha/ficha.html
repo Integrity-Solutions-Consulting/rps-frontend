@@ -23,7 +23,7 @@
       <div class="cabecera__fila">
         <h1>{{ nombre() }}</h1>
         <app-estado-chip [tono]="chipContrato().tono">{{ chipContrato().texto }}</app-estado-chip>
-        <app-estado-chip tono="info">{{ proyectosActivos() }} {{ proyectosActivos() === 1 ? 'proyecto activo' : 'proyectos activos' }}</app-estado-chip>
+        <app-estado-chip tono="info">{{ proyectos() }} {{ proyectos() === 1 ? 'proyecto en TMR' : 'proyectos en TMR' }}</app-estado-chip>
         @if (c.estadoConfiguracion === 'Pendiente') {
           <app-estado-chip tono="warn">Pendiente de configuración</app-estado-chip>
         }
@@ -93,7 +93,7 @@
   @switch (pestana()) {
     @case ('generales') {
       <app-tab-datos-generales [colaborador]="c" [datosTmr]="datosTmr()" [errorTmr]="errorTmr()"
-                               [proyectosActivos]="proyectosActivos()" (irA)="pestana.set($event)" />
+                               [proyectos]="proyectos()" (irA)="pestana.set($event)" />
     }
     @case ('proyectos') {
       <app-tab-proyectos [asignaciones]="datosTmr()?.asignaciones ?? []" [contratos]="contratos()" [errorTmr]="errorTmr()" />

@@ -1,15 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, Observable, catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
 
 import { DashboardService } from '../../services/dashboard.service';
+import { IndicadoresDashboard, VencimientoContrato } from '../../models/dashboard.models';
 import { LiquidacionesService } from '../../../liquidaciones/services/liquidaciones.service';
-import { LiquidacionResumen } from '../../../liquidaciones/models/liquidacion.models';
-import {
-  AlertaDashboard, DashboardResumen, Severidad, TipoAlerta, VencimientoContrato,
-} from '../../models/dashboard.models';
+import { LiquidacionResumen, corteDe } from '../../../liquidaciones/models/liquidacion.models';
+import { IntegracionTmrService } from '../../../integracion-tmr/services/integracion-tmr.service';
+import { ETIQUETA_CAMBIO, detalleCambio, nombreCambio } from '../../../notificaciones/models/notificacion.models';
+import { ColaboradoresService } from '../../../colaboradores/services/colaboradores.service';
+import { BeCambioTmr, BeEstadoTmr } from '../../../../core/backend/backend-rps.models';
+import { ColaboradorResumen } from '../../../colaboradores/models/colaborador.models';
 import { mensajeError } from '../../../../core/http/mensaje-error';
 import { Icon, IconName } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
@@ -21,98 +24,156 @@ type Estado<T> =
   | { estado: 'ok'; datos: T }
   | { estado: 'error'; mensaje: string };
 
-/** Botones de Alertas: título y frase corta de cada tipo (detalle en docs/GUIA-FRONTEND.md, "Pantalla de Inicio"). */
-const TIPOS_ALERTA: Record<TipoAlerta, { etiqueta: string; descripcion: string; icono: IconName }> = {
-  CambioTmr: { etiqueta: 'Cambios de TMR', descripcion: 'Cambios que afectan la liquidación', icono: 'sync' },
-  Asignacion: { etiqueta: 'Contrato vencido con proyecto activo', descripcion: 'Continúan en el proyecto sin renovación', icono: 'users' },
-  Documentacion: { etiqueta: 'Documento pendiente', descripcion: 'Sin documento tributario del mes', icono: 'file' },
-  DatosIncompletos: { etiqueta: 'Datos incompletos', descripcion: 'Falta cuenta bancaria u honorario', icono: 'sliders' },
-  Anticipo: { etiqueta: 'Anticipos', descripcion: 'Cuotas que se descuentan este mes', icono: 'card' },
-};
+type ClaveGrupo = 'tmr' | 'configuracion' | 'vencidos' | 'liquidaciones';
 
-/** Un botón de Alertas: todas las alertas de un tipo, con el color de la más grave. */
-interface GrupoAlertas {
-  tipo: TipoAlerta;
+interface ItemAtencion { id: string; titulo: string; detalle: string; ruta: unknown[]; query: Record<string, string> }
+
+/** Un botón de "Requiere atención". Con `items` se despliega; sin ellos, el botón lleva a la pantalla. */
+interface GrupoAtencion {
+  clave: ClaveGrupo;
   etiqueta: string;
   descripcion: string;
   icono: IconName;
   tono: 'danger' | 'warn' | 'info';
   total: number;
-  alertas: AlertaDashboard[];
+  items: ItemAtencion[] | null;
+  ruta: unknown[];
+  query: Record<string, string>;
 }
 
-const ORDEN_SEVERIDAD: Record<Severidad, number> = { Critica: 0, Advertencia: 1, Info: 2 };
-
+/**
+ * Inicio. Todo lo que se ve viene de rps-backend:
+ *   - Indicadores: GET /api/dashboard?periodo= (lógica de DashboardService del backend).
+ *   - Vencimientos: GET /api/dashboard/vencimientos.
+ *   - Requiere atención: cambios de TMR sin revisar, colaboradores con configuración pendiente,
+ *     contratos vencidos con asignación activa y liquidaciones sin revisar.
+ *   - Preparación del período: GET /api/liquidaciones?periodo= (misma lista que Liquidaciones).
+ *   - Estado de TMR: GET /api/integracion-tmr/estado (RC 05).
+ */
 @Component({
   selector: 'app-inicio',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, RouterLink, Icon, EstadoChip],
+  imports: [CurrencyPipe, DatePipe, RouterLink, Icon, EstadoChip],
   templateUrl: './inicio.html',
   styleUrl: './inicio.scss',
 })
 export class Inicio {
   private readonly api = inject(DashboardService);
   private readonly liquidaciones = inject(LiquidacionesService);
+  private readonly tmr = inject(IntegracionTmrService);
+  private readonly colaboradores = inject(ColaboradoresService);
   private readonly recargar$ = new BehaviorSubject<void>(undefined);
 
   protected readonly periodo = signal(periodoActual());
   protected readonly nombrePeriodo = computed(() => nombrePeriodo(this.periodo()));
-  protected readonly tiposAlerta = TIPOS_ALERTA;
+  protected readonly corteDe = corteDe;
 
   // ── Llamadas al backend ─────────────────────────────────────────────
-  protected readonly resumen = this.cargar((p) => this.api.resumen(p));
-  protected readonly vencimientos = this.cargar((p) => this.api.vencimientos(p));
-  protected readonly alertas = this.cargar((p) => this.api.alertas(p));
-  /** Preparación del período: las mismas liquidaciones de la pantalla Liquidaciones (mock o backend real). */
+  protected readonly indicadores = this.cargar<IndicadoresDashboard>((p) => this.api.indicadores(p));
+  protected readonly vencimientos = this.cargar<VencimientoContrato[]>(() => this.api.vencimientos());
+  protected readonly estadoTmr = this.cargar<BeEstadoTmr>(() => this.tmr.estado());
+  protected readonly cambiosTmr = this.cargar<BeCambioTmr[]>(() => this.tmr.cambiosSinRevisar());
+  protected readonly pendientes = this.cargar<ColaboradorResumen[]>(() =>
+    this.colaboradores.listar({ estado: 'Pendiente', activo: null }));
+  /** Preparación del período: la misma lista de la pantalla Liquidaciones. */
   protected readonly preparacion = this.cargar((p) => this.liquidaciones.listar(p));
 
-  // ── Datos derivados ─────────────────────────────────────────────────
-  protected readonly datos = computed<DashboardResumen | null>(() => {
-    const r = this.resumen();
+  // ── Datos para la pantalla ──────────────────────────────────────────
+  protected readonly datos = computed(() => {
+    const r = this.indicadores();
     return r.estado === 'ok' ? r.datos : null;
   });
 
   protected readonly cargando = computed(() =>
-    [this.resumen(), this.vencimientos(), this.alertas(), this.preparacion()].some((s) => s.estado === 'cargando'),
-  );
+    [this.indicadores(), this.vencimientos(), this.estadoTmr(), this.cambiosTmr(), this.pendientes(), this.preparacion()]
+      .some((s) => s.estado === 'cargando'));
+
+  protected readonly totalLiquidaciones = computed(() => {
+    const d = this.datos();
+    return d ? d.liquidaciones.revisadas + d.liquidaciones.sinRevisar : 0;
+  });
 
   protected readonly avanceRevision = computed(() => {
     const d = this.datos();
-    if (!d || d.liquidaciones.total === 0) return 0;
-    return Math.round((d.liquidaciones.revisadas / d.liquidaciones.total) * 100);
+    const total = this.totalLiquidaciones();
+    return d && total > 0 ? Math.round((d.liquidaciones.revisadas / total) * 100) : 0;
   });
 
   protected readonly listaVencimientos = computed<VencimientoContrato[]>(() => {
     const v = this.vencimientos();
-    return v.estado === 'ok' ? [...v.datos].sort((a, b) => a.diasRestantes - b.diasRestantes) : [];
+    return v.estado === 'ok' ? v.datos : [];
   });
 
-  protected readonly porVencer = computed(() => this.listaVencimientos().filter((v) => v.diasRestantes >= 0).length);
-  protected readonly vencidos = computed(() => this.listaVencimientos().filter((v) => v.diasRestantes < 0).length);
-
-  /** Tipo de alerta abierto en el panel (uno a la vez), o null si todos están cerrados. */
-  protected readonly abierto = signal<TipoAlerta | null>(null);
-
-  private readonly listaAlertas = computed<AlertaDashboard[]>(() => {
-    const a = this.alertas();
-    return a.estado === 'ok'
-      ? [...a.datos].sort((x, y) => ORDEN_SEVERIDAD[x.severidad] - ORDEN_SEVERIDAD[y.severidad])
-      : [];
+  /** Estado de TMR (RC 05): se avisa si nunca se sincronizó o si el backend lo marca como desactualizado. */
+  protected readonly avisoTmr = computed<string | null>(() => {
+    const e = this.estadoTmr();
+    if (e.estado === 'error') return 'No se pudo consultar el estado de la sincronización con TMR.';
+    if (e.estado !== 'ok') return null;
+    if (!e.datos.ultimaSincronizacion) return 'Todavía no se ha sincronizado con TMR.';
+    if (e.datos.desactualizada) return 'La copia de TMR está desactualizada.';
+    return null;
   });
 
-  protected readonly gruposAlertas = computed<GrupoAlertas[]>(() => {
-    const grupos = new Map<TipoAlerta, AlertaDashboard[]>();
-    // listaAlertas ya viene ordenada por severidad: la primera de cada grupo es la más grave.
-    for (const a of this.listaAlertas()) grupos.set(a.tipo, [...(grupos.get(a.tipo) ?? []), a]);
-    return [...grupos.entries()]
-      .map(([tipo, alertas]): GrupoAlertas => ({
-        tipo, alertas, total: alertas.length, tono: this.tonoSeveridad(alertas[0].severidad), ...TIPOS_ALERTA[tipo],
-      }))
-      .sort((x, y) =>
-        ORDEN_SEVERIDAD[x.alertas[0].severidad] - ORDEN_SEVERIDAD[y.alertas[0].severidad] || y.total - x.total);
+  // ── Requiere atención ───────────────────────────────────────────────
+  /** Grupo abierto (uno a la vez), o null si todos están cerrados. */
+  protected readonly abierto = signal<ClaveGrupo | null>(null);
+
+  protected readonly grupos = computed<GrupoAtencion[]>(() => {
+    const grupos: GrupoAtencion[] = [];
+
+    const cambios = this.cambiosTmr();
+    if (cambios.estado === 'ok' && cambios.datos.length) {
+      grupos.push({
+        clave: 'tmr', etiqueta: 'Cambios de TMR', descripcion: 'Detectados en la sincronización y sin revisar', icono: 'sync',
+        tono: cambios.datos.some((c) => c.tieneLiquidacionRevisada) ? 'danger' : 'warn', total: cambios.datos.length,
+        items: cambios.datos.map((c) => ({
+          id: c.id, titulo: nombreCambio(c), detalle: `${ETIQUETA_CAMBIO[c.tipo]}${detalleCambio(c) ? ' · ' + detalleCambio(c) : ''}`,
+          ruta: ['/colaboradores', c.colaboradorId], query: { tab: 'proyectos' },
+        })),
+        ruta: [], query: {},
+      });
+    }
+
+    const pendientes = this.pendientes();
+    if (pendientes.estado === 'ok' && pendientes.datos.length) {
+      grupos.push({
+        clave: 'configuracion', etiqueta: 'Configuración pendiente', descripcion: 'Falta tipo de servicio, frecuencia o cuenta bancaria',
+        icono: 'sliders', tono: 'warn', total: pendientes.datos.length,
+        items: pendientes.datos.map((c) => ({
+          id: c.id, titulo: `${c.nombres ?? ''} ${c.apellidos ?? ''}`.trim() || `ID TMR ${c.tmrColaboradorId}`,
+          detalle: c.activo ? 'Activo' : 'Desactivado', ruta: ['/colaboradores', c.id], query: { tab: 'condiciones' },
+        })),
+        ruta: [], query: {},
+      });
+    }
+
+    // El backend devuelve en "vencimientos" los vencidos que siguen con la asignación activa.
+    const vencidos = this.listaVencimientos().filter((v) => v.diasRestantes < 0);
+    if (vencidos.length) {
+      grupos.push({
+        clave: 'vencidos', etiqueta: 'Contrato vencido con proyecto activo', descripcion: 'Siguen asignados en TMR sin renovación',
+        icono: 'users', tono: 'danger', total: vencidos.length,
+        items: vencidos.map((v) => ({
+          id: v.contratoId, titulo: v.colaborador, detalle: `${v.proyecto} · venció el ${v.fechaFinVigente}`,
+          ruta: ['/contratos'], query: { colaborador: v.tmrColaboradorId, contrato: v.contratoId },
+        })),
+        ruta: [], query: {},
+      });
+    }
+
+    const d = this.datos();
+    if (d && d.liquidaciones.sinRevisar > 0) {
+      grupos.push({
+        clave: 'liquidaciones', etiqueta: 'Liquidaciones sin revisar', descripcion: `De ${this.nombrePeriodo()}`,
+        icono: 'calculator', tono: 'info', total: d.liquidaciones.sinRevisar, items: null,
+        ruta: ['/liquidaciones'], query: { periodo: this.periodo() },
+      });
+    }
+
+    return grupos;
   });
 
-  protected readonly totalAlertas = computed(() => this.listaAlertas().length);
+  protected readonly totalAtencion = computed(() => this.grupos().reduce((t, g) => t + g.total, 0));
 
   // ── Preparación del período (10 por página, como Contratos) ──────────
   protected readonly filasPreparacion = computed<LiquidacionResumen[]>(() => {
@@ -144,8 +205,8 @@ export class Inicio {
     }
   }
 
-  protected alternar(tipo: TipoAlerta): void {
-    this.abierto.update((actual) => (actual === tipo ? null : tipo));
+  protected alternar(clave: ClaveGrupo): void {
+    this.abierto.update((actual) => (actual === clave ? null : clave));
   }
 
   protected actualizar(): void {
@@ -153,31 +214,14 @@ export class Inicio {
   }
 
   // ── Presentación ────────────────────────────────────────────────────
-  /** Cuotas de anticipos adicionales de todos los cortes del mes (RN 38). */
-  protected descuentoDe(l: LiquidacionResumen): number {
-    return l.cortes.reduce((t, c) => t + c.descuento, 0);
-  }
-
-  /** Lo que irá en los archivos de pago del mes: neto menos anticipos. */
-  protected valorDe(l: LiquidacionResumen): number {
-    return l.cortes.reduce((t, c) => t + c.valor, 0);
-  }
-
   protected tonoVencimiento(v: VencimientoContrato): TonoChip {
-    if (v.diasRestantes < 0) return 'danger';
-    if (v.diasRestantes <= 7) return 'danger';
-    if (v.diasRestantes <= 15) return 'warn';
-    return 'info';
+    return v.diasRestantes < 0 ? 'danger' : 'warn';
   }
 
   protected textoVencimiento(v: VencimientoContrato): string {
     if (v.diasRestantes < 0) return `Vencido hace ${-v.diasRestantes} d`;
     if (v.diasRestantes === 0) return 'Vence hoy';
     return `${v.diasRestantes} días`;
-  }
-
-  private tonoSeveridad(s: Severidad): 'danger' | 'warn' | 'info' {
-    return s === 'Critica' ? 'danger' : s === 'Advertencia' ? 'warn' : 'info';
   }
 
   /**

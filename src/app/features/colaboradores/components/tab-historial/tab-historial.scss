@@ -17,7 +17,6 @@
 .contador__icono { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none; }
 .contador__icono--ok { background: var(--rps-ok-50); color: var(--rps-ok); }
 .contador__icono--info { background: var(--rps-info-50); color: var(--rps-info); }
-.contador__icono--lila { background: #efeafd; color: #6b4fd1; }
 
 .fecha { white-space: nowrap; }
 .movimiento { display: flex; gap: 10px; align-items: flex-start; min-width: 220px;

@@ -1,17 +1,16 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NotificacionesService } from '../../services/notificaciones.service';
-import { Notificacion } from '../../models/notificacion.models';
+import { ETIQUETA_CAMBIO, detalleCambio, nombreCambio } from '../../models/notificacion.models';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { Bandeja } from '../bandeja/bandeja';
 
-/** Cuántas se ven en el menú desplegable; el resto, en la ventana "Ver todas". */
+/** Cuántos se ven en el menú desplegable; el resto, en la ventana "Ver todos". */
 const EN_MENU = 5;
 
 /**
- * Campana de la cabecera. Muestra cuántas notificaciones hay, las 5 más importantes
- * en un menú y un botón "Ver todas" que abre la ventana completa (con filtros y búsqueda).
- * Pensada para cuando haya 100 o más avisos: el menú nunca crece, la ventana pagina.
+ * Campana de la cabecera: cuántos cambios de TMR faltan revisar, los 5 más recientes
+ * y "Ver todos", que abre la ventana con todos y el botón "Marcar revisado".
  */
 @Component({
   selector: 'app-campana',
@@ -28,8 +27,11 @@ export class Campana {
   protected readonly notificaciones = inject(NotificacionesService);
   private readonly elemento = inject(ElementRef<HTMLElement>);
 
+  protected readonly etiqueta = ETIQUETA_CAMBIO;
+  protected readonly nombre = nombreCambio;
+  protected readonly detalle = detalleCambio;
   protected readonly abierto = signal(false);
-  protected readonly primeras = computed(() => this.notificaciones.ordenadas().slice(0, EN_MENU));
+  protected readonly primeros = computed(() => this.notificaciones.lista().slice(0, EN_MENU));
   protected readonly restantes = computed(() => Math.max(0, this.notificaciones.total() - EN_MENU));
   /** "99+" para que el número no rompa el círculo. */
   protected readonly insignia = computed(() => {
@@ -42,13 +44,9 @@ export class Campana {
     if (this.abierto()) this.notificaciones.cargar();
   }
 
-  protected verTodas(): void {
+  protected verTodos(): void {
     this.abierto.set(false);
     this.notificaciones.abrir();
-  }
-
-  protected icono(n: Notificacion): 'alert' | 'clock' | 'info' {
-    return n.severidad === 'Critica' ? 'alert' : n.severidad === 'Advertencia' ? 'clock' : 'info';
   }
 
   protected cerrarSiEsAfuera(evento: MouseEvent): void {

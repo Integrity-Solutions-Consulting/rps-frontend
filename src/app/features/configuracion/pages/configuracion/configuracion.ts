@@ -3,32 +3,22 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { ConfiguracionService } from '../../services/configuracion.service';
-import {
-  ClaveParametro, Configuracion as DatosConfiguracion, PARAMETROS, ParametroVigente, textoValores,
-} from '../../models/configuracion.models';
+import { ActualizarConfiguracionRequest, CAMPOS_CONFIGURACION, Configuracion as DatosConfiguracion } from '../../models/configuracion.models';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
-import { EstadoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
-import { nombrePeriodo } from '../../../../shared/utils/periodo';
 
-type Pestana = 'alertas' | 'anticipos' | 'reglas' | 'catalogos' | 'accesos';
-
-const REGLAS: ClaveParametro[] = ['IvaPct', 'RetencionFuentePct', 'RetencionIvaProfesionalPct', 'RetencionIvaJuniorPct'];
+type Borrador = Record<keyof ActualizarConfiguracionRequest, string>;
 
 /**
- * Configuración (sección 13). Parámetros que mantiene Contabilidad, cada uno con su vigencia:
- *   - Alertas de vencimiento: rigen de inmediato.
- *   - Límite de anticipos y reglas tributarias: rigen desde el mes siguiente; lo ya calculado
- *     conserva los porcentajes que usó (RN 29).
- *
- * API propuesta: /api/configuracion (hoy de ejemplo).
+ * Configuración: los campos de ConfiguracionGlobal de rps-backend.
+ * Se guarda todo junto (PUT /api/configuracion); los rangos los valida el backend y los errores vuelven por campo.
  */
 @Component({
   selector: 'app-configuracion',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, Icon, EstadoChip, SoloNumeros],
+  imports: [DatePipe, FormsModule, Icon, SoloNumeros],
   templateUrl: './configuracion.html',
   styleUrl: './configuracion.scss',
 })
@@ -36,155 +26,69 @@ export class Configuracion {
   private readonly api = inject(ConfiguracionService);
   private readonly avisos = inject(NotificationService);
 
-  protected readonly parametrosInfo = PARAMETROS;
-  protected readonly textoValores = textoValores;
-  protected readonly nombrePeriodo = nombrePeriodo;
-  protected readonly reglas = REGLAS;
-  protected readonly opcionesLimite = [50, 60, 70, 80, 90, 100];
-  protected readonly pestanas: { id: Pestana; titulo: string }[] = [
-    { id: 'alertas', titulo: 'Alertas' },
-    { id: 'anticipos', titulo: 'Anticipos' },
-    { id: 'reglas', titulo: 'Reglas de cálculo' },
-    { id: 'catalogos', titulo: 'Catálogos' },
-    { id: 'accesos', titulo: 'Accesos' },
-  ];
+  protected readonly campos = CAMPOS_CONFIGURACION;
+  protected readonly grupos = [...new Set(CAMPOS_CONFIGURACION.map((c) => c.grupo))];
 
-  protected readonly pestana = signal<Pestana>('alertas');
   protected readonly datos = signal<DatosConfiguracion | null>(null);
+  protected readonly borrador = signal<Borrador | null>(null);
   protected readonly cargando = signal(true);
+  protected readonly guardando = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly guardando = signal<ClaveParametro | 'bancos' | null>(null);
+  protected readonly errores = signal<Record<string, string>>({});
 
-  // Borradores de cada sección (lo que se escribe antes de guardar).
-  protected readonly alertas = signal<number[]>([]);
-  protected readonly nuevaAlerta = signal('');
-  protected readonly limite = signal(100);
-  protected readonly borradorReglas = signal<Partial<Record<ClaveParametro, string>>>({});
-  protected readonly bancos = signal<string[]>([]);
-  protected readonly nuevoBanco = signal('');
-  protected readonly errores = signal<Partial<Record<ClaveParametro | 'bancos', string>>>({});
-
-  protected readonly cambiosAlertas = computed(() => this.alertas().join() !== this.parametro('AlertasDias')?.valores.join());
-
-  /** Factor neto con los porcentajes escritos (0,90 profesional · 0,945 junior con los valores actuales). */
-  protected readonly factores = computed(() => {
-    const v = (c: ClaveParametro) => Number(this.borradorReglas()[c] ?? this.parametro(c)?.valores[0] ?? 0) / 100;
-    const factor = (riva: number) => Math.round((1 + v('IvaPct') - v('RetencionFuentePct') - v('IvaPct') * riva) * 10000) / 10000;
-    return { profesional: factor(v('RetencionIvaProfesionalPct')), junior: factor(v('RetencionIvaJuniorPct')) };
+  protected readonly hayCambios = computed(() => {
+    const d = this.datos();
+    const b = this.borrador();
+    return !!d && !!b && this.campos.some((c) => String(d[c.clave]) !== b[c.clave]);
   });
 
   constructor() {
     this.cargar();
   }
 
-  protected parametro(clave: ClaveParametro): ParametroVigente | undefined {
-    return this.datos()?.parametros.find((p) => p.clave === clave);
+  protected camposDe(grupo: string) {
+    return this.campos.filter((c) => c.grupo === grupo);
   }
 
-  // ── Alertas ──────────────────────────────────────────────────────────
-  protected agregarAlerta(): void {
-    const dias = Number(this.nuevaAlerta());
-    if (!Number.isInteger(dias) || dias < 1 || dias > 365) {
-      this.errores.update((e) => ({ ...e, AlertasDias: 'Escribe un número entero de días entre 1 y 365.' }));
-      return;
-    }
-    this.errores.update((e) => ({ ...e, AlertasDias: undefined }));
-    this.alertas.update((l) => [...new Set([...l, dias])].sort((a, b) => b - a));
-    this.nuevaAlerta.set('');
+  protected cambiar(clave: keyof ActualizarConfiguracionRequest, valor: string): void {
+    this.borrador.update((b) => (b ? { ...b, [clave]: valor } : b));
   }
 
-  protected quitarAlerta(dias: number): void {
-    this.alertas.update((l) => l.filter((d) => d !== dias));
+  protected deshacer(): void {
+    const d = this.datos();
+    if (d) this.llenar(d);
   }
 
-  // ── Reglas de cálculo ────────────────────────────────────────────────
-  protected escribirRegla(clave: ClaveParametro, valor: string): void {
-    this.borradorReglas.update((b) => ({ ...b, [clave]: valor }));
-  }
-
-  // ── Guardar ──────────────────────────────────────────────────────────
-  protected guardarParametro(clave: ClaveParametro): void {
-    let valores: number[];
-    if (clave === 'AlertasDias') valores = this.alertas();
-    else if (clave === 'LimiteAnticiposPct') valores = [this.limite()];
-    else valores = [Number((this.borradorReglas()[clave] ?? '').replace(',', '.'))];
-
-    this.guardando.set(clave);
-    this.errores.update((e) => ({ ...e, [clave]: undefined }));
-    this.api.cambiarParametro(clave, { valores }).subscribe({
-      next: (p) => {
-        this.guardando.set(null);
-        this.avisos.ok(p.aplicaDesde === 'Inmediato'
-          ? `${PARAMETROS[clave].nombre}: guardado. Rige desde hoy.`
-          : `${PARAMETROS[clave].nombre}: guardado. Rige desde ${nombrePeriodo(p.programado?.vigenteDesde ?? p.vigenteDesde).toLowerCase()}.`);
-        this.borradorReglas.update((b) => ({ ...b, [clave]: undefined }));
-        this.cargar();
-      },
-      error: (e: unknown) => {
-        this.guardando.set(null);
-        const err = leerErrorApi(e);
-        this.errores.update((x) => ({ ...x, [clave]: Object.values(err.campos)[0] ?? err.mensaje }));
-      },
-    });
-  }
-
-  /** Cancela un cambio que aún no rige. El aviso trae "Deshacer": vuelve a programar los mismos valores. */
-  protected cancelarProgramado(clave: ClaveParametro): void {
-    const valores = this.parametro(clave)?.programado?.valores ?? [];
-    this.guardando.set(clave);
-    this.api.cancelarProgramado(clave).subscribe({
-      next: () => {
-        this.guardando.set(null);
-        this.cargar();
-        this.avisos.ok(`${PARAMETROS[clave].nombre}: se canceló el cambio programado.`, {
-          texto: 'Deshacer',
-          ejecutar: () => this.api.cambiarParametro(clave, { valores }).subscribe({
-            next: () => { this.avisos.ok('Listo: el cambio volvió a quedar programado.'); this.cargar(); },
-            error: (e: unknown) => this.avisos.error(`No se pudo deshacer: ${leerErrorApi(e).mensaje}`),
-          }),
-        });
-      },
-      error: (e: unknown) => { this.guardando.set(null); this.avisos.error(leerErrorApi(e).mensaje); },
-    });
-  }
-
-  // ── Catálogo de bancos ───────────────────────────────────────────────
-  protected agregarBanco(): void {
-    const nombre = this.nuevoBanco().trim();
-    if (!nombre) return;
-    if (!this.bancos().some((b) => b.toLowerCase() === nombre.toLowerCase())) this.bancos.update((l) => [...l, nombre]);
-    this.nuevoBanco.set('');
-  }
-
-  protected quitarBanco(nombre: string): void {
-    this.bancos.update((l) => l.filter((b) => b !== nombre));
-  }
-
-  protected guardarBancos(): void {
-    this.guardando.set('bancos');
-    this.api.guardarBancos(this.bancos()).subscribe({
-      next: (l) => { this.guardando.set(null); this.bancos.set(l); this.avisos.ok('Catálogo de bancos guardado.'); },
-      error: (e: unknown) => {
-        this.guardando.set(null);
-        const err = leerErrorApi(e);
-        this.errores.update((x) => ({ ...x, bancos: Object.values(err.campos)[0] ?? err.mensaje }));
-      },
-    });
-  }
-
-  // ── Carga ────────────────────────────────────────────────────────────
-  private cargar(): void {
+  protected guardar(): void {
+    const b = this.borrador();
+    if (!b) return;
+    const request = Object.fromEntries(this.campos.map((c) => [
+      c.clave, c.tipo === 'texto' ? b[c.clave].trim() : Number(b[c.clave].replace(',', '.')),
+    ])) as unknown as ActualizarConfiguracionRequest;
+    this.guardando.set(true);
+    this.errores.set({});
     this.error.set(null);
-    this.api.obtener().subscribe({
-      next: (d) => {
-        this.datos.set(d);
-        this.cargando.set(false);
-        this.alertas.set([...(d.parametros.find((p) => p.clave === 'AlertasDias')?.valores ?? [])]);
-        const limite = d.parametros.find((p) => p.clave === 'LimiteAnticiposPct');
-        this.limite.set(limite?.programado?.valores[0] ?? limite?.valores[0] ?? 100);
-        this.bancos.set([...d.bancos]);
+    this.api.guardar(request).subscribe({
+      next: (c) => { this.guardando.set(false); this.datos.set(c); this.llenar(c); this.avisos.ok('Configuración guardada.'); },
+      error: (e: unknown) => {
+        this.guardando.set(false);
+        const err = leerErrorApi(e);
+        if (Object.keys(err.campos).length) this.errores.set(err.campos);
+        else this.error.set(err.mensaje);
       },
+    });
+  }
+
+  private cargar(): void {
+    this.cargando.set(true);
+    this.api.obtener().subscribe({
+      next: (c) => { this.datos.set(c); this.llenar(c); this.cargando.set(false); },
       error: (e: unknown) => { this.cargando.set(false); this.error.set(leerErrorApi(e).mensaje); },
     });
+  }
+
+  private llenar(c: DatosConfiguracion): void {
+    this.borrador.set(Object.fromEntries(this.campos.map((x) => [x.clave, String(c[x.clave]).replace('.', ',')])) as Borrador);
+    this.errores.set({});
   }
 }

@@ -12,27 +12,19 @@ import { nombrePeriodo } from '../../../../shared/utils/periodo';
 
 const ICONO_POR_TIPO: Record<TipoEvento, IconName> = {
   'Vinculación': 'users',
-  'Clasificación': 'sliders',
   'Frecuencia': 'calendar',
-  'Cuenta bancaria': 'card',
-  'Estado': 'refresh',
   'Contrato': 'file',
   'Adenda': 'file',
   'Honorario': 'cash',
   'Liquidación': 'calculator',
   'Anticipo': 'card',
   'Documento': 'folder',
-  'Exportación': 'upload',
 };
 
 /**
- * Pestaña "Historial": todo lo que pasó con el colaborador (sección 12, "Historial por colaborador"):
- * configuración, contratos, honorarios, liquidaciones, anticipos, documentos y exportaciones.
+ * Pestaña "Historial": lo que devuelve GET /api/colaboradores/{id}/historial (vinculación, frecuencias,
+ * contratos, adendas, honorarios, liquidaciones, anticipos y documentos).
  * Se filtra por año y tipo; cada fila lleva a la pantalla donde está el detalle.
- *
- * El estado dice lo que ocurrió con palabras exactas: un cambio de honorario no se etiqueta como
- * exportación, y una exportación no es un pago.
- * API propuesta: GET /api/colaboradores/{id}/historial (hoy de ejemplo).
  */
 @Component({
   selector: 'app-tab-historial',
@@ -73,7 +65,7 @@ export class TabHistorial {
 
   protected readonly contadores = computed(() => {
     const cuenta = (t: TipoEvento) => this.delAnio().filter((e) => e.tipo === t).length;
-    return { liquidaciones: cuenta('Liquidación'), anticipos: cuenta('Anticipo'), exportaciones: cuenta('Exportación') };
+    return { liquidaciones: cuenta('Liquidación'), anticipos: cuenta('Anticipo') };
   });
 
   constructor() {
@@ -84,12 +76,10 @@ export class TabHistorial {
     });
   }
 
-  /** Color del estado: exportado ≠ pagado, por eso va en azul y no en verde. */
+  /** Color del chip según el estado que manda el backend. */
   protected tono(estado: string | null | undefined): TonoChip {
-    if (!estado) return 'neutral';
-    if (estado.startsWith('Exportado')) return 'info';
-    if (estado.startsWith('Recalculada') || estado === 'Programado' || estado === 'Cancelado' || estado.startsWith('Revisión retirada')) return 'warn';
-    if (estado.startsWith('Revisada') || estado === 'Recuperado' || estado === 'Restaurado') return 'ok';
+    if (estado === 'Programado') return 'warn';
+    if (estado === 'Revisada') return 'ok';
     return 'neutral';
   }
 

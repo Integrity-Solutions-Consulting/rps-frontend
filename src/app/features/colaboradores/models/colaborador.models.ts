@@ -9,8 +9,16 @@ export type Frecuencia = 'DosPagos' | 'FinDeMes';
 
 export interface ColaboradorResumen {
   id: string;
-  /** Referencia a la persona en TMR. Los nombres llegarán con la sincronización. */
+  /** Referencia a la persona en TMR. */
   tmrColaboradorId: string;
+  /** Copia de TMR (la llena la sincronización). Nulos si el colaborador se creó a mano. */
+  nombres: string | null;
+  apellidos: string | null;
+  identificacion: string | null;
+  correo: string | null;
+  activoEnTmr: boolean | null;
+  sincronizadoEn: string | null;
+  eliminadoEnOrigen: boolean;
   clasificacion: Clasificacion | null;
   estadoConfiguracion: EstadoConfiguracion;
   activo: boolean;
@@ -58,12 +66,13 @@ export interface RegistrarCuentaBancariaRequest {
 export interface FiltrosColaboradores {
   estado: EstadoConfiguracion | null;
   activo: boolean | null;
+  /** Nombre, apellido o identificación: la búsqueda la hace el backend. */
+  busqueda?: string | null;
 }
 
 /** Movimiento del historial del colaborador (RN 48, sección 12 "Historial por colaborador"). */
 export type TipoEvento =
-  | 'Vinculación' | 'Clasificación' | 'Frecuencia' | 'Cuenta bancaria' | 'Estado' | 'Contrato' | 'Adenda' | 'Honorario'
-  | 'Liquidación' | 'Anticipo' | 'Documento' | 'Exportación';
+  | 'Vinculación' | 'Frecuencia' | 'Contrato' | 'Adenda' | 'Honorario' | 'Liquidación' | 'Anticipo' | 'Documento';
 
 export interface EventoHistorial {
   fecha: string;
@@ -74,8 +83,7 @@ export interface EventoHistorial {
   periodo?: string | null;
   importe?: number | null;
   /**
-   * Lo que pasó, con palabras exactas: "Calculada", "Exportado v1", "Programado"…
-   * Un cambio de honorario no se etiqueta como exportación, ni una exportación como pago (sección 12).
+   * Lo que pasó, como lo manda el backend: "Registrado", "Programado", "Calculada", "Revisada"…
    */
   estado?: string | null;
   /** Pantalla donde se ve el detalle del movimiento. */

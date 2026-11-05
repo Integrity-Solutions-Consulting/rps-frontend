@@ -3,52 +3,40 @@
 <section class="ventana" role="dialog" aria-modal="true" aria-labelledby="bandeja-titulo">
   <header class="ventana__head">
     <div>
-      <h2 id="bandeja-titulo">Notificaciones</h2>
-      <p class="muted small">Lo que necesita atención en RPS. Haz clic en una para ir a resolverla.</p>
+      <h2 id="bandeja-titulo">Cambios de TMR sin revisar</h2>
     </div>
     <button type="button" class="btn btn--ghost btn--sm" (click)="cerrar()" aria-label="Cerrar"><app-icon name="x" [size]="20" /></button>
   </header>
 
-  <div class="filtros">
-    <div class="buscar">
-      <app-icon name="search" [size]="17" />
-      <input #buscador class="input" type="search" placeholder="Buscar por colaborador o texto" aria-label="Buscar notificaciones"
-             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
-    </div>
-    <select class="select" aria-label="Severidad" [ngModel]="severidad()" (ngModelChange)="severidad.set($event)">
-      <option value="">Todas las severidades</option>
-      <option value="Critica">Críticas</option>
-      <option value="Advertencia">Advertencias</option>
-      <option value="Info">Informativas</option>
-    </select>
-  </div>
-
-  <div class="chips" role="group" aria-label="Filtrar por tipo">
-    <button type="button" class="chip" [class.is-on]="tipo() === ''" (click)="tipo.set('')">Todas · {{ servicio.total() }}</button>
-    @for (t of tipos(); track t.tipo) {
-      <button type="button" class="chip" [class.is-on]="tipo() === t.tipo" (click)="tipo.set(t.tipo)">{{ etiquetaTipo[t.tipo] }} · {{ t.total }}</button>
-    }
-  </div>
-
   <div class="ventana__cuerpo">
-    @if (visibles().length === 0) {
+    @if (servicio.total() === 0) {
       <div class="vacio-grande">
         <app-icon name="check" [size]="26" />
-        <p>{{ servicio.total() === 0 ? 'No hay notificaciones. Todo al día.' : 'Ninguna notificación coincide con los filtros.' }}</p>
-        @if (servicio.total() > 0) { <button type="button" class="btn btn--sm" (click)="limpiar()">Limpiar filtros</button> }
+        <p>No hay cambios de TMR por revisar.</p>
       </div>
     } @else {
       <ul class="lista">
-        @for (n of visibles(); track n.id) {
-          <li>
-            <a class="item" [routerLink]="n.ruta" [queryParams]="n.query ?? {}" (click)="cerrar()">
-              <div class="item__top">
-                <app-estado-chip [tono]="tono(n)">{{ textoSeveridad(n) }}</app-estado-chip>
-                <strong>{{ n.titulo }}</strong>
-                <span class="muted small fecha">{{ n.fecha | date: 'dd MMM yyyy' }}</span>
-              </div>
-              <p>@if (n.colaborador) { <b>{{ n.colaborador }}</b> · } {{ n.mensaje }}</p>
-            </a>
+        @for (c of visibles(); track c.id) {
+          <li class="item">
+            <div class="item__top">
+              <strong>{{ etiqueta[c.tipo] }}</strong>
+              @if (c.tieneLiquidacionRevisada) {
+                <app-estado-chip tono="danger">Hay liquidación revisada</app-estado-chip>
+              } @else if (c.tieneLiquidacion) {
+                <app-estado-chip tono="warn">Hay liquidación calculada</app-estado-chip>
+              }
+              <span class="muted small fecha">Detectado {{ c.detectadoEn | date: 'dd MMM yyyy, HH:mm' }}</span>
+            </div>
+            <p>
+              <a [routerLink]="['/colaboradores', c.colaboradorId]" [queryParams]="{ tab: 'proyectos' }" (click)="cerrar()"><b>{{ nombre(c) }}</b></a>
+              @if (detalle(c)) { · {{ detalle(c) }} }
+              @if (c.periodoDesde) { · desde {{ mes(c.periodoDesde) }} }
+            </p>
+            <div class="item__acciones">
+              <button type="button" class="btn btn--sm" (click)="marcarRevisado(c.id)" [disabled]="guardando() === c.id">
+                {{ guardando() === c.id ? 'Guardando…' : 'Marcar revisado' }}
+              </button>
+            </div>
           </li>
         }
       </ul>

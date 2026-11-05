@@ -8,23 +8,10 @@ import { ContratoDetalle, ContratoResumen, ETIQUETA_ESTADO_CONTRATO, EstadoContr
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
-import { hoy, sumarDias } from '../../../../shared/utils/fechas';
-import { ConfiguracionService } from '../../../configuracion/services/configuracion.service';
-
-/** Plazos de alerta por defecto (RN 13), mientras se leen los de Configuración. */
-const PLAZOS_ALERTA = [30, 15, 7];
-
-interface AlertaVencimiento {
-  dias: number;
-  fecha: string;
-  pasada: boolean;
-}
 
 /**
- * Pestaña "Contratos" del colaborador: un contrato por proyecto, sus adendas y las fechas
- * de alerta de vencimiento. Para registrar contratos o adendas lleva a la pantalla Contratos,
- * que es el único lugar donde se editan.
- * API: GET /api/contratos/{id} por cada contrato (hoy de ejemplo).
+ * Pestaña "Contratos" del colaborador: un contrato por proyecto y sus adendas, como los devuelve
+ * rps-backend. Para registrar contratos o adendas lleva a la pantalla Contratos.
  */
 @Component({
   selector: 'app-tab-contratos',
@@ -36,9 +23,6 @@ interface AlertaVencimiento {
 export class TabContratos {
   private readonly api = inject(ContratosService);
   private readonly router = inject(Router);
-  private readonly configuracion = inject(ConfiguracionService);
-  /** Días de alerta de Configuración → Alertas. */
-  private readonly plazos = signal<number[]>(PLAZOS_ALERTA);
 
   /** Resumen de contratos del colaborador, que ya cargó la ficha. */
   readonly contratos = input<ContratoResumen[]>([]);
@@ -49,35 +33,13 @@ export class TabContratos {
   protected readonly error = signal<string | null>(null);
   protected readonly anteriorAbierto = signal<string | null>(null);
 
-  /** Actuales: no vencidos, o vencidos con la asignación todavía activa (requieren revisión, RN 15). */
-  protected readonly actuales = computed(() =>
-    this.detalles().filter((d) => d.estado !== 'Vencido' || d.asignacionActiva));
+  /** Actuales: vigentes, por vencer o vencidos con asignación activa (estados que da el backend). */
+  protected readonly actuales = computed(() => this.detalles().filter((d) => d.estado !== 'NoVigente'));
 
-  /** Anteriores: vencidos y con la asignación terminada. Se conservan para el historial (RN 07). */
-  protected readonly anteriores = computed(() =>
-    this.detalles().filter((d) => d.estado === 'Vencido' && !d.asignacionActiva));
-
-  /** Fechas de alerta del contrato actual que vence primero. */
-  protected readonly proximo = computed(() =>
-    [...this.actuales()].filter((d) => d.estado !== 'Vencido').sort((a, b) => a.diasParaVencer - b.diasParaVencer)[0] ?? null);
-
-  protected readonly alertas = computed<AlertaVencimiento[]>(() => {
-    const c = this.proximo();
-    if (!c) return [];
-    return this.plazos().map((dias) => {
-      const fecha = sumarDias(c.fechaFinVigente, -dias);
-      return { dias, fecha, pasada: fecha < hoy() };
-    });
-  });
+  /** Anteriores: el backend no los marca como vigentes ni con asignación activa. */
+  protected readonly anteriores = computed(() => this.detalles().filter((d) => d.estado === 'NoVigente'));
 
   constructor() {
-    this.configuracion.obtener().subscribe({
-      next: (c) => {
-        const alertas = c.parametros.find((p) => p.clave === 'AlertasDias')?.valores ?? [];
-        if (alertas.length) this.plazos.set(alertas);
-      },
-      error: () => { /* se queda con 30, 15 y 7 */ },
-    });
     effect(() => {
       const lista = this.contratos();
       untracked(() => this.cargarDetalles(lista));
@@ -99,7 +61,7 @@ export class TabContratos {
   }
 
   protected tono(estado: EstadoContrato): TonoChip {
-    return estado === 'Vencido' ? 'danger' : estado === 'ProximoAVencer' ? 'warn' : 'ok';
+    return estado === 'Vencido' ? 'danger' : estado === 'ProximoAVencer' ? 'warn' : estado === 'Vigente' ? 'ok' : 'neutral';
   }
 
   /** Abre la pantalla Contratos con este contrato seleccionado. */

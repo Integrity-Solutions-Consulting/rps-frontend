@@ -39,8 +39,3 @@ export function nombreCompleto(p: Pick<TmrColaborador, 'nombres' | 'apellidos'>)
 export function identificacionEnmascarada(identificacion: string): string {
   return identificacion.length <= 4 ? identificacion : identificacion.slice(0, 4) + '*'.repeat(identificacion.length - 4);
 }
-
-/** Una asignación está activa si no tiene salida o la salida es hoy o después. */
-export function asignacionActiva(a: TmrAsignacion, hoy: string): boolean {
-  return a.fechaFinAsignacion === null || a.fechaFinAsignacion >= hoy;
-}

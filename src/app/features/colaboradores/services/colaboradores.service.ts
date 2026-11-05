@@ -13,11 +13,12 @@ export class ColaboradoresService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/colaboradores`;
 
-  /** GET /api/colaboradores?estado=Pendiente&activo=true */
+  /** GET /api/colaboradores?estado=Pendiente&activo=true&busqueda=ana */
   listar(filtros: FiltrosColaboradores): Observable<ColaboradorResumen[]> {
     let params = new HttpParams();
     if (filtros.estado) params = params.set('estado', filtros.estado);
     if (filtros.activo !== null) params = params.set('activo', String(filtros.activo));
+    if (filtros.busqueda?.trim()) params = params.set('busqueda', filtros.busqueda.trim());
     return this.http.get<ColaboradorResumen[]>(this.base, { params });
   }
 

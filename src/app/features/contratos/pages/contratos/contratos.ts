@@ -13,7 +13,6 @@ import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
-import { sumarDias } from '../../../../shared/utils/fechas';
 
 type Carga<T> = { estado: 'cargando' } | { estado: 'ok'; datos: T } | { estado: 'error'; mensaje: string };
 
@@ -193,14 +192,10 @@ export class Contratos {
     if (a?.fechaAsignacion && !this.inicioForm()) this.inicioForm.set(a.fechaAsignacion);
   }
 
+  /** Las fechas y demás campos los valida el backend; aquí solo se exige elegir a quién y en qué proyecto. */
   protected guardarContrato(): void {
     const a = this.asignacionElegida();
-    const errores: Record<string, string> = {};
-    if (!a) errores['asignacion'] = 'Elige el colaborador y el proyecto.';
-    if (!this.inicioForm()) errores['fechaInicio'] = 'Es obligatoria.';
-    if (!this.finForm()) errores['fechaFin'] = 'Es obligatoria.';
-    if (this.inicioForm() && this.finForm() && this.finForm() < this.inicioForm()) errores['fechaFin'] = 'El fin no puede ser anterior al inicio.';
-    if (Object.keys(errores).length || !a) { this.erroresContrato.set(errores); return; }
+    if (!a) { this.erroresContrato.set({ asignacion: 'Elige el colaborador y el proyecto.' }); return; }
 
     this.guardandoContrato.set(true);
     this.erroresContrato.set({});
@@ -234,7 +229,6 @@ export class Contratos {
   // ── Registrar adenda ─────────────────────────────────────────────────
   protected readonly agregandoAdenda = signal(false);
   protected readonly nuevaFinForm = signal('');
-  protected readonly referenciaAdendaForm = signal('');
   protected readonly observacionesAdendaForm = signal('');
   protected readonly guardandoAdenda = signal(false);
   protected readonly errorAdendaCampo = signal<string | null>(null);
@@ -242,7 +236,6 @@ export class Contratos {
 
   protected abrirAdenda(): void {
     this.nuevaFinForm.set('');
-    this.referenciaAdendaForm.set('');
     this.observacionesAdendaForm.set('');
     this.errorAdendaCampo.set(null);
     this.errorAdenda.set(null);
@@ -257,17 +250,11 @@ export class Contratos {
     const d = this.detalle();
     if (!d) return;
     const nueva = this.nuevaFinForm();
-    if (!nueva) { this.errorAdendaCampo.set('Elige la nueva fecha de fin.'); return; }
-    if (nueva <= d.fechaFinVigente) {
-      this.errorAdendaCampo.set('Debe ser posterior al fin vigente. Una adenda solo extiende el contrato.');
-      return;
-    }
     this.guardandoAdenda.set(true);
     this.errorAdendaCampo.set(null);
     this.errorAdenda.set(null);
     this.api.registrarAdenda(d.id, {
       nuevaFechaFin: nueva,
-      referencia: this.referenciaAdendaForm().trim() || null,
       observaciones: this.observacionesAdendaForm().trim() || null,
     }).subscribe({
       next: (actualizado) => {
@@ -288,19 +275,16 @@ export class Contratos {
 
   // ── Presentación ─────────────────────────────────────────────────────
   protected tono(estado: EstadoContrato): TonoChip {
-    return estado === 'Vencido' ? 'danger' : estado === 'ProximoAVencer' ? 'warn' : 'ok';
+    return estado === 'Vencido' ? 'danger' : estado === 'ProximoAVencer' ? 'warn' : estado === 'Vigente' ? 'ok' : 'neutral';
   }
 
-  protected textoPlazo(c: ContratoResumen): string {
-    if (c.diasParaVencer < 0) return `venció hace ${-c.diasParaVencer} ${-c.diasParaVencer === 1 ? 'día' : 'días'}`;
-    if (c.diasParaVencer === 0) return 'vence hoy';
-    return `${c.diasParaVencer} ${c.diasParaVencer === 1 ? 'día' : 'días'}`;
-  }
-
-  /** Una adenda empieza el día siguiente al fin anterior (el original o el de la adenda previa). */
-  protected inicioAdenda(d: ContratoDetalle, indice: number): string {
-    const finAnterior = indice === 0 ? d.fechaFinOriginal : d.adendas[indice - 1].nuevaFechaFin;
-    return sumarDias(finAnterior, 1);
+  /** Días que manda el backend en vencimientos; para los demás, solo el estado. */
+  protected textoPlazo(c: ContratoResumen): string | null {
+    const d = c.diasParaVencer;
+    if (d === null) return null;
+    if (d < 0) return `venció hace ${-d} ${-d === 1 ? 'día' : 'días'}`;
+    if (d === 0) return 'vence hoy';
+    return `${d} ${d === 1 ? 'día' : 'días'}`;
   }
 
   protected iniciales(nombre: string): string {
@@ -308,10 +292,6 @@ export class Contratos {
   }
 
   protected etiquetaAsignacion(a: AsignacionDisponible): string {
-    let texto = `${a.colaborador} · ${a.proyecto}`;
-    if (!a.vinculadoEnRps) texto += ' (no vinculado en RPS)';
-    else if (a.tieneContratoVigente) texto += ' (ya tiene contrato vigente)';
-    else if (!a.activa) texto += ' (asignación terminada)';
-    return texto;
+    return `${a.colaborador} · ${a.proyecto}${a.tieneContratoVigente ? ' (ya tiene contrato vigente)' : ''}`;
   }
 }

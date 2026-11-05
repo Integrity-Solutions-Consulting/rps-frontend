@@ -2,8 +2,6 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { ActivatedRoute, Router } from '@angular/router';
 import { SessionService } from '../../../../core/services/session.service';
 import { leerErrorApi } from '../../../../core/http/error-api';
-import { rutaConMock } from '../../../../core/mocks/mock-config';
-import { USUARIO_DESARROLLO } from '../../../../core/mocks/auth.mock';
 import { Icon } from '../../../../shared/components/icon/icon';
 
 /** Pantalla de ingreso (RC 01). POST /api/auth/login; el backend bloquea 15 min tras 5 intentos fallidos. */
@@ -27,8 +25,6 @@ export class Login {
   protected readonly errores = signal<Record<string, string>>({});
 
   protected readonly expirada = this.ruta.snapshot.queryParamMap.get('motivo') === 'expirada';
-  /** Solo con `npm start` (datos de ejemplo): se muestra el usuario de prueba. */
-  protected readonly ejemplo = rutaConMock('/auth/login') ? USUARIO_DESARROLLO : null;
 
   protected entrar(evento: Event): void {
     evento.preventDefault();

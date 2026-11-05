@@ -20,23 +20,17 @@
   </div>
 </header>
 
-<!-- RC 05: si TMR no responde, se avisa y no se interpretan los datos como cero -->
-@if (datos(); as d) {
-  @if (!d.origenTmr.disponible) {
-    <div class="banner banner--danger" role="alert">
-      <app-icon name="alert" [size]="20" />
-      <div>
-        <strong>No se pudo verificar la información de TMR.</strong>
-        Los valores mostrados son de la última consulta
-        @if (d.origenTmr.ultimaConsulta) { ({{ d.origenTmr.ultimaConsulta | date: 'dd MMM yyyy, HH:mm' }}) }
-        y no se asume que falten proyectos ni honorarios.
-      </div>
-    </div>
-  }
+<!-- RC 05: si la copia de TMR no está al día, se avisa y no se asume que falten datos -->
+@if (avisoTmr(); as aviso) {
+  <div class="banner banner--danger" role="alert">
+    <app-icon name="alert" [size]="20" />
+    <div><strong>{{ aviso }}</strong> Los datos de colaboradores y proyectos pueden no estar completos.</div>
+    <a class="btn btn--sm" routerLink="/colaboradores">Ir a sincronizar</a>
+  </div>
 }
 
-<!-- ── Indicadores ─────────────────────────────────────────────── -->
-@switch (resumen().estado) {
+<!-- ── Indicadores (GET /api/dashboard) ─────────────────────────── -->
+@switch (indicadores().estado) {
   @case ('cargando') {
     <section class="kpis" aria-busy="true" aria-label="Cargando indicadores">
       @for (i of [1, 2, 3, 4, 5]; track i) {
@@ -47,7 +41,7 @@
   @case ('error') {
     <div class="banner banner--danger" role="alert">
       <app-icon name="alert" [size]="20" />
-      <div><strong>No se pudo cargar el resumen.</strong> {{ $any(resumen()).mensaje }}</div>
+      <div><strong>No se pudo cargar el resumen.</strong> {{ $any(indicadores()).mensaje }}</div>
       <button type="button" class="btn btn--sm" (click)="actualizar()">Reintentar</button>
     </div>
   }
@@ -58,9 +52,9 @@
     <article class="card kpi">
       <span class="kpi__icon kpi__icon--teal"><app-icon name="cash" [size]="22" /></span>
       <div class="kpi__body">
-        <span class="kpi__label">Neto consolidado</span>
-        <strong class="kpi__value num">{{ d.netoConsolidado | currency: 'USD' : 'symbol' : '1.2-2' }}</strong>
-        <span class="kpi__hint">{{ d.colaboradoresActivos }} colaboradores · antes de anticipos</span>
+        <span class="kpi__label">Neto del período</span>
+        <strong class="kpi__value num">{{ d.honorarios.netoTotal | currency: 'USD' : 'symbol' : '1.2-2' }}</strong>
+        <span class="kpi__hint">{{ d.honorarios.cantidad }} honorarios calculados</span>
       </div>
     </article>
 
@@ -68,14 +62,11 @@
       <span class="kpi__icon kpi__icon--info"><app-icon name="check" [size]="22" /></span>
       <div class="kpi__body">
         <span class="kpi__label">Revisado para envío</span>
-        <strong class="kpi__value num">{{ d.liquidaciones.revisadas }} <small>de {{ d.liquidaciones.total }}</small></strong>
+        <strong class="kpi__value num">{{ d.liquidaciones.revisadas }} <small>de {{ totalLiquidaciones() }}</small></strong>
         <span class="bar" role="progressbar" [attr.aria-valuenow]="avanceRevision()" aria-valuemin="0" aria-valuemax="100">
           <span class="bar__fill" [style.width.%]="avanceRevision()"></span>
         </span>
-        <span class="kpi__hint">
-          {{ d.liquidaciones.pendientesRevision }} pendientes
-          @if (d.liquidaciones.requierenRecalculo > 0) { · <b class="t-danger">{{ d.liquidaciones.requierenRecalculo }} por recalcular</b> }
-        </span>
+        <span class="kpi__hint">{{ d.liquidaciones.sinRevisar }} sin revisar</span>
       </div>
     </article>
 
@@ -83,36 +74,33 @@
       <span class="kpi__icon kpi__icon--warn"><app-icon name="clock" [size]="22" /></span>
       <div class="kpi__body">
         <span class="kpi__label">Contratos por vencer</span>
-        <strong class="kpi__value num">{{ porVencer() }}</strong>
-        <span class="kpi__hint">
-          @if (vencidos() > 0) { <b class="t-danger">{{ vencidos() }} vencido{{ vencidos() === 1 ? '' : 's' }}</b> · }
-          próximos 30 días
-        </span>
-      </div>
-    </article>
-
-    <article class="card kpi">
-      <span class="kpi__icon kpi__icon--warn"><app-icon name="file" [size]="22" /></span>
-      <div class="kpi__body">
-        <span class="kpi__label">Documentos faltantes</span>
-        <strong class="kpi__value num">{{ d.documentosFaltantes }}</strong>
-        <span class="kpi__hint">No bloquean la exportación</span>
+        <strong class="kpi__value num">{{ d.contratosPorVencer.en30Dias }}</strong>
+        <span class="kpi__hint">próximos 30 días · {{ d.contratosPorVencer.en15Dias }} en 15 · {{ d.contratosPorVencer.en7Dias }} en 7</span>
       </div>
     </article>
 
     <article class="card kpi">
       <span class="kpi__icon kpi__icon--danger"><app-icon name="sliders" [size]="22" /></span>
       <div class="kpi__body">
-        <span class="kpi__label">Pendientes de configuración</span>
-        <strong class="kpi__value num">{{ d.pendientesConfiguracion }}</strong>
-        <span class="kpi__hint">Proyectos sin contrato u honorario</span>
+        <span class="kpi__label">Configuración pendiente</span>
+        <strong class="kpi__value num">{{ d.colaboradores.pendientes }}</strong>
+        <span class="kpi__hint">{{ d.colaboradores.configurados }} configurados · {{ d.colaboradores.activos }} activos</span>
+      </div>
+    </article>
+
+    <article class="card kpi">
+      <span class="kpi__icon kpi__icon--info"><app-icon name="card" [size]="22" /></span>
+      <div class="kpi__body">
+        <span class="kpi__label">Anticipos con saldo</span>
+        <strong class="kpi__value num">{{ d.anticipos.conSaldoPendiente }}</strong>
+        <span class="kpi__hint">{{ d.anticipos.montoPendiente | currency: 'USD' : 'symbol' : '1.2-2' }} pendientes</span>
       </div>
     </article>
   </section>
 }
 
 <div class="grid">
-  <!-- ── Vencimientos ───────────────────────────────────────── -->
+  <!-- ── Vencimientos (GET /api/dashboard/vencimientos) ─────────── -->
   <section class="card panel panel--alto">
     <header class="panel__head panel__head--accion">
       <h2>Vencimientos de contratos</h2>
@@ -160,77 +148,64 @@
     }
   </section>
 
-  <!-- ── Requiere atención: un botón por tipo de alerta; al abrirlo se ven las personas ── -->
+  <!-- ── Requiere atención: un botón por tipo; al abrirlo se ven las personas ── -->
   <section class="card panel alertas">
     <header class="panel__head">
-      <h2>Requiere atención <span class="count">{{ totalAlertas() }}</span></h2>
+      <h2>Requiere atención <span class="count">{{ totalAtencion() }}</span></h2>
     </header>
 
-    @switch (alertas().estado) {
-      @case ('cargando') {
-        <div class="pad stack">
-          @for (i of [1, 2, 3]; track i) { <div class="skeleton" style="height: 56px"></div> }
-        </div>
-      }
-      @case ('error') {
-        <div class="pad error">
-          <app-icon name="alert" [size]="18" /> {{ $any(alertas()).mensaje }}
-          <button type="button" class="btn btn--sm" (click)="actualizar()">Reintentar</button>
-        </div>
-      }
-      @case ('ok') {
-        @if (totalAlertas() === 0) {
-          <p class="pad muted">Nada pendiente de atención para {{ nombrePeriodo() }}.</p>
-        } @else {
-          <ul class="grupos" aria-label="Requiere atención, por tipo">
-            @for (g of gruposAlertas(); track g.tipo) {
-              <li class="grupo">
-                <button type="button" class="grupo__btn" [class.is-open]="abierto() === g.tipo"
-                        [attr.aria-expanded]="abierto() === g.tipo" [attr.aria-controls]="'alertas-' + g.tipo"
-                        (click)="alternar(g.tipo)">
-                  <span [class]="'grupo__icon grupo__icon--' + g.tono"><app-icon [name]="g.icono" [size]="20" /></span>
-                  <span class="grupo__txt">
-                    <strong>{{ g.etiqueta }}</strong>
-                    <span>{{ g.descripcion }}</span>
-                  </span>
-                  <span class="grupo__num num">{{ g.total }}</span>
-                  <span class="grupo__chev" aria-hidden="true"><app-icon name="chevronRight" [size]="18" /></span>
-                </button>
-
-                @if (abierto() === g.tipo) {
-                  <ul class="items" [id]="'alertas-' + g.tipo">
-                    @for (a of g.alertas; track a.id) {
-                      <li>
-                        @if (a.ruta) {
-                          <a class="item" [routerLink]="a.ruta" [title]="a.mensaje">
-                            <span class="item__quien"><strong>{{ a.colaborador ?? 'General' }}</strong>@if (a.proyecto) { · {{ a.proyecto }} }</span>
-                            <span class="item__msg">{{ a.mensaje }}</span>
-                          </a>
-                        } @else {
-                          <div class="item" [title]="a.mensaje">
-                            <span class="item__quien"><strong>{{ a.colaborador ?? 'General' }}</strong>@if (a.proyecto) { · {{ a.proyecto }} }</span>
-                            <span class="item__msg">{{ a.mensaje }}</span>
-                          </div>
-                        }
-                      </li>
-                    }
-                  </ul>
-                }
-              </li>
+    @if (cargando() && grupos().length === 0) {
+      <div class="pad stack">
+        @for (i of [1, 2, 3]; track i) { <div class="skeleton" style="height: 56px"></div> }
+      </div>
+    } @else if (grupos().length === 0) {
+      <p class="pad muted">Nada pendiente de atención.</p>
+    } @else {
+      <ul class="grupos" aria-label="Requiere atención, por tipo">
+        @for (g of grupos(); track g.clave) {
+          <li class="grupo">
+            @if (g.items) {
+              <button type="button" class="grupo__btn" [class.is-open]="abierto() === g.clave"
+                      [attr.aria-expanded]="abierto() === g.clave" [attr.aria-controls]="'atencion-' + g.clave"
+                      (click)="alternar(g.clave)">
+                <span [class]="'grupo__icon grupo__icon--' + g.tono"><app-icon [name]="g.icono" [size]="20" /></span>
+                <span class="grupo__txt"><strong>{{ g.etiqueta }}</strong><span>{{ g.descripcion }}</span></span>
+                <span class="grupo__num num">{{ g.total }}</span>
+                <span class="grupo__chev" aria-hidden="true"><app-icon name="chevronRight" [size]="18" /></span>
+              </button>
+              @if (abierto() === g.clave) {
+                <ul class="items" [id]="'atencion-' + g.clave">
+                  @for (i of g.items; track i.id) {
+                    <li>
+                      <a class="item" [routerLink]="i.ruta" [queryParams]="i.query" [title]="i.detalle">
+                        <span class="item__quien"><strong>{{ i.titulo }}</strong></span>
+                        <span class="item__msg">{{ i.detalle }}</span>
+                      </a>
+                    </li>
+                  }
+                </ul>
+              }
+            } @else {
+              <a class="grupo__btn" [routerLink]="g.ruta" [queryParams]="g.query">
+                <span [class]="'grupo__icon grupo__icon--' + g.tono"><app-icon [name]="g.icono" [size]="20" /></span>
+                <span class="grupo__txt"><strong>{{ g.etiqueta }}</strong><span>{{ g.descripcion }}</span></span>
+                <span class="grupo__num num">{{ g.total }}</span>
+                <span class="grupo__chev" aria-hidden="true"><app-icon name="chevronRight" [size]="18" /></span>
+              </a>
             }
-          </ul>
+          </li>
         }
-      }
+      </ul>
     }
   </section>
 </div>
 
-<!-- ── Preparación del período: una fila por colaborador, a todo el ancho ── -->
+<!-- ── Preparación del período (GET /api/liquidaciones) ──────────── -->
 <section class="card panel">
   <header class="panel__head panel__head--accion">
     <h2>Preparación del período</h2>
     <a class="btn btn--primary btn--sm" routerLink="/exportaciones" [queryParams]="{ periodo: periodo() }">
-      <app-icon name="upload" [size]="16" /> Generar exportación
+      <app-icon name="upload" [size]="16" /> Exportaciones
     </a>
   </header>
 
@@ -245,7 +220,7 @@
     @case ('ok') {
       @if (filasPreparacion().length === 0) {
         <p class="pad muted">
-          Todavía no se calcula {{ nombrePeriodo() }}.
+          Todavía no hay liquidaciones de {{ nombrePeriodo() }}.
           <a routerLink="/liquidaciones" [queryParams]="{ periodo: periodo() }">Ir a Liquidaciones para calcular</a>
         </p>
       } @else {
@@ -254,11 +229,9 @@
             <thead>
               <tr>
                 <th>Colaborador</th>
-                <th>Proyectos</th>
-                <th>Tipo de pago</th>
                 <th class="r">Neto calculado</th>
-                <th class="r">Desc. anticipos</th>
-                <th class="r">Valor a pagar</th>
+                <th class="r">Quincena</th>
+                <th class="r">Fin de mes</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -267,15 +240,15 @@
               @for (l of filasPreparacionPagina(); track l.id) {
                 <tr>
                   <td><strong>{{ l.colaborador }}</strong></td>
-                  <td>{{ l.proyectos }} {{ l.proyectos === 1 ? 'proyecto' : 'proyectos' }}</td>
-                  <td>{{ l.frecuencia === 'DosPagos' ? 'Quincena y fin de mes' : 'Fin de mes' }}</td>
                   <td class="r num">{{ l.netoConsolidado | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                  <td class="r num">{{ descuentoDe(l) | currency: 'USD' : 'symbol' : '1.2-2' }}</td>
-                  <td class="r num"><strong>{{ valorDe(l) | currency: 'USD' : 'symbol' : '1.2-2' }}</strong></td>
+                  <td class="r num">
+                    @if (corteDe(l, 'Quincena'); as q) { {{ q.valor | currency: 'USD' : 'symbol' : '1.2-2' }} } @else { <span class="muted">—</span> }
+                  </td>
+                  <td class="r num">
+                    @if (corteDe(l, 'FinDeMes'); as f) { {{ f.valor | currency: 'USD' : 'symbol' : '1.2-2' }} } @else { <span class="muted">—</span> }
+                  </td>
                   <td>
-                    @if (l.requiereRecalculo) {
-                      <app-estado-chip tono="danger">Por recalcular</app-estado-chip>
-                    } @else if (l.revisado) {
+                    @if (l.revisado) {
                       <app-estado-chip tono="ok">Revisado</app-estado-chip>
                     } @else {
                       <app-estado-chip tono="warn">Pendiente</app-estado-chip>
@@ -311,11 +284,11 @@
   }
 </section>
 
-@if (datos(); as d) {
+@if (estadoTmr().estado === 'ok') {
   <p class="origen">
     <app-icon name="sync" [size]="14" />
-    Origen TMR: {{ d.origenTmr.disponible ? 'disponible' : 'sin respuesta' }}
-    @if (d.origenTmr.ultimaConsulta) { · última consulta {{ d.origenTmr.ultimaConsulta | date: 'dd MMM yyyy, HH:mm' }} }
-    @if (d.avisosTmrPendientes > 0) { · {{ d.avisosTmrPendientes | number }} cambio(s) sin revisar }
+    @if ($any(estadoTmr()).datos.ultimaSincronizacion; as u) { Última sincronización con TMR: {{ u | date: 'dd MMM yyyy, HH:mm' }} }
+    @else { Sin sincronizar con TMR }
+    @if (cambiosTmr().estado === 'ok') { · {{ $any(cambiosTmr()).datos.length }} cambio(s) sin revisar }
   </p>
 }

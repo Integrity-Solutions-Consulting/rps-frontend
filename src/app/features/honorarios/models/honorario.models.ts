@@ -1,7 +1,6 @@
 /**
- * Honorario mensual por colaborador y proyecto (RN 17, RN 18, RN 19).
- * Tabla propuesta: rps.honorario_vigente (colaborador + tmr_proyecto_id + vigente_desde_mes).
- * El backend todavía no lo tiene: hoy responde el mock.
+ * Honorario mensual por colaborador y proyecto (RN 17, RN 18).
+ * En rps-backend: condiciones económicas (/api/colaboradores/{id}/condiciones-economicas).
  */
 
 export type Modalidad = 'Neto' | 'MasIva';
@@ -12,9 +11,16 @@ export interface HonorarioVigencia {
   modalidad: Modalidad;
   /** Primer día del mes, "2026-11-01". */
   vigenteDesdeMes: string;
-  registradoEn: string;
-  /** Si se canceló antes de regir. No se borra: queda en el historial y se puede restaurar. */
-  canceladoEn: string | null;
+  contratoId: string;
+}
+
+/** Contrato del proyecto, para elegir a cuál se asocia un honorario (el backend lo exige). */
+export interface ContratoDelProyecto {
+  id: string;
+  referencia: string | null;
+  fechaInicio: string;
+  fechaFinVigente: string;
+  vigente: boolean;
 }
 
 /** Un proyecto del colaborador con su honorario vigente, el programado y el historial. */
@@ -22,18 +28,21 @@ export interface HonorarioProyecto {
   tmrProyectoId: string;
   proyecto: string;
   cliente: string | null;
+  /** false si la asignación ya no viene de TMR. */
   asignacionActiva: boolean;
   /** El que rige este mes. null = sin honorario configurado (pendiente, RN 06). */
   vigente: HonorarioVigencia | null;
   /** Cambio ya registrado para un mes que aún no empieza. */
   programado: HonorarioVigencia | null;
-  /** Todas las vigencias (también las canceladas), de la más reciente a la más antigua. */
+  /** Todos los honorarios registrados, del más reciente al más antiguo (orden del backend). */
   historial: HonorarioVigencia[];
+  contratos: ContratoDelProyecto[];
 }
 
 export interface ProgramarHonorarioRequest {
   tmrColaboradorId: string;
   tmrProyectoId: string;
+  contratoId: string;
   importe: number;
   modalidad: Modalidad;
   vigenteDesdeMes: string;
@@ -45,6 +54,6 @@ export const ETIQUETA_MODALIDAD: Record<Modalidad, string> = {
 };
 
 export const DETALLE_MODALIDAD: Record<Modalidad, string> = {
-  Neto: 'Lo que recibe después de IVA y retenciones; RPS calcula el subtotal hacia atrás.',
-  MasIva: 'Es el subtotal; RPS agrega el IVA y descuenta las retenciones.',
+  Neto: 'Lo que recibe después de IVA y retenciones.',
+  MasIva: 'Es el subtotal; sobre él se agrega el IVA y se descuentan las retenciones.',
 };
