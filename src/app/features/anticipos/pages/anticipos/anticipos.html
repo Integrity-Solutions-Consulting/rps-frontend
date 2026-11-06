@@ -10,10 +10,9 @@
   <section class="card colaborador">
     <div class="field">
       <label for="colaborador">Colaborador</label>
-      <select id="colaborador" class="select" [ngModel]="colaboradorId()" (ngModelChange)="elegirColaborador($event)">
-        @if (opciones().length === 0) { <option value="">Sin colaboradores activos</option> }
-        @for (o of opciones(); track o.id) { <option [value]="o.id">{{ o.nombre }}</option> }
-      </select>
+      <app-buscador inputId="colaborador" [opciones]="opciones()" [valor]="colaboradorId()" (elegir)="elegirColaborador($event)"
+                    [placeholder]="opciones().length ? 'Escribe nombre o apellido…' : 'Sin colaboradores activos'"
+                    textoVacio="Ningún colaborador coincide con lo escrito." />
     </div>
     <div class="field">
       <label for="mes">Mes del plan de cuotas</label>

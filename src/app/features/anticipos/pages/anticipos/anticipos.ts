@@ -9,6 +9,7 @@ import { ColaboradoresService } from '../../../colaboradores/services/colaborado
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { Buscador } from '../../../../shared/components/buscador/buscador';
 import { DineroPipe } from '../../../../shared/pipes/dinero.pipe';
 import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
 import { ETIQUETA_CORTE, TipoCorte } from '../../../../shared/models/corte';
@@ -36,7 +37,7 @@ const aNumero = (texto: string): number | null => {
 @Component({
   selector: 'app-anticipos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, RouterLink, Icon, DineroPipe, SoloNumeros],
+  imports: [DatePipe, FormsModule, RouterLink, Icon, Buscador, DineroPipe, SoloNumeros],
   templateUrl: './anticipos.html',
   styleUrl: './anticipos.scss',
 })
