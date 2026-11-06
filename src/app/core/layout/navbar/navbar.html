@@ -3,16 +3,27 @@
     <app-icon name="menu" [size]="22" />
   </button>
 
-  @if (usaMocks) {
-    <span class="navbar__mock" title="Las respuestas vienen de core/mocks, no del backend">
-      <app-icon name="info" [size]="16" /> Datos de ejemplo
-    </span>
-  }
-
   <div class="navbar__right">
-    <span class="navbar__area">{{ session.usuario().area }}</span>
-    <span class="navbar__sep" aria-hidden="true"></span>
-    <span class="navbar__avatar" [attr.aria-label]="session.usuario().nombre">{{ session.usuario().iniciales }}</span>
-    <app-icon name="chevronDown" [size]="18" />
+    <app-campana />
+    @if (session.usuario(); as u) {
+      <span class="navbar__area">{{ u.area }}</span>
+      <span class="navbar__sep" aria-hidden="true"></span>
+      <div class="usuario">
+        <button type="button" class="usuario__btn" (click)="menuAbierto.set(!menuAbierto())"
+                [attr.aria-expanded]="menuAbierto()" aria-controls="menu-usuario" [attr.aria-label]="'Menú de ' + u.nombre">
+          <span class="navbar__avatar" aria-hidden="true">{{ u.iniciales }}</span>
+          <app-icon name="chevronDown" [size]="18" />
+        </button>
+        @if (menuAbierto()) {
+          <div id="menu-usuario" class="usuario__menu" role="menu">
+            <div class="usuario__datos">
+              <strong>{{ u.nombre }}</strong>
+              <span>{{ u.email }}</span>
+            </div>
+            <button type="button" class="usuario__item" role="menuitem" (click)="salir()">Cerrar sesión</button>
+          </div>
+        }
+      </div>
+    }
   </div>
 </header>

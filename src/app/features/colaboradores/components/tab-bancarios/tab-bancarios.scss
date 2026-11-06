@@ -1,0 +1,11 @@
+:host { display: grid; gap: 18px; }
+
+.grid { display: grid; gap: 18px; align-items: start; max-width: 860px; }
+
+.formulario { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 14px 16px; align-items: start;
+  > label { padding-top: 9px; font-weight: 500; } }
+@media (max-width: 560px) { .formulario { grid-template-columns: minmax(0, 1fr); gap: 6px; > label { padding-top: 6px; } } }
+.ancho { grid-column: 1 / -1; }
+.acciones { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.pie { display: flex; align-items: center; gap: 10px; padding: 12px 16px; color: var(--rps-muted); font-size: 13.5px; }

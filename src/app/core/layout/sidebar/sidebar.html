@@ -5,11 +5,9 @@
     <ul class="sidebar__menu">
       @for (item of menu; track item.ruta) {
         <li>
-          <a class="sidebar__item" [routerLink]="'/' + item.ruta" routerLinkActive="is-active"
-             [attr.title]="item.disponible ? null : 'En construcción'">
+          <a class="sidebar__item" [routerLink]="'/' + item.ruta" routerLinkActive="is-active">
             <app-icon [name]="item.icono" [size]="20" />
-            <span>{{ item.titulo }}</span>
-            @if (!item.disponible) { <span class="sidebar__badge">Pronto</span> }
+            <span class="sidebar__text">{{ item.titulo }}</span>
           </a>
         </li>
       }

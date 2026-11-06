@@ -1,0 +1,10 @@
+:host { display: grid; gap: 18px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+@media (max-width: 1080px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.filtros { display: flex; flex-wrap: wrap; gap: 12px; .field { width: 220px; } }
+.marco { border: 1px solid var(--rps-border); border-radius: 10px; }
+
+.nota-honorario { padding: 20px; display: grid; gap: 10px; background: var(--rps-info-50); border-color: #c7d9ee; color: #1d4f86;
+  strong { font-size: 16px; } p { margin: 0; font-size: 13.5px; color: #2d4a6b; } }

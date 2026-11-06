@@ -1,0 +1,182 @@
+<div class="pagina">
+  <header class="pagina__head">
+    <div>
+      <h1>Anticipos adicionales</h1>
+      <p>Dinero que se entrega aparte y se recupera con cuotas en los cortes de un mes.</p>
+    </div>
+  </header>
+
+  <!-- ── Colaborador y mes ──────────────────────────────────────── -->
+  <section class="card colaborador">
+    <div class="field">
+      <label for="colaborador">Colaborador</label>
+      <select id="colaborador" class="select" [ngModel]="colaboradorId()" (ngModelChange)="elegirColaborador($event)">
+        @if (opciones().length === 0) { <option value="">Sin colaboradores activos</option> }
+        @for (o of opciones(); track o.id) { <option [value]="o.id">{{ o.nombre }}</option> }
+      </select>
+    </div>
+    <div class="field">
+      <label for="mes">Mes del plan de cuotas</label>
+      <input id="mes" type="month" class="input" [value]="periodo()" (change)="cambiarPeriodo($any($event.target).value)" />
+    </div>
+    @if (colaboradorId()) {
+      <a class="ficha" [routerLink]="['/colaboradores', colaboradorId()]">Ver ficha</a>
+    }
+  </section>
+
+  @if (errorResumen()) {
+    <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ errorResumen() }}</div></div>
+  }
+
+  @if (cargandoResumen() && !resumen()) {
+    <div class="indicadores">@for (i of [1, 2, 3, 4]; track i) { <div class="card skeleton" style="height: 82px"></div> }</div>
+  } @else if (resumen(); as r) {
+    <!-- ── Indicadores (GET .../anticipos/resumen) ────────────────── -->
+    <section class="indicadores" aria-label="Límite de anticipos">
+      <article class="card indicador">
+        <span class="indicador__icono"><app-icon name="coins" [size]="22" /></span>
+        <div class="indicador__cuerpo">
+          <span class="indicador__etiqueta">Neto mensual completo</span>
+          <strong class="indicador__valor num">{{ r.netoMensualCompleto | dinero }}</strong>
+          <span class="indicador__ayuda">Honorarios vigentes de todos sus proyectos</span>
+        </div>
+      </article>
+      <article class="card indicador">
+        <span class="indicador__icono"><app-icon name="shield" [size]="22" /></span>
+        <div class="indicador__cuerpo">
+          <span class="indicador__etiqueta">Límite</span>
+          <strong class="indicador__valor num">{{ r.limite | dinero }}</strong>
+          <span class="indicador__ayuda">{{ r.porcentajeMaximoAnticipo }} % del neto mensual completo</span>
+        </div>
+      </article>
+      <article class="card indicador" [class.indicador--warn]="r.saldoPendiente > 0">
+        <span class="indicador__icono indicador__icono--warn"><app-icon name="file" [size]="22" /></span>
+        <div class="indicador__cuerpo">
+          <span class="indicador__etiqueta">Saldo pendiente</span>
+          <strong class="indicador__valor num">{{ r.saldoPendiente | dinero }}</strong>
+          <span class="indicador__ayuda">Anticipos menos sus cuotas registradas</span>
+        </div>
+      </article>
+      <article class="card indicador indicador--ok">
+        <span class="indicador__icono indicador__icono--ok"><app-icon name="pie" [size]="22" /></span>
+        <div class="indicador__cuerpo">
+          <span class="indicador__etiqueta">Disponible</span>
+          <strong class="indicador__valor num">{{ r.disponible | dinero }}</strong>
+          <span class="indicador__ayuda">Límite menos saldo pendiente</span>
+        </div>
+      </article>
+    </section>
+
+    @if (!r.activo) {
+      <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>El colaborador está desactivado en RPS.</div></div>
+    }
+
+    <div class="dos-columnas">
+      <!-- ── 1. Registrar anticipo (POST) ───────────────────────────── -->
+      <form class="card formulario" (submit)="$event.preventDefault(); registrar()">
+        <h2>1. Registrar anticipo</h2>
+        <div class="field">
+          <label for="monto">Monto del anticipo</label>
+          <div class="con-prefijo"><span>$</span>
+            <input id="monto" name="monto" class="input num" appSoloNumeros="monto" placeholder="0,00"
+                   [ngModel]="monto()" (ngModelChange)="monto.set($event)" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="obs">Observaciones (opcional)</label>
+          <textarea id="obs" name="obs" class="input area" maxlength="500" rows="2"
+                    [ngModel]="observaciones()" (ngModelChange)="observaciones.set($event)"></textarea>
+        </div>
+        @if (errorGuardar(); as e) {
+          <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+        }
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando…' : 'Registrar anticipo' }}
+          </button>
+        </div>
+      </form>
+
+      <!-- ── 2. Plan de cuotas (PUT .../plan) ────────────────────────── -->
+      <section class="card formulario">
+        <h2>2. Plan de cuotas</h2>
+        @if (anticipoDelPlan(); as a) {
+          <p class="muted small">Anticipo de {{ a.monto | dinero }} del {{ a.fecha | date: 'dd MMM yyyy' }} · cuotas de {{ nombreMes().toLowerCase() }}.
+            Guardar reemplaza el plan anterior.</p>
+          <div class="table-wrap plan">
+            <table class="tbl">
+              <thead><tr><th>Corte</th><th>Importe</th><th><span class="sr-only">Quitar</span></th></tr></thead>
+              <tbody>
+                @for (c of cuotas(); track c.clave) {
+                  <tr>
+                    <td>
+                      <select class="select" [attr.aria-label]="'Corte de la cuota'" [ngModel]="c.corte" (ngModelChange)="cambiarCuota(c.clave, { corte: $event })">
+                        @for (k of r.cortesPermitidos; track k) { <option [value]="k">{{ etiquetaCorte[k] }}</option> }
+                      </select>
+                    </td>
+                    <td>
+                      <div class="con-prefijo"><span>$</span>
+                        <input class="input num" appSoloNumeros="monto" placeholder="0,00" [attr.aria-label]="'Importe de la cuota'"
+                               [ngModel]="c.importe" (ngModelChange)="cambiarCuota(c.clave, { importe: $event })" />
+                      </div>
+                    </td>
+                    <td class="r">
+                      <button type="button" class="btn btn--ghost btn--sm" (click)="quitarCuota(c.clave)" aria-label="Quitar cuota">
+                        <app-icon name="trash" [size]="16" />
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="3" class="muted">Sin cuotas todavía.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <button type="button" class="btn btn--sm agregar" (click)="agregarCuota()">
+            <app-icon name="plus" [size]="15" /> Agregar cuota
+          </button>
+          @if (errorPlan(); as e) {
+            <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+          }
+          <div class="form-actions">
+            <button type="button" class="btn" (click)="cerrarPlan()" [disabled]="guardandoPlan()">Cancelar</button>
+            <button type="button" class="btn btn--primary" (click)="guardarPlan()" [disabled]="guardandoPlan()">
+              {{ guardandoPlan() ? 'Guardando…' : 'Guardar plan' }}
+            </button>
+          </div>
+        } @else {
+          <p class="muted">Elige “Plan” en un anticipo de la lista para registrar o corregir sus cuotas.</p>
+        }
+      </section>
+    </div>
+
+    <!-- ── Anticipos registrados (GET .../anticipos) ───────────────── -->
+    <section class="card">
+      <header class="bloque__head registrados__head"><h2>Anticipos registrados</h2></header>
+      @if (anticipos().length === 0) {
+        <p class="vacio registrados__vacio">Este colaborador no tiene anticipos adicionales.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead><tr><th>Fecha</th><th class="r">Monto</th><th class="r">Saldo pendiente</th><th>Cuotas</th><th>Observaciones</th><th>Acciones</th></tr></thead>
+            <tbody>
+              @for (a of anticipos(); track a.id) {
+                <tr [class.is-sel]="planDe() === a.id">
+                  <td class="num">{{ a.fecha | date: 'dd MMM yyyy' }}</td>
+                  <td class="r num"><strong>{{ a.monto | dinero }}</strong></td>
+                  <td class="r num">{{ a.saldoPendiente | dinero }}</td>
+                  <td>{{ a.cuotas.length ? textoCuotas(a) : 'Sin plan' }}</td>
+                  <td class="muted">{{ a.observaciones ?? '—' }}</td>
+                  <td class="acciones">
+                    <button type="button" class="btn btn--sm" (click)="abrirPlan(a)">Plan</button>
+                    <button type="button" class="btn btn--sm btn--danger" (click)="eliminar(a)">Eliminar</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+</div>

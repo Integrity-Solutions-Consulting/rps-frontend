@@ -1,17 +1,24 @@
-import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, output, signal } from '@angular/core';
 import { SessionService } from '../../services/session.service';
 import { Icon } from '../../../shared/components/icon/icon';
-import { environment } from '../../../../environments/environment';
+import { Campana } from '../../../features/notificaciones/components/campana/campana';
 
 @Component({
   selector: 'app-navbar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon],
+  imports: [Icon, Campana],
   templateUrl: './navbar.html',
   styleUrl: './navbar.scss',
+  host: { '(document:keydown.escape)': 'menuAbierto.set(false)' },
 })
 export class Navbar {
   protected readonly session = inject(SessionService);
-  protected readonly usaMocks = environment.useMocks;
   readonly toggleMenu = output<void>();
+  protected readonly menuAbierto = signal(false);
+
+  /** POST /api/auth/logout y vuelta al login. */
+  protected salir(): void {
+    this.menuAbierto.set(false);
+    this.session.cerrarSesion();
+  }
 }

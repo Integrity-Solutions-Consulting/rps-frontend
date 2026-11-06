@@ -8,11 +8,6 @@
   display: none; border: 0; background: none; color: var(--rps-text); cursor: pointer; padding: 6px;
 }
 
-.navbar__mock {
-  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px;
-  border-radius: 999px; background: var(--rps-warn-50); color: var(--rps-warn);
-  font-size: 12.5px; font-weight: 600;
-}
 
 .navbar__right { margin-left: auto; display: flex; align-items: center; gap: 14px; color: var(--rps-muted); }
 .navbar__area { color: var(--rps-text); font-weight: 500; }
@@ -21,6 +16,19 @@
   width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
   background: var(--rps-navy-700); color: #fff; font-weight: 600; font-size: 13px;
 }
+
+.usuario { position: relative; }
+.usuario__btn { display: flex; align-items: center; gap: 6px; border: 0; background: none; padding: 2px; border-radius: 99px;
+  color: var(--rps-muted); cursor: pointer; }
+.usuario__menu { position: absolute; right: 0; top: calc(100% + 8px); min-width: 220px; padding: 6px; z-index: 20;
+  background: var(--rps-surface); border: 1px solid var(--rps-border); border-radius: var(--rps-radius);
+  box-shadow: 0 10px 30px rgba(19, 38, 61, .14); display: grid; gap: 2px; }
+.usuario__datos { display: grid; gap: 2px; padding: 8px 10px 10px; border-bottom: 1px solid var(--rps-border); margin-bottom: 4px;
+  strong { color: var(--rps-text); font-size: 13.5px; }
+  span { font-size: 12.5px; color: var(--rps-muted); overflow-wrap: anywhere; } }
+.usuario__item { text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 6px; font-size: 13.5px;
+  color: var(--rps-text); cursor: pointer;
+  &:hover { background: #f6f8fa; } }
 
 @media (max-width: 960px) {
   .navbar { padding: 0 16px; }

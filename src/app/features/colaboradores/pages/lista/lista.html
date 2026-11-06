@@ -1,0 +1,117 @@
+<header class="head">
+  <div>
+    <h1>Colaboradores</h1>
+    <p>Personas de TMR configuradas en RPS para el cálculo de honorarios.</p>
+  </div>
+  <button type="button" class="btn btn--primary" (click)="sincronizar()" [disabled]="sincronizando()">
+    <app-icon name="sync" [size]="18" [class.spin]="sincronizando()" />
+    {{ sincronizando() ? 'Sincronizando…' : 'Sincronizar con TMR' }}
+  </button>
+</header>
+
+<section class="card panel">
+  <div class="filtros">
+    <div class="field filtros__buscar">
+      <label for="buscar">Buscar</label>
+      <input id="buscar" class="input" type="search" placeholder="Nombre, apellido o identificación" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+    </div>
+    <div class="field">
+      <label for="f-estado">Configuración</label>
+      <select id="f-estado" class="select" [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)">
+        <option value="">Todas</option>
+        <option value="Pendiente">Pendiente</option>
+        <option value="Configurado">Configurado</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="f-activo">Mostrar</label>
+      <select id="f-activo" class="select" [ngModel]="filtroActivo()" (ngModelChange)="filtroActivo.set($event)">
+        <option value="activos">Activos</option>
+        <option value="inactivos">Desactivados</option>
+        <option value="todos">Todos</option>
+      </select>
+    </div>
+    <div class="filtros__acciones">
+      <button type="button" class="btn" (click)="limpiarFiltros()">Limpiar</button>
+      <button type="button" class="btn" (click)="actualizar()" aria-label="Actualizar lista">
+        <app-icon name="refresh" [size]="17" />
+      </button>
+    </div>
+  </div>
+
+  @if (carga().estado === 'ok') {
+    <div class="resumen">
+      <span><strong class="num">{{ conteo().total }}</strong> en la lista</span>
+      <span class="sep" aria-hidden="true"></span>
+      <span><strong class="num t-warn">{{ conteo().pendientes }}</strong> pendientes de configuración</span>
+      <span class="sep" aria-hidden="true"></span>
+      <span><strong class="num t-ok">{{ conteo().configurados }}</strong> configurados</span>
+    </div>
+  }
+
+  @switch (carga().estado) {
+    @case ('cargando') {
+      <div class="pad stack">
+        @for (i of [1, 2, 3, 4]; track i) { <div class="skeleton" style="height: 44px"></div> }
+      </div>
+    }
+    @case ('error') {
+      <div class="pad">
+        <div class="aviso aviso--danger">
+          <app-icon name="alert" [size]="18" />
+          <div>{{ $any(carga()).mensaje }}</div>
+          <button type="button" class="btn btn--sm" (click)="actualizar()">Reintentar</button>
+        </div>
+      </div>
+    }
+    @case ('ok') {
+      @if (filas().length === 0) {
+        <p class="pad vacio">
+          @if (busqueda()) { Ningún colaborador coincide con “{{ busqueda() }}”. }
+          @else { No hay colaboradores con estos filtros. Usa “Sincronizar con TMR” para traer a las personas de TMR. }
+        </p>
+      } @else {
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Colaborador</th>
+                <th>Tipo de servicio</th>
+                <th>Configuración</th>
+                <th>Estado</th>
+                <th>Actualizado</th>
+                <th><span class="sr-only">Abrir</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of filas(); track c.id) {
+                <tr class="fila" [routerLink]="['/colaboradores', c.id]" tabindex="0" (keydown.enter)="$any($event.currentTarget).click()">
+                  <td>
+                    <div class="persona">
+                      <span class="avatar" aria-hidden="true">{{ iniciales(c.nombre) }}</span>
+                      <span class="persona__txt"><strong>{{ c.nombre }}</strong><small class="num">{{ c.identificacion }} · ID TMR {{ c.tmrColaboradorId }}</small></span>
+                    </div>
+                  </td>
+                  <td>
+                    @if (c.clasificacion) { {{ etiquetaClasificacion[c.clasificacion] }} }
+                    @else { <span class="muted">Sin definir</span> }
+                  </td>
+                  <td>
+                    <app-estado-chip [tono]="c.estadoConfiguracion === 'Configurado' ? 'ok' : 'warn'">
+                      {{ c.estadoConfiguracion }}
+                    </app-estado-chip>
+                  </td>
+                  <td>
+                    <app-estado-chip [tono]="c.activo ? 'info' : 'neutral'">{{ c.activo ? 'Activo' : 'Desactivado' }}</app-estado-chip>
+                  </td>
+                  <td class="num muted">{{ c.actualizadoEn | date: 'dd MMM yyyy, HH:mm' }}</td>
+                  <td class="r"><app-icon name="chevronRight" [size]="18" /></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
+</section>

@@ -1,0 +1,11 @@
+:host { display: block; }
+
+.formulario { padding: 20px; display: grid; gap: 18px; max-width: 980px; }
+.grupo { border: 0; margin: 0; padding: 0; display: grid; gap: 10px;
+  legend { font-size: 15.5px; font-weight: 700; margin-bottom: 8px; } }
+
+.con-sufijo { display: flex; align-items: stretch;
+  .input { border-radius: 8px 0 0 8px; }
+  > span { display: grid; place-items: center; padding: 0 10px; border: 1px solid var(--rps-border); border-left: 0;
+    border-radius: 0 8px 8px 0; background: #f6f8fa; color: var(--rps-muted); } }
+.con-sufijo .input:only-child { border-radius: 8px; }

@@ -1,0 +1,49 @@
+<button type="button" class="campana" (click)="alternar()" [attr.aria-expanded]="abierto()" aria-haspopup="true"
+        [attr.aria-label]="'Cambios de TMR sin revisar: ' + notificaciones.total()">
+  <app-icon name="bell" [size]="21" />
+  @if (notificaciones.total() > 0) {
+    <span class="insignia" [class.insignia--critica]="notificaciones.afectanRevisadas() > 0">{{ insignia() }}</span>
+  }
+</button>
+
+@if (abierto()) {
+  <div class="menu" role="dialog" aria-label="Cambios de TMR sin revisar">
+    <header class="menu__head">
+      <strong>Cambios de TMR</strong>
+      <span class="muted small">{{ notificaciones.total() }} sin revisar
+        @if (notificaciones.afectanRevisadas()) { · <b class="t-danger">{{ notificaciones.afectanRevisadas() }} con liquidación revisada</b> }
+      </span>
+    </header>
+
+    @if (notificaciones.error()) {
+      <p class="menu__vacio">No se pudieron cargar los cambios de TMR.</p>
+    } @else if (notificaciones.total() === 0) {
+      <p class="menu__vacio"><app-icon name="check" [size]="18" /> No hay cambios de TMR por revisar.</p>
+    } @else {
+      <ul class="menu__lista">
+        @for (c of primeros(); track c.id) {
+          <li>
+            <a class="item" [class.item--critica]="c.tieneLiquidacionRevisada" [routerLink]="['/colaboradores', c.colaboradorId]"
+               [queryParams]="{ tab: 'proyectos' }" (click)="abierto.set(false)">
+              <span class="item__icono"><app-icon name="sync" [size]="16" /></span>
+              <span class="item__texto">
+                <strong>{{ etiqueta[c.tipo] }}</strong>
+                <small>{{ nombre(c) }}@if (detalle(c)) { · {{ detalle(c) }} }</small>
+              </span>
+            </a>
+          </li>
+        }
+      </ul>
+    }
+
+    <footer class="menu__pie">
+      <button type="button" class="btn btn--sm ver-mas" (click)="verTodos()" [disabled]="notificaciones.total() === 0">
+        {{ restantes() > 0 ? 'Ver más (' + restantes() + ')' : 'Ver todos' }}
+      </button>
+    </footer>
+  </div>
+}
+
+@if (notificaciones.ventanaAbierta()) {
+  <app-bandeja />
+}

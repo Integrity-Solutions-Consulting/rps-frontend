@@ -1,0 +1,13 @@
+:host { display: block; }
+
+.todos { display: flex; align-items: center; gap: 8px; height: 38px; font-size: 13.5px; cursor: pointer; }
+
+.opciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.opcion { padding: 18px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: start;
+  > .btn, .opcion__botones { grid-column: 1 / -1; justify-self: start; } }
+.opcion__botones { display: flex; flex-wrap: wrap; gap: 8px; }
+.opcion__icono { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--rps-teal-50); color: var(--rps-teal); }
+.opcion__txt { display: grid; gap: 2px;
+  strong { font-size: 15.5px; }
+  small { font-size: 12.5px; } }

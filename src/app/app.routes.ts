@@ -1,25 +1,62 @@
 import { Routes } from '@angular/router';
 import { AppLayout } from './core/layout/app-layout/app-layout';
 import { MENU } from './core/navigation/menu';
+import { authGuard, soloSinSesionGuard } from './core/auth/auth.guard';
 
-// Módulos que todavía no tienen pantalla: muestran "En construcción".
+// Módulos que todavía no tienen pantalla: muestran su nombre y descripción.
 const pendientes: Routes = MENU.filter((m) => !m.disponible).map((m) => ({
   path: m.ruta,
   title: `${m.titulo} · RPS`,
-  data: { modulo: m.titulo, descripcion: m.descripcion },
+  data: { modulo: m.titulo, descripcion: m.descripcion, icono: m.icono },
   loadComponent: () => import('./features/proximamente/proximamente').then((c) => c.Proximamente),
 }));
 
 export const routes: Routes = [
   {
+    path: 'login',
+    title: 'Iniciar sesión · RPS',
+    canActivate: [soloSinSesionGuard],
+    loadComponent: () => import('./features/auth/pages/login/login').then((c) => c.Login),
+  },
+  {
     path: '',
     component: AppLayout,
+    // RC 01: todas las pantallas piden sesión (el backend exige token en todas sus rutas).
+    canActivate: [authGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'inicio' },
       {
         path: 'inicio',
         title: 'Inicio · RPS',
         loadChildren: () => import('./features/dashboard/dashboard.routes').then((r) => r.DASHBOARD_ROUTES),
+      },
+      {
+        path: 'colaboradores',
+        loadChildren: () => import('./features/colaboradores/colaboradores.routes').then((r) => r.COLABORADORES_ROUTES),
+      },
+      {
+        path: 'contratos',
+        loadChildren: () => import('./features/contratos/contratos.routes').then((r) => r.CONTRATOS_ROUTES),
+      },
+      {
+        path: 'anticipos',
+        loadChildren: () => import('./features/anticipos/anticipos.routes').then((r) => r.ANTICIPOS_ROUTES),
+      },
+      {
+        path: 'liquidaciones',
+        loadChildren: () => import('./features/liquidaciones/liquidaciones.routes').then((r) => r.LIQUIDACIONES_ROUTES),
+      },
+      {
+        path: 'documentos',
+        loadChildren: () => import('./features/documentos/documentos.routes').then((r) => r.DOCUMENTOS_ROUTES),
+      },
+      {
+        path: 'exportaciones',
+        loadChildren: () => import('./features/exportaciones/exportaciones.routes').then((r) => r.EXPORTACIONES_ROUTES),
+      },
+      {
+        path: 'configuracion',
+        loadChildren: () => import('./features/configuracion/configuracion.routes').then((r) => r.CONFIGURACION_ROUTES),
       },
       ...pendientes,
     ],

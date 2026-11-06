@@ -1,0 +1,42 @@
+<div class="pagina">
+  <header class="pagina__head">
+    <div>
+      <h1>Exportaciones</h1>
+      <p>Archivos CSV y PDF que genera RPS para descargar.</p>
+    </div>
+    <div class="pagina__acciones">
+      <div class="field">
+        <label for="periodo">Período</label>
+        <input id="periodo" type="month" class="input" [value]="periodo()" [disabled]="todosLosMeses()"
+               (change)="cambiarPeriodo($any($event.target).value)" />
+      </div>
+      <label class="todos">
+        <input type="checkbox" [checked]="todosLosMeses()" (change)="todosLosMeses.set($any($event.target).checked)" />
+        Todos los meses
+      </label>
+    </div>
+  </header>
+
+  <section class="opciones">
+    @for (o of opciones; track o.tipo) {
+      <article class="card opcion">
+        <span class="opcion__icono"><app-icon [name]="o.icono" [size]="22" /></span>
+        <div class="opcion__txt">
+          <strong>{{ o.titulo }}</strong>
+          <span class="muted">{{ o.detalle }}</span>
+          <small class="muted">{{ o.porMes ? (todosLosMeses() ? 'Todos los meses' : nombreMes()) : 'Sin filtro de mes' }}</small>
+        </div>
+        <div class="opcion__botones">
+          @if (o.pdf) {
+            <button type="button" class="btn" (click)="descargar(o, 'pdf')" [disabled]="descargando() !== null">
+              <app-icon name="file" [size]="17" /> {{ descargando() === o.tipo + '-pdf' ? 'Generando…' : 'Descargar PDF' }}
+            </button>
+          }
+          <button type="button" class="btn btn--primary" (click)="descargar(o)" [disabled]="descargando() !== null">
+            <app-icon name="download" [size]="17" /> {{ descargando() === o.tipo + '-csv' ? 'Descargando…' : 'Descargar CSV' }}
+          </button>
+        </div>
+      </article>
+    }
+  </section>
+</div>

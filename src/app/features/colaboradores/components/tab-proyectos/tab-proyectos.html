@@ -1,0 +1,36 @@
+<section class="card bloque">
+  <header class="bloque__head">
+    <h2>Asignaciones de TMR</h2>
+    <span class="origen"><app-icon name="info" [size]="15" /> Solo lectura: se actualizan al sincronizar con TMR</span>
+  </header>
+
+  @if (errorTmr()) {
+    <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>{{ errorTmr() }}</div></div>
+  } @else if (filas().length === 0) {
+    <p class="vacio">No hay asignaciones de TMR para este colaborador.</p>
+  } @else {
+    <div class="table-wrap marco">
+      <table class="tbl">
+        <thead>
+          <tr><th>Proyecto</th><th>Inicio</th><th>Salida</th><th>Contratos</th></tr>
+        </thead>
+        <tbody>
+          @for (a of filas(); track a.tmrAsignacionId) {
+            <tr>
+              <td><strong>{{ a.proyecto }}</strong></td>
+              <td class="num">{{ a.fechaAsignacion ? (a.fechaAsignacion | date: 'dd MMM yyyy') : '—' }}</td>
+              <td class="num">{{ a.fechaFinAsignacion ? (a.fechaFinAsignacion | date: 'dd MMM yyyy') : 'Sin fecha de salida' }}</td>
+              <td>
+                @for (c of a.contratos; track c.id) {
+                  <app-estado-chip [tono]="tonoContrato(c)">{{ c.referencia ?? 'Contrato' }} · {{ etiquetaContrato[c.estado] }}</app-estado-chip>
+                } @empty {
+                  <app-estado-chip tono="warn">Sin contrato</app-estado-chip>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>

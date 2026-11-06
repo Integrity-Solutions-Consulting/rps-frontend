@@ -1,0 +1,52 @@
+<div class="pagina">
+  <header class="pagina__head">
+    <div>
+      <h1>Configuración</h1>
+      <p>Datos de la empresa, días de pago, límite de anticipos e impuestos. Los cambios rigen desde que se guardan.</p>
+    </div>
+  </header>
+
+  @if (cargando()) {
+    <div class="card skeleton" style="height: 320px"></div>
+  } @else if (borrador(); as b) {
+    <form class="card formulario" (submit)="$event.preventDefault(); guardar()">
+      @for (g of grupos; track g) {
+        <fieldset class="grupo">
+          <legend>{{ g }}</legend>
+          <div class="form-grid">
+            @for (c of camposDe(g); track c.clave) {
+              <div class="field">
+                <label [for]="'cfg-' + c.clave">{{ c.etiqueta }}</label>
+                @if (c.tipo === 'texto') {
+                  <input class="input" [id]="'cfg-' + c.clave" [name]="c.clave" [class.is-invalid]="errores()[c.clave]"
+                         [ngModel]="b[c.clave]" (ngModelChange)="cambiar(c.clave, $event)" />
+                } @else {
+                  <div class="con-sufijo">
+                    <input class="input num" [id]="'cfg-' + c.clave" [name]="c.clave" [class.is-invalid]="errores()[c.clave]"
+                           [appSoloNumeros]="c.tipo === 'entero' ? 'entero' : 'porcentaje'"
+                           [ngModel]="b[c.clave]" (ngModelChange)="cambiar(c.clave, $event)" />
+                    @if (c.tipo === 'porcentaje') { <span>%</span> }
+                  </div>
+                }
+                @if (errores()[c.clave]; as e) { <span class="field__error">{{ e }}</span> }
+              </div>
+            }
+          </div>
+        </fieldset>
+      }
+
+      @if (error(); as e) {
+        <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+      }
+      <div class="form-actions">
+        <button type="button" class="btn" (click)="deshacer()" [disabled]="!hayCambios() || guardando()">Deshacer cambios</button>
+        <button type="submit" class="btn btn--primary" [disabled]="!hayCambios() || guardando()">
+          <app-icon name="save" [size]="17" /> {{ guardando() ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </div>
+      @if (datos(); as d) { <p class="muted small">Última actualización: {{ d.actualizadoEn | date: 'dd MMM yyyy, HH:mm' }}</p> }
+    </form>
+  } @else if (error(); as e) {
+    <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+  }
+</div>

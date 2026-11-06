@@ -1,0 +1,56 @@
+<div class="fondo" (click)="cerrar()"></div>
+
+<section class="ventana" role="dialog" aria-modal="true" aria-labelledby="bandeja-titulo">
+  <header class="ventana__head">
+    <div>
+      <h2 id="bandeja-titulo">Cambios de TMR sin revisar</h2>
+    </div>
+    <button type="button" class="btn btn--ghost btn--sm" (click)="cerrar()" aria-label="Cerrar"><app-icon name="x" [size]="20" /></button>
+  </header>
+
+  <div class="ventana__cuerpo">
+    @if (servicio.total() === 0) {
+      <div class="vacio-grande">
+        <app-icon name="check" [size]="26" />
+        <p>No hay cambios de TMR por revisar.</p>
+      </div>
+    } @else {
+      <ul class="lista">
+        @for (c of visibles(); track c.id) {
+          <li class="item">
+            <div class="item__top">
+              <strong>{{ etiqueta[c.tipo] }}</strong>
+              @if (c.tieneLiquidacionRevisada) {
+                <app-estado-chip tono="danger">Hay liquidación revisada</app-estado-chip>
+              } @else if (c.tieneLiquidacion) {
+                <app-estado-chip tono="warn">Hay liquidación calculada</app-estado-chip>
+              }
+              <span class="muted small fecha">Detectado {{ c.detectadoEn | date: 'dd MMM yyyy, HH:mm' }}</span>
+            </div>
+            <p>
+              <a [routerLink]="['/colaboradores', c.colaboradorId]" [queryParams]="{ tab: 'proyectos' }" (click)="cerrar()"><b>{{ nombre(c) }}</b></a>
+              @if (detalle(c)) { · {{ detalle(c) }} }
+              @if (c.periodoDesde) { · desde {{ mes(c.periodoDesde) }} }
+            </p>
+            <div class="item__acciones">
+              <button type="button" class="btn btn--sm" (click)="marcarRevisado(c.id)" [disabled]="guardando() === c.id">
+                {{ guardando() === c.id ? 'Guardando…' : 'Marcar revisado' }}
+              </button>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <footer class="ventana__pie">
+    <span class="muted small">Mostrando {{ rango().desde }} a {{ rango().hasta }} de {{ rango().total }}</span>
+    @if (totalPaginas() > 1) {
+      <nav class="paginas" aria-label="Páginas">
+        <button type="button" class="btn btn--sm" [disabled]="pagina() === 1" (click)="pagina.set(pagina() - 1)">Anterior</button>
+        <span class="small">Página {{ pagina() }} de {{ totalPaginas() }}</span>
+        <button type="button" class="btn btn--sm" [disabled]="pagina() === totalPaginas()" (click)="pagina.set(pagina() + 1)">Siguiente</button>
+      </nav>
+    }
+  </footer>
+</section>
