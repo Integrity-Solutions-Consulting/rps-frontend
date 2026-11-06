@@ -33,9 +33,9 @@ export class Exportaciones {
   protected readonly descargando = signal<string | null>(null);
 
   protected readonly opciones: OpcionExportacion[] = [
-    { tipo: 'liquidaciones', titulo: 'Liquidaciones', detalle: 'Liquidaciones del mes con sus cortes. En PDF, con logo, encabezado y totales.', icono: 'calculator', porMes: true, pdf: true },
-    { tipo: 'honorarios', titulo: 'Honorarios', detalle: 'Honorarios calculados por proyecto.', icono: 'cash', porMes: true },
-    { tipo: 'colaboradores', titulo: 'Colaboradores', detalle: 'Colaboradores registrados en RPS.', icono: 'users', porMes: false },
+    { tipo: 'liquidaciones', titulo: 'Liquidaciones', detalle: 'Neto consolidado por colaborador. El PDF suma cortes, anticipos y totales.', icono: 'calculator', porMes: true, pdf: true },
+    { tipo: 'honorarios', titulo: 'Honorarios', detalle: 'Honorarios calculados por proyecto. El PDF incluye totales.', icono: 'cash', porMes: true, pdf: true },
+    { tipo: 'colaboradores', titulo: 'Colaboradores', detalle: 'Colaboradores registrados en RPS. El PDF muestra nombres y estado.', icono: 'users', porMes: false, pdf: true },
   ];
 
   protected cambiarPeriodo(valor: string): void {
