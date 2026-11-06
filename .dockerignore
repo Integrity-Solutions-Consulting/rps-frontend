@@ -1,0 +1,11 @@
+node_modules
+.angular
+dist
+out-tsc
+.git
+.github
+.vs
+.vscode
+docs
+README.md
+CLAUDE.md
