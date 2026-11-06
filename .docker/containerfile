@@ -1,0 +1,22 @@
+# --- ETAPA 1: Compilación ---
+# Angular 21 pide Node 20.19+, 22.12+ o 24+
+FROM node:22-alpine AS builder
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+# environment.ts usa apiUrl '/api': el backend se publica en el mismo dominio, bajo /api
+RUN npm run build -- --configuration=production
+
+# --- ETAPA 2: Servidor (Nginx) ---
+FROM nginx:alpine
+
+RUN rm -rf /usr/share/nginx/html/*
+COPY --from=builder /app/dist/rps-frontend/browser /usr/share/nginx/html
+COPY .docker/nginx.conf /etc/nginx/nginx.conf
+
+EXPOSE 3000
+
+CMD ["nginx", "-g", "daemon off;"]
