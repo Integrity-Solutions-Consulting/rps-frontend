@@ -30,6 +30,10 @@ export interface CorteLiquidacion {
   base: number;
   descuento: number;
   valor: number;
+  /** > 0: el anticipo programado para este corte no cupo completo (saldo insuficiente). */
+  recuperacionNoAplicada: number;
+  /** > 0: la quincena se redujo porque el mes resultó más corto de lo previsto (salida a mitad de mes). */
+  ajustePorProrrateo: number;
 }
 
 export type EstadoDocumento = 'Registrado' | 'Pendiente';
@@ -48,6 +52,8 @@ export interface LiquidacionResumen {
   /** "Revisado para envío" (RN 49). El backend solo permite marcarlo. No confirma una transferencia. */
   revisado: boolean;
   revisadoEn: string | null;
+  /** true si quien revisó fue el usuario de la sesión actual (no hay directorio de usuarios en el frontend). */
+  revisadoPorMi: boolean;
   calculadoEn: string;
 }
 

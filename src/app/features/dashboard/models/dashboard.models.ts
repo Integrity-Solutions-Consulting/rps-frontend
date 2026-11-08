@@ -11,12 +11,14 @@ export type Periodo = string;
 export type IndicadoresDashboard = BeDashboard;
 
 export interface VencimientoContrato {
-  /** Mismo ID que usa la pantalla Contratos (?contrato=). */
+  /** Mismo ID que usa la pantalla Contratos (?contrato=). Un contrato con varios proyectos puede
+   * aparecer en más de una fila: una por cada proyecto que esté por vencer o vencido. */
   contratoId: string;
   colaboradorId: string;
   /** ID de TMR: filtra la pantalla Contratos (?colaborador=). */
   tmrColaboradorId: string;
   colaborador: string;
+  proyectoId: string;
   proyecto: string;
   fechaFinVigente: string;
   /** Negativo cuando el contrato ya venció (lo calcula el backend). */

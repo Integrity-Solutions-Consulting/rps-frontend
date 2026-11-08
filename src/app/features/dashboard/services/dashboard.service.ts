@@ -27,6 +27,7 @@ export class DashboardService {
         colaboradorId: v.colaboradorId,
         tmrColaboradorId: v.tmrColaboradorId,
         colaborador: `${v.nombres ?? ''} ${v.apellidos ?? ''}`.trim() || `ID TMR ${v.tmrColaboradorId}`,
+        proyectoId: v.proyectoId,
         proyecto: v.proyectoNombre || 'Proyecto sin nombre',
         fechaFinVigente: v.fechaFinVigente,
         diasRestantes: v.diasRestantes,

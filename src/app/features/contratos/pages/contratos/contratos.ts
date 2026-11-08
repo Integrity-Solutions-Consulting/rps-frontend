@@ -3,12 +3,14 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, Observable, catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, combineLatest, forkJoin, map, of, startWith, switchMap } from 'rxjs';
 
 import { ContratosService } from '../../services/contratos.service';
 import {
-  AsignacionDisponible, ContratoDetalle, ContratoResumen, ETIQUETA_ESTADO_CONTRATO, EstadoContrato, ResumenContratos,
+  AsignacionDisponible, ContratoDetalle, ContratoResumen, ETIQUETA_ESTADO_CONTRATO, EstadoContrato, HonorarioDeRegistro,
+  ProyectoDeContrato, ResumenContratos,
 } from '../../models/contrato.models';
+import { Modalidad } from '../../../honorarios/models/honorario.models';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
@@ -70,8 +72,8 @@ export class Contratos {
     const lista = colaborador ? c.datos.filter((x) => x.tmrColaboradorId === colaborador) : c.datos;
     const t = this.busqueda().trim().toLowerCase();
     if (!t) return lista;
-    return lista.filter((x) =>
-      `${x.colaborador} ${x.proyecto} ${x.cliente ?? ''} ${x.referencia ?? ''} ${x.tmrColaboradorId}`.toLowerCase().includes(t));
+    return lista.filter((x) => `${x.colaborador} ${this.nombresProyectos(x)} ${this.clientesTexto(x)} ${x.referencia ?? ''} ${x.tmrColaboradorId}`
+      .toLowerCase().includes(t));
   });
 
   // ── Paginación (10 por página, como el mockup) ───────────────────────
@@ -149,69 +151,135 @@ export class Contratos {
 
   // ── Registrar contrato ───────────────────────────────────────────────
   protected readonly registrando = signal(false);
+  protected readonly cargandoFormulario = signal(false);
+
+  // Paso 1: elegir colaborador (todos, incluso sin proyecto todavía).
+  protected readonly colaboradoresTodos = signal<{ tmrColaboradorId: string; colaborador: string }[]>([]);
+  protected readonly busquedaColaborador = signal('');
+  protected readonly colaboradorElegidoId = signal('');
+
+  protected readonly colaboradoresFiltrados = computed(() => {
+    const t = this.busquedaColaborador().trim().toLowerCase();
+    const lista = this.colaboradoresTodos();
+    if (!t) return lista;
+    return lista.filter((c) => c.colaborador.toLowerCase().includes(t));
+  });
+
+  // Paso 2: proyectos disponibles de ese colaborador (0, 1 o varios).
   protected readonly asignaciones = signal<AsignacionDisponible[]>([]);
-  protected readonly cargandoAsignaciones = signal(false);
-  protected readonly asignacionForm = signal('');
+  protected readonly asignacionesDelColaborador = computed(() =>
+    this.asignaciones().filter((a) => a.tmrColaboradorId === this.colaboradorElegidoId()));
+  protected readonly proyectosElegidos = signal<ReadonlySet<string>>(new Set());
+
+  // Paso 3-4: fechas, referencia, observaciones, honorario por proyecto elegido.
   protected readonly inicioForm = signal('');
   protected readonly finForm = signal('');
   protected readonly referenciaForm = signal('');
   protected readonly observacionesForm = signal('');
+  protected readonly honorariosForm = signal<Record<string, { importe: string; modalidad: Modalidad }>>({});
+
+  // Paso 5: datos bancarios (opcional, se puede completar después desde aquí mismo).
+  protected readonly bancoForm = signal('');
+  protected readonly tipoCuentaForm = signal('');
+  protected readonly numeroCuentaForm = signal('');
+
   protected readonly guardandoContrato = signal(false);
   protected readonly erroresContrato = signal<Record<string, string>>({});
   protected readonly errorContrato = signal<string | null>(null);
 
-  protected readonly asignacionElegida = computed(() => {
-    const clave = this.asignacionForm();
-    return this.asignaciones().find((a) => this.clave(a) === clave) ?? null;
-  });
-
-  protected clave(a: AsignacionDisponible): string {
-    return `${a.tmrColaboradorId}|${a.tmrProyectoId}`;
-  }
-
   protected abrirRegistro(): void {
-    this.asignacionForm.set('');
+    this.busquedaColaborador.set('');
+    this.colaboradorElegidoId.set('');
+    this.proyectosElegidos.set(new Set());
     this.inicioForm.set('');
     this.finForm.set('');
     this.referenciaForm.set('');
     this.observacionesForm.set('');
+    this.honorariosForm.set({});
+    this.bancoForm.set('');
+    this.tipoCuentaForm.set('');
+    this.numeroCuentaForm.set('');
     this.erroresContrato.set({});
     this.errorContrato.set(null);
     this.registrando.set(true);
-    this.cargandoAsignaciones.set(true);
-    this.api.asignacionesDisponibles().subscribe({
-      next: (lista) => { this.asignaciones.set(lista); this.cargandoAsignaciones.set(false); },
-      error: (e: unknown) => { this.cargandoAsignaciones.set(false); this.errorContrato.set(leerErrorApi(e).mensaje); },
+    this.cargandoFormulario.set(true);
+    forkJoin({ colaboradores: this.api.colaboradoresParaRegistro(), asignaciones: this.api.asignacionesDisponibles() }).subscribe({
+      next: ({ colaboradores, asignaciones }) => {
+        this.colaboradoresTodos.set(colaboradores);
+        this.asignaciones.set(asignaciones);
+        this.cargandoFormulario.set(false);
+      },
+      error: (e: unknown) => { this.cargandoFormulario.set(false); this.errorContrato.set(leerErrorApi(e).mensaje); },
     });
   }
 
-  /** Al elegir la asignación, propone como inicio la fecha de inicio de la asignación en TMR. */
-  protected elegirAsignacion(clave: string): void {
-    this.asignacionForm.set(clave);
-    const a = this.asignacionElegida();
-    if (a?.fechaAsignacion && !this.inicioForm()) this.inicioForm.set(a.fechaAsignacion);
+  protected elegirColaborador(tmrColaboradorId: string): void {
+    this.colaboradorElegidoId.set(tmrColaboradorId);
+    this.proyectosElegidos.set(new Set());
+    this.honorariosForm.set({});
   }
 
-  /** Las fechas y demás campos los valida el backend; aquí solo se exige elegir a quién y en qué proyecto. */
+  protected alternarProyecto(a: AsignacionDisponible): void {
+    const actual = new Set(this.proyectosElegidos());
+    if (actual.has(a.tmrProyectoId)) {
+      actual.delete(a.tmrProyectoId);
+      const honorarios = { ...this.honorariosForm() };
+      delete honorarios[a.tmrProyectoId];
+      this.honorariosForm.set(honorarios);
+    } else {
+      actual.add(a.tmrProyectoId);
+      // Al elegir el primer proyecto, propone como inicio su fecha de ingreso en TMR.
+      if (actual.size === 1 && a.fechaAsignacion && !this.inicioForm()) this.inicioForm.set(a.fechaAsignacion);
+      this.honorariosForm.update((h) => ({ ...h, [a.tmrProyectoId]: h[a.tmrProyectoId] ?? { importe: '', modalidad: 'Neto' } }));
+    }
+    this.proyectosElegidos.set(actual);
+  }
+
+  protected honorarioDe(tmrProyectoId: string): { importe: string; modalidad: Modalidad } {
+    return this.honorariosForm()[tmrProyectoId] ?? { importe: '', modalidad: 'Neto' };
+  }
+
+  protected actualizarImporte(tmrProyectoId: string, importe: string): void {
+    this.honorariosForm.update((h) => ({ ...h, [tmrProyectoId]: { ...this.honorarioDe(tmrProyectoId), importe } }));
+  }
+
+  protected actualizarModalidad(tmrProyectoId: string, modalidad: Modalidad): void {
+    this.honorariosForm.update((h) => ({ ...h, [tmrProyectoId]: { ...this.honorarioDe(tmrProyectoId), modalidad } }));
+  }
+
+  /** Las fechas y demás campos los valida el backend; aquí solo se exige elegir a quién. */
   protected guardarContrato(): void {
-    const a = this.asignacionElegida();
-    if (!a) { this.erroresContrato.set({ asignacion: 'Elige el colaborador y el proyecto.' }); return; }
+    const tmrColaboradorId = this.colaboradorElegidoId();
+    if (!tmrColaboradorId) { this.erroresContrato.set({ colaborador: 'Elige el colaborador.' }); return; }
+
+    const honorarios: HonorarioDeRegistro[] = [...this.proyectosElegidos()].map((tmrProyectoId) => {
+      const h = this.honorarioDe(tmrProyectoId);
+      const importeMensual = h.importe.trim() ? Number(h.importe.replace(',', '.')) : null;
+      return { tmrProyectoId, importeMensual, modalidad: h.modalidad };
+    }).filter((h) => h.importeMensual !== null && h.importeMensual > 0);
+
+    const numero = this.numeroCuentaForm().trim();
+    const cuentaBancaria = numero
+      ? { banco: this.bancoForm().trim() || null, tipoCuenta: this.tipoCuentaForm() || null, numeroCuenta: numero }
+      : null;
 
     this.guardandoContrato.set(true);
     this.erroresContrato.set({});
     this.errorContrato.set(null);
     this.api.registrar({
-      tmrColaboradorId: a.tmrColaboradorId,
-      tmrProyectoId: a.tmrProyectoId,
+      tmrColaboradorId,
+      tmrProyectoIds: [...this.proyectosElegidos()],
       fechaInicio: this.inicioForm(),
       fechaFin: this.finForm(),
       referencia: this.referenciaForm().trim() || null,
       observaciones: this.observacionesForm().trim() || null,
+      honorarios,
+      cuentaBancaria,
     }).subscribe({
       next: (d) => {
         this.guardandoContrato.set(false);
         this.registrando.set(false);
-        this.avisos.ok(`Contrato registrado para ${d.colaborador} · ${d.proyecto}.`);
+        this.avisos.ok(`Contrato registrado para ${d.colaborador} · ${this.nombresProyectos(d)}.`);
         this.filtroEstado.set('');
         this.busqueda.set('');
         this.seleccionadoId.set(d.id);
@@ -278,9 +346,22 @@ export class Contratos {
     return estado === 'Vencido' ? 'danger' : estado === 'ProximoAVencer' ? 'warn' : estado === 'Vigente' ? 'ok' : 'neutral';
   }
 
-  /** Días que manda el backend en vencimientos; para los demás, solo el estado. */
-  protected textoPlazo(c: ContratoResumen): string | null {
-    const d = c.diasParaVencer;
+  /** Nombres de los proyectos del contrato, o "Sin proyecto" (personal de RR. HH.). */
+  protected nombresProyectos(c: ContratoResumen): string {
+    return c.proyectos.length ? c.proyectos.map((p) => p.proyecto).join(', ') : 'Sin proyecto';
+  }
+
+  protected clientesTexto(c: ContratoResumen): string {
+    return [...new Set(c.proyectos.map((p) => p.cliente).filter((x): x is string => !!x))].join(', ');
+  }
+
+  protected tieneVencidoConAsignacion(c: ContratoResumen): boolean {
+    return c.proyectos.some((p) => p.estado === 'Vencido' && p.asignacionActiva);
+  }
+
+  /** Días que manda el backend en vencimientos, para un proyecto en particular; para los demás, solo el estado. */
+  protected textoPlazo(p: ProyectoDeContrato): string | null {
+    const d = p.diasParaVencer;
     if (d === null) return null;
     if (d < 0) return `venció hace ${-d} ${-d === 1 ? 'día' : 'días'}`;
     if (d === 0) return 'vence hoy';
@@ -289,9 +370,5 @@ export class Contratos {
 
   protected iniciales(nombre: string): string {
     return nombre.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
-  }
-
-  protected etiquetaAsignacion(a: AsignacionDisponible): string {
-    return `${a.colaborador} · ${a.proyecto}${a.tieneContratoVigente ? ' (ya tiene contrato vigente)' : ''}`;
   }
 }

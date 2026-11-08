@@ -161,7 +161,7 @@
             <tbody>
               @for (a of anticipos(); track a.id) {
                 <tr [class.is-sel]="planDe() === a.id">
-                  <td class="num">{{ a.fecha | date: 'dd MMM yyyy' }}</td>
+                  <td class="num" [title]="a.creadoPorMi ? 'Registrado por ti' : ''">{{ a.fecha | date: 'dd MMM yyyy' }}</td>
                   <td class="r num"><strong>{{ a.monto | dinero }}</strong></td>
                   <td class="r num">{{ a.saldoPendiente | dinero }}</td>
                   <td>{{ a.cuotas.length ? textoCuotas(a) : 'Sin plan' }}</td>

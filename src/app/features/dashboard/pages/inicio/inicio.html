@@ -124,7 +124,7 @@
                 <tr><th>Colaborador</th><th>Proyecto</th><th>Fin vigente</th><th>Plazo</th><th>Acciones</th></tr>
               </thead>
               <tbody>
-                @for (v of listaVencimientos(); track v.contratoId) {
+                @for (v of listaVencimientos(); track v.contratoId + '|' + v.proyectoId) {
                   <tr>
                     <td><strong>{{ v.colaborador }}</strong></td>
                     <td>{{ v.proyecto }}</td>

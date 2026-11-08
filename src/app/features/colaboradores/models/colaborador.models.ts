@@ -46,11 +46,7 @@ export interface ColaboradorDetalle extends ColaboradorResumen {
   cuentaBancaria: CuentaBancaria | null;
 }
 
-// ── Requests ─────────────────────────────────────────────────────────
-export interface CrearColaboradorRequest {
-  tmrColaboradorId: string;
-  clasificacion: Clasificacion | null;
-}
+// Sin CrearColaboradorRequest a propósito (RN 03): un colaborador solo entra a RPS por sincronización con TMR.
 
 export interface RegistrarFrecuenciaRequest {
   frecuencia: Frecuencia;
@@ -78,7 +74,8 @@ export interface EventoHistorial {
   fecha: string;
   tipo: TipoEvento;
   descripcion: string;
-  usuario: string;
+  /** Null si el backend todavía no captura quién hizo ese movimiento (no se inventa un autor). */
+  usuario: string | null;
   /** Mes "yyyy-MM" al que corresponde el movimiento, si aplica. */
   periodo?: string | null;
   importe?: number | null;

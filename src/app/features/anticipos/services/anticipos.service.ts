@@ -4,12 +4,14 @@ import { Observable, map } from 'rxjs';
 import { Anticipo, CuotaPlan, ResumenAnticipos } from '../models/anticipo.models';
 import { BackendRps, diaUno } from '../../../core/backend/backend-rps.service';
 import { BeAnticipo } from '../../../core/backend/backend-rps.models';
+import { SessionService } from '../../../core/services/session.service';
 
 /** Llamadas a /api/colaboradores/{id}/anticipos (Features/Anticipos de rps-backend). */
 @Injectable({ providedIn: 'root' })
 export class AnticiposService {
   private readonly http = inject(HttpClient);
   private readonly be = inject(BackendRps);
+  private readonly sesion = inject(SessionService);
 
   private base(colaboradorId: string): string {
     return `${this.be.api}/colaboradores/${colaboradorId}/anticipos`;
@@ -27,6 +29,7 @@ export class AnticiposService {
       map((lista) => lista.map((a): Anticipo => ({
         id: a.id, colaboradorId: a.colaboradorId, fecha: a.fecha, monto: a.monto, observaciones: a.observaciones,
         saldoPendiente: a.saldoPendiente, creadoEn: a.creadoEn,
+        creadoPorMi: a.creadoPor === this.sesion.usuario()?.id,
         cuotas: a.cuotas.map((c) => ({ id: c.id, periodo: c.periodo, corte: c.corte, importe: c.importe })),
       }))),
     );

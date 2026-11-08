@@ -2,20 +2,22 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, map, of, shareReplay, switchMap, tap } from 'rxjs';
 import {
-  Adenda, AsignacionDisponible, ContratoDetalle, ContratoResumen, EstadoContrato, RegistrarAdendaRequest,
-  RegistrarContratoRequest, ResumenContratos,
+  Adenda, AsignacionDisponible, ContratoDetalle, ContratoResumen, EstadoContrato, ProyectoDeContrato,
+  RegistrarAdendaRequest, RegistrarContratoRequest, ResumenContratos,
 } from '../models/contrato.models';
-import { BackendRps } from '../../../core/backend/backend-rps.service';
-import { BeAdenda, BeAsignacion, BeColaborador, BeContrato } from '../../../core/backend/backend-rps.models';
+import { BackendRps, diaUno } from '../../../core/backend/backend-rps.service';
+import { BeAdenda, BeAsignacion, BeColaborador, BeContrato, BeProyecto, BeProyectoDeContrato } from '../../../core/backend/backend-rps.models';
 import { TmrColaborador } from '../../integracion-tmr/models/tmr.models';
 import { DashboardService } from '../../dashboard/services/dashboard.service';
 import { VencimientoContrato } from '../../dashboard/models/dashboard.models';
 
 /**
  * Contratos y adendas de rps-backend: /api/colaboradores/{id}/contratos y /adendas.
+ * Un contrato puede cubrir uno, varios o ningún proyecto (RR. HH. sin proyecto en TMR).
  * El backend los agrupa por colaborador; aquí se juntan para la lista general (falta un GET /api/contratos).
- * El estado sale del backend: `vigente` del contrato y la lista de GET /api/dashboard/vencimientos
- * (por vencer en 30 días y vencidos con asignación activa).
+ * El estado de cada proyecto sale del backend: `vigente` del contrato y la lista de
+ * GET /api/dashboard/vencimientos (por vencer en 30 días y vencidos con asignación activa), que
+ * ahora puede traer más de una fila para el mismo contrato (una por proyecto).
  */
 @Injectable({ providedIn: 'root' })
 export class ContratosService {
@@ -29,8 +31,8 @@ export class ContratosService {
 
   /** Lista de contratos, filtrada por estado y/o por colaborador (ID de TMR). */
   listar(estado: EstadoContrato | null, tmrColaboradorId: string | null = null): Observable<ContratoResumen[]> {
-    return this.todosDelBackend().pipe(map(({ contratos, vencimientos }) => contratos
-      .map((d) => this.aResumen(d, vencimientos))
+    return this.todosDelBackend().pipe(map(({ contratos, vencimientos, proyectos }) => contratos
+      .map((d) => this.aResumen(d, vencimientos, proyectos))
       .filter((c) => (!estado || c.estado === estado) && (!tmrColaboradorId || c.tmrColaboradorId === tmrColaboradorId))));
   }
 
@@ -45,19 +47,47 @@ export class ContratosService {
   }
 
   obtener(id: string): Observable<ContratoDetalle> {
-    return this.todosDelBackend().pipe(switchMap(({ contratos, vencimientos }) => {
+    return this.todosDelBackend().pipe(switchMap(({ contratos, vencimientos, proyectos }) => {
       const d = contratos.find((x) => x.contrato.id === id);
-      return d ? of(this.aDetalle(d, vencimientos)) : this.be.error(404, 'Contrato.NoEncontrado', 'No existe ese contrato.');
+      return d ? of(this.aDetalle(d, vencimientos, proyectos)) : this.be.error(404, 'Contrato.NoEncontrado', 'No existe ese contrato.');
     }));
   }
 
-  /** POST /api/colaboradores/{id}/contratos. Las fechas y demás las valida el backend. */
+  /**
+   * POST /api/colaboradores/{id}/contratos y, de una vez, los honorarios por proyecto y los datos
+   * bancarios que vengan en la misma solicitud (varias llamadas encadenadas; las fechas y demás
+   * las valida el backend en cada una).
+   */
   registrar(request: RegistrarContratoRequest): Observable<ContratoDetalle> {
-    return this.be.idRps(request.tmrColaboradorId).pipe(
-      switchMap((id) => this.http.post<BeContrato>(`${this.be.api}/colaboradores/${id}/contratos`, {
-        proyectoId: request.tmrProyectoId, fechaInicio: request.fechaInicio || null, fechaFin: request.fechaFin || null,
-        referencia: request.referencia, observaciones: request.observaciones,
-      })),
+    return forkJoin({ colaboradorId: this.be.idRps(request.tmrColaboradorId), proyectos: this.be.proyectos() }).pipe(
+      switchMap(({ colaboradorId, proyectos }) => {
+        const idDe = (tmrProyectoId: string) => proyectos.find((p) => p.tmrProyectoId === tmrProyectoId)?.id ?? null;
+        const proyectoIds = request.tmrProyectoIds.map(idDe).filter((id): id is string => id !== null);
+
+        return this.http.post<BeContrato>(`${this.be.api}/colaboradores/${colaboradorId}/contratos`, {
+          proyectoIds, fechaInicio: request.fechaInicio || null, fechaFin: request.fechaFin || null,
+          referencia: request.referencia, observaciones: request.observaciones,
+        }).pipe(
+          switchMap((contrato) => {
+            const pasos: Observable<unknown>[] = [];
+
+            for (const h of request.honorarios) {
+              const proyectoId = idDe(h.tmrProyectoId);
+              if (!proyectoId || h.importeMensual === null) continue;
+              pasos.push(this.http.post(`${this.be.api}/colaboradores/${colaboradorId}/condiciones-economicas`, {
+                proyectoId, contratoId: contrato.id, importeMensual: h.importeMensual, modalidad: h.modalidad,
+                mesInicioVigencia: diaUno(request.fechaInicio), observaciones: null,
+              }));
+            }
+
+            if (request.cuentaBancaria) {
+              pasos.push(this.http.put(`${this.be.api}/colaboradores/${colaboradorId}/cuenta-bancaria`, request.cuentaBancaria));
+            }
+
+            return forkJoin(pasos.length > 0 ? pasos : [of(null)]).pipe(map(() => contrato));
+          }),
+        );
+      }),
       tap(() => (this.cache = null)),
       switchMap((c) => this.obtener(c.id)),
     );
@@ -70,6 +100,18 @@ export class ContratosService {
         { nuevaFechaFin: request.nuevaFechaFin || null, observaciones: request.observaciones })),
       tap(() => (this.cache = null)),
       switchMap(() => this.obtener(id)),
+    );
+  }
+
+  /**
+   * Todos los colaboradores de TMR, para elegir a quién se le registra el contrato — incluidos
+   * los que todavía no tienen ninguna asignación (personal de RR. HH. sin proyecto).
+   */
+  colaboradoresParaRegistro(): Observable<{ tmrColaboradorId: string; colaborador: string }[]> {
+    return this.be.colaboradoresConNombre().pipe(
+      map(({ lista, nombres }) => lista.map((c) => ({
+        tmrColaboradorId: c.tmrColaboradorId, colaborador: this.be.nombreDe(nombres, c.tmrColaboradorId),
+      }))),
     );
   }
 
@@ -86,7 +128,7 @@ export class ContratosService {
         proyecto: a.proyectoNombre,
         fechaAsignacion: a.fechaInicio,
         fechaFinAsignacion: a.fechaSalida,
-        tieneContratoVigente: contratos.some((x) => x.proyectoId === a.proyectoId && x.vigente),
+        tieneContratoVigente: contratos.some((x) => x.vigente && x.proyectos.some((p) => p.proyectoId === a.proyectoId)),
       }))))))),
       map((grupos) => grupos.flat()),
     );
@@ -97,7 +139,9 @@ export class ContratosService {
   /** Todos los contratos de todos los colaboradores, con sus adendas y asignaciones, y la lista de vencimientos. */
   private todosDelBackend(): Observable<DatosContratos> {
     if (this.cache && this.cache.hasta > Date.now()) return this.cache.datos;
-    const datos = forkJoin({ contratos: this.consultarBackend(), vencimientos: this.tablero.vencimientos() }).pipe(shareReplay(1));
+    const datos = forkJoin({
+      contratos: this.consultarBackend(), vencimientos: this.tablero.vencimientos(), proyectos: this.be.proyectos(),
+    }).pipe(shareReplay(1));
     this.cache = { hasta: Date.now() + 5000, datos };
     return datos;
   }
@@ -111,7 +155,7 @@ export class ContratosService {
         this.http.get<BeAdenda[]>(`${this.be.api}/colaboradores/${c.id}/contratos/${contrato.id}/adendas`).pipe(
           map((adendas): DatosContrato => {
             this.duenoDe.set(contrato.id, c.id);
-            return { contrato, adendas, colaborador: c, nombres, asignacion: asignaciones.find((a) => a.proyectoId === contrato.proyectoId) ?? null };
+            return { contrato, adendas, colaborador: c, nombres, asignaciones };
           }))))))))),
       map((grupos) => grupos.flat()),
     );
@@ -126,44 +170,61 @@ export class ContratosService {
     }));
   }
 
-  /** Estado según el backend: en vencimientos (vencido o por vencer), o `vigente` del contrato. */
-  private estadoDe(c: BeContrato, v: VencimientoContrato | undefined): EstadoContrato {
+  /** Estado de un proyecto del contrato: en vencimientos (vencido o por vencer), o `vigente` del contrato. */
+  private estadoProyecto(contratoVigente: boolean, v: VencimientoContrato | undefined): EstadoContrato {
     if (v) return v.diasRestantes < 0 ? 'Vencido' : 'ProximoAVencer';
-    return c.vigente ? 'Vigente' : 'NoVigente';
+    return contratoVigente ? 'Vigente' : 'NoVigente';
   }
 
-  private aResumen(d: DatosContrato, vencimientos: VencimientoContrato[]): ContratoResumen {
+  /** El peor estado entre los proyectos del contrato (Vencido > ProximoAVencer > Vigente > NoVigente). */
+  private peorEstado(estados: EstadoContrato[], contratoVigente: boolean): EstadoContrato {
+    if (estados.length === 0) return contratoVigente ? 'Vigente' : 'NoVigente';
+    const orden: EstadoContrato[] = ['Vencido', 'ProximoAVencer', 'Vigente', 'NoVigente'];
+    return orden.find((e) => estados.includes(e))!;
+  }
+
+  private aProyectos(d: DatosContrato, vencimientos: VencimientoContrato[], proyectos: BeProyecto[]): ProyectoDeContrato[] {
+    return d.contrato.proyectos.map((p: BeProyectoDeContrato): ProyectoDeContrato => {
+      const v = vencimientos.find((x) => x.contratoId === d.contrato.id && x.proyectoId === p.proyectoId);
+      const asignacion = d.asignaciones.find((a) => a.proyectoId === p.proyectoId) ?? null;
+      const proyectoCompleto = proyectos.find((x) => x.id === p.proyectoId) ?? null;
+      return {
+        proyectoId: p.proyectoId,
+        tmrProyectoId: asignacion?.proyectoId ?? p.proyectoId,
+        proyecto: p.proyectoNombre,
+        cliente: proyectoCompleto?.cliente ?? null,
+        diasParaVencer: v?.diasRestantes ?? null,
+        estado: this.estadoProyecto(d.contrato.vigente, v),
+        asignacionActiva: v?.asignacionActiva ?? false,
+      };
+    });
+  }
+
+  private aResumen(d: DatosContrato, vencimientos: VencimientoContrato[], proyectos: BeProyecto[] = []): ContratoResumen {
     const c = d.contrato;
-    const v = vencimientos.find((x) => x.contratoId === c.id);
+    const proyectosDelContrato = this.aProyectos(d, vencimientos, proyectos);
     return {
       id: c.id,
       colaboradorId: c.colaboradorId,
       tmrColaboradorId: d.colaborador.tmrColaboradorId,
       colaborador: this.be.nombreDe(d.nombres, d.colaborador.tmrColaboradorId),
-      tmrProyectoId: c.proyectoId,
-      proyecto: c.proyectoNombre,
-      cliente: null,
+      proyectos: proyectosDelContrato,
       referencia: c.referencia,
       fechaInicio: c.fechaInicio,
       fechaFinOriginal: c.fechaFin,
       fechaFinVigente: c.fechaFinVigente,
-      diasParaVencer: v?.diasRestantes ?? null,
-      estado: this.estadoDe(c, v),
-      asignacionActiva: v?.asignacionActiva ?? false,
+      estado: this.peorEstado(proyectosDelContrato.map((p) => p.estado), c.vigente),
       numeroAdendas: d.adendas.length,
     };
   }
 
-  private aDetalle(d: DatosContrato, vencimientos: VencimientoContrato[]): ContratoDetalle {
-    const r = this.aResumen(d, vencimientos);
+  private aDetalle(d: DatosContrato, vencimientos: VencimientoContrato[], proyectos: BeProyecto[] = []): ContratoDetalle {
+    const r = this.aResumen(d, vencimientos, proyectos);
     // Numeradas en el orden en que se registraron.
     const adendas: Adenda[] = [...d.adendas]
       .sort((x, y) => x.fechaRegistro.localeCompare(y.fechaRegistro))
       .map((a, i) => ({ id: a.id, numero: i + 1, nuevaFechaFin: a.nuevaFechaFin, observaciones: a.observaciones, fechaRegistro: a.fechaRegistro }));
-    return {
-      ...r, observaciones: d.contrato.observaciones, adendas,
-      asignacionInicio: d.asignacion?.fechaInicio ?? null, asignacionSalida: d.asignacion?.fechaSalida ?? null,
-    };
+    return { ...r, observaciones: d.contrato.observaciones, adendas };
   }
 }
 
@@ -172,10 +233,11 @@ interface DatosContrato {
   adendas: BeAdenda[];
   colaborador: BeColaborador;
   nombres: Map<string, TmrColaborador>;
-  asignacion: BeAsignacion | null;
+  asignaciones: BeAsignacion[];
 }
 
 interface DatosContratos {
   contratos: DatosContrato[];
   vencimientos: VencimientoContrato[];
+  proyectos: BeProyecto[];
 }

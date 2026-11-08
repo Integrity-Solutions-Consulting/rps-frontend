@@ -41,7 +41,7 @@
             <tbody>
               @for (e of visibles(); track $index) {
                 <tr>
-                  <td class="num fecha">{{ e.fecha | date: 'dd MMM yyyy' }}<br /><small class="muted">{{ e.fecha | date: 'HH:mm' }} · {{ e.usuario }}</small></td>
+                  <td class="num fecha">{{ e.fecha | date: 'dd MMM yyyy' }}<br /><small class="muted">{{ e.fecha | date: 'HH:mm' }} · {{ e.usuario ?? 'usuario no registrado' }}</small></td>
                   <td>
                     <div class="movimiento">
                       <span class="movimiento__icono"><app-icon [name]="iconos[e.tipo]" [size]="16" /></span>
