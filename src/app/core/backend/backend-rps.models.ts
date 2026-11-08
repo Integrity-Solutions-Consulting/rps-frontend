@@ -153,6 +153,11 @@ export interface BeExportacionPago {
   nombreArchivo: string; total: number; items: BeExportacionPagoItem[];
 }
 
+export interface BeDocumento {
+  id: string; colaboradorId: string; periodo: string; tipo: 'Factura' | 'NotaDeVenta';
+  numero: string; fechaEmision: string; marcadoEn: string;
+}
+
 export interface BeConfiguracion {
   id: string; razonSocial: string; ruc: string; moneda: string;
   diaPagoFinDeMes: number; diaPagoDosPagos1: number; diaPagoDosPagos2: number;

@@ -39,51 +39,40 @@
   </button>
 </section>
 
-<!-- ── Registrar / editar contrato ─────────────────────────────── -->
+<!-- ── Registrar contrato ───────────────────────────────────────── -->
 @if (registrando()) {
   <section class="card panel-form" aria-label="Registrar contrato">
     <header>
-      <h2>{{ modoFormulario() === 'editar' ? 'Editar contrato' : 'Registrar contrato' }}</h2>
-      @if (modoFormulario() === 'editar') {
-        <p>Proyectos, fechas, honorario, datos bancarios y la configuración del colaborador. El fin del contrato no se edita aquí (RN 12): usa "Registrar adenda" desde el detalle para extenderlo.</p>
-      } @else {
-        <p>Elige el colaborador y, si aplica, uno o varios proyectos de TMR. Para extender un contrato existente usa “Registrar adenda” en su detalle.</p>
-      }
+      <h2>Registrar contrato</h2>
+      <p>Elige el colaborador y, si aplica, uno o varios proyectos de TMR. Para extender un contrato existente usa “Registrar adenda” en su detalle.</p>
     </header>
 
     @if (cargandoFormulario()) {
       <p class="muted">Cargando…</p>
     } @else {
       <form class="form-grid form-grid--contrato" (submit)="$event.preventDefault(); guardarContrato()">
-        <!-- Paso 1: colaborador (buscador y selector en un solo cuadro; fijo al editar) -->
-        @if (modoFormulario() === 'editar') {
-          <div class="field campo-ancho">
-            <label>Colaborador</label>
-            <p class="valor-fijo">{{ colaboradorNombreFijo() }}</p>
-          </div>
-        } @else {
-          <div class="field campo-ancho combo" [class.is-open]="listaColaboradorAbierta()">
-            <label for="buscar-colaborador">Colaborador</label>
-            <input id="buscar-colaborador" name="colaborador" type="text" class="input" autocomplete="off"
-                   placeholder="Busca por nombre…" [class.is-invalid]="erroresContrato()['colaborador']"
-                   [ngModel]="busquedaColaborador()" (ngModelChange)="buscarColaborador($event)"
-                   (focus)="listaColaboradorAbierta.set(true)" (blur)="cerrarListaColaboradorConRetraso()" />
-            @if (listaColaboradorAbierta()) {
-              <ul class="combo__lista" role="listbox">
-                @if (colaboradoresFiltrados().length === 0) {
-                  <li class="combo__vacio">Sin resultados.</li>
-                } @else {
-                  @for (c of colaboradoresFiltrados(); track c.tmrColaboradorId) {
-                    <li role="option" [class.is-sel]="c.tmrColaboradorId === colaboradorElegidoId()" (mousedown)="elegirColaborador(c)">
-                      {{ c.colaborador }}
-                    </li>
-                  }
+        <!-- Paso 1: colaborador (buscador y selector en un solo cuadro) -->
+        <div class="field campo-ancho combo" [class.is-open]="listaColaboradorAbierta()">
+          <label for="buscar-colaborador">Colaborador</label>
+          <input id="buscar-colaborador" name="colaborador" type="text" class="input" autocomplete="off"
+                 placeholder="Busca por nombre…" [class.is-invalid]="erroresContrato()['colaborador']"
+                 [ngModel]="busquedaColaborador()" (ngModelChange)="buscarColaborador($event)"
+                 (focus)="listaColaboradorAbierta.set(true)" (blur)="cerrarListaColaboradorConRetraso()" />
+          @if (listaColaboradorAbierta()) {
+            <ul class="combo__lista" role="listbox">
+              @if (colaboradoresFiltrados().length === 0) {
+                <li class="combo__vacio">Sin resultados.</li>
+              } @else {
+                @for (c of colaboradoresFiltrados(); track c.tmrColaboradorId) {
+                  <li role="option" [class.is-sel]="c.tmrColaboradorId === colaboradorElegidoId()" (mousedown)="elegirColaborador(c)">
+                    {{ c.colaborador }}
+                  </li>
                 }
-              </ul>
-            }
-            @if (erroresContrato()['colaborador']; as e) { <span class="field__error">{{ e }}</span> }
-          </div>
-        }
+              }
+            </ul>
+          }
+          @if (erroresContrato()['colaborador']; as e) { <span class="field__error">{{ e }}</span> }
+        </div>
 
         <!-- Paso 2: proyectos (0, 1 o varios) -->
         @if (colaboradorElegidoId()) {
@@ -112,35 +101,7 @@
           </div>
         }
 
-        <!-- Paso 3: configuración del colaborador (opcional; vacío = no cambiar) -->
-        <div class="field">
-          <label for="clasificacion">Tipo de servicio</label>
-          <select id="clasificacion" name="clasificacion" class="select"
-                  [ngModel]="clasificacionForm()" (ngModelChange)="clasificacionForm.set($event)">
-            <option value="">No cambiar</option>
-            <option value="Profesional">Servicios profesionales</option>
-            <option value="Junior">Servicios junior</option>
-          </select>
-          @if (modoFormulario() === 'editar') {
-            <span class="field__hint">Actualmente: {{ clasificacionActual() ? etiquetaClasificacion[clasificacionActual()!] : 'sin definir' }}.</span>
-          }
-        </div>
-        <div class="field">
-          <label for="frecuencia">Frecuencia de pago</label>
-          <select id="frecuencia" name="frecuencia" class="select"
-                  [ngModel]="frecuenciaForm()" (ngModelChange)="frecuenciaForm.set($event)">
-            <option value="">No cambiar</option>
-            <option value="DosPagos">Quincena y fin de mes</option>
-            <option value="FinDeMes">Solo fin de mes</option>
-          </select>
-          @if (modoFormulario() === 'editar') {
-            <span class="field__hint">Actualmente: {{ frecuenciaActual() ? etiquetaFrecuencia[frecuenciaActual()!.frecuencia] : 'sin definir' }}.</span>
-          } @else {
-            <span class="field__hint">Se registra desde este mismo mes.</span>
-          }
-        </div>
-
-        <!-- Paso 4: fechas, referencia, observaciones -->
+        <!-- Paso 3: fechas, referencia, observaciones -->
         <div class="field">
           <label for="inicio">Inicio</label>
           <input id="inicio" name="inicio" type="date" class="input" [class.is-invalid]="erroresContrato()['fechaInicio']"
@@ -149,17 +110,12 @@
         </div>
         <div class="field">
           <label for="fin">Fin</label>
-          @if (modoFormulario() === 'editar') {
-            <input class="input" [value]="indefinidoForm() ? 'Indefinido' : finForm()" [attr.type]="indefinidoForm() ? 'text' : 'date'" disabled />
-            <span class="field__hint">No se edita aquí (RN 12): usa "Registrar adenda" en el detalle para extenderlo.</span>
-          } @else {
-            <input id="fin" name="fin" type="date" class="input" [class.is-invalid]="erroresContrato()['fechaFin']"
-                   [disabled]="indefinidoForm()" [min]="inicioForm()" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
-            <label class="check check--inline">
-              <input type="checkbox" name="indefinido" [ngModel]="indefinidoForm()" (ngModelChange)="indefinidoForm.set($event)" />
-              <span>Indefinido (sin fecha de fin)</span>
-            </label>
-          }
+          <input id="fin" name="fin" type="date" class="input" [class.is-invalid]="erroresContrato()['fechaFin']"
+                 [disabled]="indefinidoForm()" [min]="inicioForm()" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
+          <label class="check check--inline">
+            <input type="checkbox" name="indefinido" [ngModel]="indefinidoForm()" (ngModelChange)="indefinidoForm.set($event)" />
+            <span>Indefinido (sin fecha de fin)</span>
+          </label>
           @if (erroresContrato()['fechaFin']; as e) { <span class="field__error">{{ e }}</span> }
         </div>
         <div class="field">
@@ -177,7 +133,7 @@
         <!-- Paso 4: honorario por proyecto elegido -->
         @if (proyectosElegidos().size > 0) {
           <div class="field campo-ancho">
-            <label>Honorario mensual (obligatorio para cada proyecto elegido)</label>
+            <label>Honorario mensual (opcional; se puede completar después)</label>
 
             @if (proyectosElegidos().size > 1) {
               <div class="selector" role="radiogroup" aria-label="Cómo se registra el honorario">
@@ -275,7 +231,7 @@
         <div class="form-actions campo-ancho">
           <button type="button" class="btn" (click)="registrando.set(false)" [disabled]="guardandoContrato()">Cancelar</button>
           <button type="submit" class="btn btn--primary" [disabled]="guardandoContrato()">
-            {{ guardandoContrato() ? 'Guardando…' : (modoFormulario() === 'editar' ? 'Guardar cambios' : 'Registrar contrato') }}
+            {{ guardandoContrato() ? 'Guardando…' : 'Registrar contrato' }}
           </button>
         </div>
       </form>
@@ -347,7 +303,12 @@
                     <td class="num">{{ c.fechaInicio | date: 'dd MMM yyyy' }}</td>
                     <td class="num">{{ c.fechaFinVigente ? (c.fechaFinVigente | date: 'dd MMM yyyy') : 'Indefinido' }}</td>
                     <td><app-estado-chip [tono]="tono(c.estado)">{{ etiquetaEstado[c.estado] }}</app-estado-chip></td>
-                    <td class="r"><app-icon name="chevronRight" [size]="18" /></td>
+                    <td class="r">
+                      <button type="button" class="btn--icono" title="Editar honorario y datos bancarios"
+                              (click)="$event.stopPropagation(); abrirEdicion(c)">
+                        <app-icon name="chevronRight" [size]="18" />
+                      </button>
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -385,9 +346,11 @@
         </div>
         <div class="stack-h">
           <app-estado-chip [tono]="tono(d.estado)">{{ etiquetaEstado[d.estado] }}</app-estado-chip>
-          <button type="button" class="btn btn--sm" (click)="abrirEdicion(d)">
-            <app-icon name="tool" [size]="14" /> Editar contrato
-          </button>
+          @if (!editando()) {
+            <button type="button" class="btn btn--sm" (click)="abrirEdicion(d)">
+              <app-icon name="file" [size]="14" /> Editar honorario y bancarios
+            </button>
+          }
         </div>
       </header>
 
@@ -402,6 +365,80 @@
         <div><dt>Fin vigente</dt><dd><strong>{{ d.fechaFinVigente ? (d.fechaFinVigente | date: 'dd MMM yyyy') : 'Indefinido' }}</strong></dd></div>
         @if (d.observaciones) { <div><dt>Observaciones</dt><dd>{{ d.observaciones }}</dd></div> }
       </dl>
+
+      @if (editando() && idEnEdicion() === d.id) {
+        <div class="adenda-form">
+          <div class="adendas__head"><h3>Editar honorario y datos bancarios</h3></div>
+          @if (cargandoEdicion()) {
+            <p class="muted">Cargando…</p>
+          } @else {
+            @if (d.proyectos.length === 0) {
+              <p class="muted small">Este contrato no cubre proyectos: no hay honorario que registrar aquí.</p>
+            } @else {
+              <div class="table-wrap marco">
+                <table class="tbl">
+                  <thead><tr><th>Proyecto</th><th class="r">Importe mensual</th><th>Modalidad</th></tr></thead>
+                  <tbody>
+                    @for (p of d.proyectos; track p.proyectoId) {
+                      <tr>
+                        <td>{{ p.proyecto }}</td>
+                        <td class="r">
+                          <div class="dinero">
+                            <span>$</span>
+                            <input [name]="'edicion-importe-' + p.tmrProyectoId" class="input num" placeholder="0.00"
+                                   [ngModel]="honorarioEdicionDe(p.tmrProyectoId).importe"
+                                   (ngModelChange)="actualizarImporteEdicion(p.tmrProyectoId, $event)" />
+                          </div>
+                        </td>
+                        <td>
+                          <select [name]="'edicion-modalidad-' + p.tmrProyectoId" class="select"
+                                  [ngModel]="honorarioEdicionDe(p.tmrProyectoId).modalidad"
+                                  (ngModelChange)="actualizarModalidadEdicion(p.tmrProyectoId, $event)">
+                            <option value="Neto">Neto</option>
+                            <option value="MasIva">Más IVA</option>
+                          </select>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <span class="field__hint">Deja el importe en 0 o vacío para no cambiar el honorario de ese proyecto.</span>
+            }
+
+            <div class="form-grid">
+              <div class="field">
+                <label for="edicion-banco">Banco</label>
+                <input id="edicion-banco" name="edicionBanco" class="input" maxlength="100"
+                       [ngModel]="bancoEdicionForm()" (ngModelChange)="bancoEdicionForm.set($event)" />
+              </div>
+              <div class="field">
+                <label for="edicion-tipo-cuenta">Tipo de cuenta</label>
+                <select id="edicion-tipo-cuenta" name="edicionTipoCuenta" class="select"
+                        [ngModel]="tipoCuentaEdicionForm()" (ngModelChange)="tipoCuentaEdicionForm.set($event)">
+                  <option value="">Elige el tipo</option>
+                  <option value="Ahorros">Ahorros</option>
+                  <option value="Corriente">Corriente</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="edicion-numero-cuenta">Número de cuenta</label>
+                <input id="edicion-numero-cuenta" name="edicionNumeroCuenta" class="input num" maxlength="30"
+                       placeholder="Déjalo vacío para no cambiarlo"
+                       [ngModel]="numeroCuentaEdicionForm()" (ngModelChange)="numeroCuentaEdicionForm.set($event)" />
+              </div>
+            </div>
+
+            @if (errorEdicion(); as e) { <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div> }
+            <div class="form-actions">
+              <button type="button" class="btn btn--sm" (click)="cerrarEdicion()" [disabled]="guardandoEdicion()">Cancelar</button>
+              <button type="button" class="btn btn--sm btn--primary" (click)="guardarEdicion()" [disabled]="guardandoEdicion()">
+                {{ guardandoEdicion() ? 'Guardando…' : 'Guardar cambios' }}
+              </button>
+            </div>
+          }
+        </div>
+      }
 
       <h3 class="sub"><app-icon name="folder" [size]="18" /> Proyectos</h3>
       @if (d.proyectos.length === 0) {
@@ -436,7 +473,7 @@
         <form class="adenda-form" (submit)="$event.preventDefault(); guardarAdenda()">
           <div class="form-grid">
             <div class="field">
-              <label for="nueva-fin">{{ editandoAdendaId() ? 'Nueva fecha de fin (corrección)' : 'Nueva fecha de fin' }}</label>
+              <label for="nueva-fin">Nueva fecha de fin</label>
               <input id="nueva-fin" name="nuevaFin" type="date" class="input" [class.is-invalid]="errorAdendaCampo()"
                      [ngModel]="nuevaFinForm()" (ngModelChange)="nuevaFinForm.set($event)" />
               @if (errorAdendaCampo(); as e) { <span class="field__error">{{ e }}</span> }
@@ -452,7 +489,7 @@
           <div class="form-actions">
             <button type="button" class="btn btn--sm" (click)="cancelarAdenda()" [disabled]="guardandoAdenda()">Cancelar</button>
             <button type="submit" class="btn btn--sm btn--primary" [disabled]="guardandoAdenda()">
-              {{ guardandoAdenda() ? 'Guardando…' : (editandoAdendaId() ? 'Guardar corrección' : 'Guardar adenda') }}
+              {{ guardandoAdenda() ? 'Guardando…' : 'Guardar adenda' }}
             </button>
           </div>
         </form>
@@ -463,7 +500,7 @@
       } @else {
         <div class="table-wrap adendas">
           <table class="tbl">
-            <thead><tr><th>#</th><th>Nuevo fin</th><th>Observaciones</th><th>Registrada</th><th><span class="sr-only">Editar</span></th></tr></thead>
+            <thead><tr><th>#</th><th>Nuevo fin</th><th>Observaciones</th><th>Registrada</th></tr></thead>
             <tbody>
               @for (a of d.adendas; track a.id) {
                 <tr>
@@ -471,9 +508,6 @@
                   <td class="num">{{ a.nuevaFechaFin | date: 'dd MMM yyyy' }}</td>
                   <td>{{ a.observaciones ?? '—' }}</td>
                   <td class="num muted">{{ a.fechaRegistro | date: 'dd MMM yyyy' }}</td>
-                  <td class="r">
-                    <button type="button" class="btn btn--sm btn--ghost" (click)="abrirEditarAdenda(a)">Editar</button>
-                  </td>
                 </tr>
               }
             </tbody>

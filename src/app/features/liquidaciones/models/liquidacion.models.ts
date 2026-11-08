@@ -36,6 +36,8 @@ export interface CorteLiquidacion {
   ajustePorProrrateo: number;
 }
 
+export type EstadoDocumento = 'Registrado' | 'Pendiente';
+
 export interface LiquidacionResumen {
   id: string;
   /** "yyyy-MM" */
@@ -45,6 +47,8 @@ export interface LiquidacionResumen {
   colaborador: string;
   netoConsolidado: number;
   cortes: CorteLiquidacion[];
+  /** Si el colaborador tiene documento mensual registrado para ese mes (GET .../documentos-mensuales). */
+  documento: EstadoDocumento;
   /** "Revisado para envío" (RN 49). El backend solo permite marcarlo. No confirma una transferencia. */
   revisado: boolean;
   revisadoEn: string | null;

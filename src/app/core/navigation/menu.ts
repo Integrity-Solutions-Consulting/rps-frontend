@@ -21,6 +21,8 @@ export const MENU: ItemMenu[] = [
     descripcion: 'Anticipos adicionales, límite disponible y plan de recuperación.' },
   { ruta: 'liquidaciones', titulo: 'Liquidaciones', icono: 'calculator', disponible: true,
     descripcion: 'Cálculo por período, detalle por proyecto y cortes, revisión.' },
+  { ruta: 'documentos', titulo: 'Documentos', icono: 'folder', disponible: true,
+    descripcion: 'Documento tributario mensual por colaborador.' },
   { ruta: 'exportaciones', titulo: 'Exportaciones', icono: 'upload', disponible: true,
     descripcion: 'Previsualización y generación del Excel de pago por corte.' },
   { ruta: 'configuracion', titulo: 'Configuración', icono: 'settings', disponible: true,

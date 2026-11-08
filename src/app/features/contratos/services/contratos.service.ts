@@ -2,15 +2,14 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, map, of, shareReplay, switchMap, tap } from 'rxjs';
 import {
-  Adenda, AsignacionDisponible, ConfiguracionColaboradorForm, ContratoDetalle, ContratoResumen, EditarContratoRequest,
-  EstadoContrato, ProyectoDeContrato, RegistrarAdendaRequest, RegistrarContratoRequest, ResumenContratos,
+  Adenda, AsignacionDisponible, ContratoDetalle, ContratoResumen, EstadoContrato, ProyectoDeContrato,
+  RegistrarAdendaRequest, RegistrarContratoRequest, ResumenContratos,
 } from '../models/contrato.models';
 import { BackendRps, diaUno } from '../../../core/backend/backend-rps.service';
 import { BeAdenda, BeAsignacion, BeColaborador, BeContrato, BeProyecto, BeProyectoDeContrato } from '../../../core/backend/backend-rps.models';
 import { TmrColaborador } from '../../integracion-tmr/models/tmr.models';
 import { DashboardService } from '../../dashboard/services/dashboard.service';
 import { VencimientoContrato } from '../../dashboard/models/dashboard.models';
-import { ColaboradoresService } from '../../colaboradores/services/colaboradores.service';
 
 /**
  * Contratos y adendas de rps-backend: /api/colaboradores/{id}/contratos y /adendas.
@@ -25,7 +24,6 @@ export class ContratosService {
   private readonly http = inject(HttpClient);
   private readonly be = inject(BackendRps);
   private readonly tablero = inject(DashboardService);
-  private readonly colaboradoresApi = inject(ColaboradoresService);
   /** contratoId → colaboradorId de RPS: el backend pide los dos en la ruta. */
   private readonly duenoDe = new Map<string, string>();
   /** La ficha pide varios contratos seguidos: se reutiliza la misma consulta durante unos segundos. */
@@ -56,89 +54,49 @@ export class ContratosService {
   }
 
   /**
-   * POST /api/colaboradores/{id}/contratos y, de una vez, todo lo demás que el mismo formulario deja
-   * configurar del colaborador (tipo de servicio, frecuencia, honorarios y datos bancarios) — varias
-   * llamadas encadenadas; las fechas y demás las valida el backend en cada una.
+   * POST /api/colaboradores/{id}/contratos y, de una vez, los honorarios por proyecto y los datos
+   * bancarios que vengan en la misma solicitud (varias llamadas encadenadas; las fechas y demás
+   * las valida el backend en cada una).
    */
   registrar(request: RegistrarContratoRequest): Observable<ContratoDetalle> {
-    // tmrProyectoIds/tmrProyectoId ya son ids de rps-backend (vienen de BeAsignacion.proyectoId, no
-    // del id crudo de TMR): no hay que resolverlos contra BeProyecto.tmrProyectoId.
-    return this.be.idRps(request.tmrColaboradorId).pipe(
-      switchMap((colaboradorId) => this.http.post<BeContrato>(`${this.be.api}/colaboradores/${colaboradorId}/contratos`, {
-        proyectoIds: request.tmrProyectoIds, fechaInicio: request.fechaInicio || null,
-        fechaFin: request.indefinido ? null : (request.fechaFin || null),
-        indefinido: request.indefinido, referencia: request.referencia, observaciones: request.observaciones,
-      }).pipe(
-        switchMap((contrato) => forkJoin(this.pasosConfiguracion(colaboradorId, contrato.id, request.fechaInicio, request))
-          .pipe(map(() => contrato))),
-      )),
+    return forkJoin({ colaboradorId: this.be.idRps(request.tmrColaboradorId), proyectos: this.be.proyectos() }).pipe(
+      switchMap(({ colaboradorId, proyectos }) => {
+        const idDe = (tmrProyectoId: string) => proyectos.find((p) => p.tmrProyectoId === tmrProyectoId)?.id ?? null;
+        const proyectoIds = request.tmrProyectoIds.map(idDe).filter((id): id is string => id !== null);
+
+        return this.http.post<BeContrato>(`${this.be.api}/colaboradores/${colaboradorId}/contratos`, {
+          proyectoIds, fechaInicio: request.fechaInicio || null, fechaFin: request.indefinido ? null : (request.fechaFin || null),
+          indefinido: request.indefinido, referencia: request.referencia, observaciones: request.observaciones,
+        }).pipe(
+          switchMap((contrato) => {
+            const pasos: Observable<unknown>[] = [];
+
+            for (const h of request.honorarios) {
+              const proyectoId = idDe(h.tmrProyectoId);
+              if (!proyectoId || h.importeMensual === null) continue;
+              pasos.push(this.http.post(`${this.be.api}/colaboradores/${colaboradorId}/condiciones-economicas`, {
+                proyectoId, contratoId: contrato.id, importeMensual: h.importeMensual, modalidad: h.modalidad,
+                mesInicioVigencia: diaUno(request.fechaInicio), observaciones: null,
+              }));
+            }
+
+            if (request.cuentaBancaria) {
+              pasos.push(this.http.put(`${this.be.api}/colaboradores/${colaboradorId}/cuenta-bancaria`, request.cuentaBancaria));
+            }
+
+            return forkJoin(pasos.length > 0 ? pasos : [of(null)]).pipe(map(() => contrato));
+          }),
+        );
+      }),
       tap(() => (this.cache = null)),
       switchMap((c) => this.obtener(c.id)),
     );
-  }
-
-  /**
-   * PUT /api/colaboradores/{id}/contratos/{contratoId}: proyectos, fecha de inicio, referencia y
-   * observaciones (todo lo demás del mismo formulario, igual que al registrar). FechaFin/Indefinido
-   * no se editan aquí (RN 12): para extender la vigencia se usa una Adenda.
-   */
-  editar(id: string, request: EditarContratoRequest): Observable<ContratoDetalle> {
-    return this.colaboradorDe(id).pipe(
-      switchMap((colaboradorId) => this.http.put<BeContrato>(`${this.be.api}/colaboradores/${colaboradorId}/contratos/${id}`, {
-        proyectoIds: request.tmrProyectoIds, fechaInicio: request.fechaInicio || null,
-        referencia: request.referencia, observaciones: request.observaciones,
-      }).pipe(
-        switchMap((contrato) => forkJoin(this.pasosConfiguracion(colaboradorId, contrato.id, request.fechaInicio, request))
-          .pipe(map(() => contrato))),
-      )),
-      tap(() => (this.cache = null)),
-      switchMap(() => this.obtener(id)),
-    );
-  }
-
-  /** Los mismos pasos opcionales que acompañan tanto a Registrar como a Editar un contrato. */
-  private pasosConfiguracion(
-    colaboradorId: string, contratoId: string, fechaInicio: string, config: ConfiguracionColaboradorForm,
-  ): Observable<unknown>[] {
-    const pasos: Observable<unknown>[] = [of(null)];
-
-    for (const h of config.honorarios) {
-      if (h.importeMensual === null) continue;
-      pasos.push(this.http.post(`${this.be.api}/colaboradores/${colaboradorId}/condiciones-economicas`, {
-        proyectoId: h.tmrProyectoId, contratoId, importeMensual: h.importeMensual, modalidad: h.modalidad,
-        mesInicioVigencia: diaUno(fechaInicio), observaciones: null,
-      }));
-    }
-
-    if (config.cuentaBancaria) {
-      pasos.push(this.http.put(`${this.be.api}/colaboradores/${colaboradorId}/cuenta-bancaria`, config.cuentaBancaria));
-    }
-
-    if (config.clasificacion) {
-      pasos.push(this.colaboradoresApi.actualizarClasificacion(colaboradorId, config.clasificacion));
-    }
-
-    if (config.frecuencia) {
-      pasos.push(this.colaboradoresApi.registrarFrecuencia(colaboradorId, config.frecuencia));
-    }
-
-    return pasos;
   }
 
   /** POST .../contratos/{id}/adendas. El backend exige que la nueva fecha sea posterior al fin vigente. */
   registrarAdenda(id: string, request: RegistrarAdendaRequest): Observable<ContratoDetalle> {
     return this.colaboradorDe(id).pipe(
       switchMap((colaboradorId) => this.http.post<BeAdenda>(`${this.be.api}/colaboradores/${colaboradorId}/contratos/${id}/adendas`,
-        { nuevaFechaFin: request.nuevaFechaFin || null, observaciones: request.observaciones })),
-      tap(() => (this.cache = null)),
-      switchMap(() => this.obtener(id)),
-    );
-  }
-
-  /** PUT .../contratos/{id}/adendas/{adendaId}: corrige una adenda ya registrada (ej. fecha mal escrita). */
-  editarAdenda(id: string, adendaId: string, request: RegistrarAdendaRequest): Observable<ContratoDetalle> {
-    return this.colaboradorDe(id).pipe(
-      switchMap((colaboradorId) => this.http.put<BeAdenda>(`${this.be.api}/colaboradores/${colaboradorId}/contratos/${id}/adendas/${adendaId}`,
         { nuevaFechaFin: request.nuevaFechaFin || null, observaciones: request.observaciones })),
       tap(() => (this.cache = null)),
       switchMap(() => this.obtener(id)),
@@ -157,12 +115,8 @@ export class ContratosService {
     );
   }
 
-  /**
-   * Colaborador + proyecto de cada asignación que viene de TMR, para registrar o editar un
-   * contrato. excluirContratoId: al editar, ese contrato no cuenta como "ya tiene contrato
-   * vigente" de sus propios proyectos (si no, nunca se podría volver a guardar con los mismos).
-   */
-  asignacionesDisponibles(excluirContratoId: string | null = null): Observable<AsignacionDisponible[]> {
+  /** Colaborador + proyecto de cada asignación que viene de TMR, para registrar un contrato. */
+  asignacionesDisponibles(): Observable<AsignacionDisponible[]> {
     return this.be.colaboradoresConNombre().pipe(
       switchMap(({ lista, nombres }) => lista.length === 0 ? of([]) : forkJoin(lista.map((c) => forkJoin({
         asignaciones: this.http.get<BeAsignacion[]>(`${this.be.api}/colaboradores/${c.id}/asignaciones`),
@@ -174,8 +128,7 @@ export class ContratosService {
         proyecto: a.proyectoNombre,
         fechaAsignacion: a.fechaInicio,
         fechaFinAsignacion: a.fechaSalida,
-        tieneContratoVigente: contratos.some((x) =>
-          x.id !== excluirContratoId && x.vigente && x.proyectos.some((p) => p.proyectoId === a.proyectoId)),
+        tieneContratoVigente: contratos.some((x) => x.vigente && x.proyectos.some((p) => p.proyectoId === a.proyectoId)),
       }))))))),
       map((grupos) => grupos.flat()),
     );

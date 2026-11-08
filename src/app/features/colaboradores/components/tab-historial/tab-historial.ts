@@ -18,11 +18,12 @@ const ICONO_POR_TIPO: Record<TipoEvento, IconName> = {
   'Honorario': 'cash',
   'Liquidación': 'calculator',
   'Anticipo': 'card',
+  'Documento': 'folder',
 };
 
 /**
  * Pestaña "Historial": lo que devuelve GET /api/colaboradores/{id}/historial (vinculación, frecuencias,
- * contratos, adendas, honorarios, liquidaciones y anticipos).
+ * contratos, adendas, honorarios, liquidaciones, anticipos y documentos).
  * Se filtra por año y tipo; cada fila lleva a la pantalla donde está el detalle.
  */
 @Component({

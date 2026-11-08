@@ -86,7 +86,7 @@
             <div class="table-wrap">
               <table class="tbl">
                 <thead>
-                  <tr><th>Colaborador</th><th class="r">Neto del mes</th><th>Revisión</th></tr>
+                  <tr><th>Colaborador</th><th class="r">Neto del mes</th><th>Documento</th><th>Revisión</th></tr>
                 </thead>
                 <tbody>
                   @for (l of filas(); track l.id) {
@@ -99,6 +99,9 @@
                         </div>
                       </td>
                       <td class="r num"><strong>{{ l.netoConsolidado | dinero }}</strong></td>
+                      <td>
+                        <app-estado-chip [tono]="l.documento === 'Registrado' ? 'ok' : 'warn'">{{ l.documento }}</app-estado-chip>
+                      </td>
                       <td>
                         @if (l.revisado) { <app-estado-chip tono="ok">Revisada</app-estado-chip> }
                         @else { <app-estado-chip tono="neutral">Por revisar</app-estado-chip> }
@@ -189,6 +192,16 @@
                 </div>
               }
             </div>
+
+            @if (det.documento === 'Pendiente') {
+              <div class="aviso aviso--warn">
+                <app-icon name="alert" [size]="18" />
+                <div><strong>Documento pendiente.</strong> Falta registrar el documento tributario del mes.</div>
+                <a class="btn btn--sm" routerLink="/documentos" [queryParams]="{ periodo: det.periodo, colaborador: det.colaboradorId }">
+                  <app-icon name="paperclip" [size]="15" /> Registrar
+                </a>
+              </div>
+            }
 
             <div class="neto">
               <span>Neto del período</span>

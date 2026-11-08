@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, forkJoin, map, switchMap } from 'rxjs';
+import { Observable, forkJoin, map, of, switchMap } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
   LiquidacionDetalle, LiquidacionResumen, LiquidacionesPeriodo, ResultadoCalculo,
@@ -8,7 +8,7 @@ import {
 import { BackendRps, diaUno, mesDe } from '../../../core/backend/backend-rps.service';
 import { SessionService } from '../../../core/services/session.service';
 import {
-  BeColaborador, BeLiquidacion, BeLiquidacionDetalle, BeProyecto,
+  BeColaborador, BeDocumento, BeLiquidacion, BeLiquidacionDetalle, BeProyecto,
 } from '../../../core/backend/backend-rps.models';
 import { TmrColaborador } from '../../integracion-tmr/models/tmr.models';
 
@@ -34,11 +34,19 @@ export class LiquidacionesService {
       c: this.be.colaboradoresConNombre(),
       // El backend solo calcula a los activos con configuración completa.
       pendientes: this.http.get<BeColaborador[]>(`${this.be.api}/colaboradores`, { params: { estado: 'Pendiente', activo: 'true' } }),
-    }).pipe(map(({ liquidaciones, c, pendientes }) => ({
-      periodo,
-      filas: liquidaciones.map((l) => this.aResumen(l, c.lista, c.nombres)),
-      pendientes: pendientes.map((p) => ({ colaboradorId: p.id, colaborador: this.be.nombreDe(c.nombres, p.tmrColaboradorId) })),
-    })));
+    }).pipe(switchMap(({ liquidaciones, c, pendientes }) => {
+      const ids = [...new Set(liquidaciones.map((l) => l.colaboradorId))];
+      const documentos = ids.length === 0 ? of([] as BeDocumento[][]) : forkJoin(ids.map((id) =>
+        this.http.get<BeDocumento[]>(`${this.be.api}/colaboradores/${id}/documentos-mensuales`, { params })));
+      return documentos.pipe(map((docs): LiquidacionesPeriodo => {
+        const conDocumento = new Set(docs.flat().map((d) => d.colaboradorId));
+        return {
+          periodo,
+          filas: liquidaciones.map((l) => this.aResumen(l, c.lista, c.nombres, conDocumento.has(l.colaboradorId))),
+          pendientes: pendientes.map((p) => ({ colaboradorId: p.id, colaborador: this.be.nombreDe(c.nombres, p.tmrColaboradorId) })),
+        };
+      }));
+    }));
   }
 
   /** Genera los honorarios del mes y luego las liquidaciones (dos pasos en el backend). Devuelve lo que respondió. */
@@ -59,8 +67,9 @@ export class LiquidacionesService {
       c: this.be.colaboradoresConNombre(),
       proyectos: this.be.proyectos(),
     }).pipe(
-      map(({ d, c, proyectos }) => ({
-        ...this.aResumen(d, c.lista, c.nombres),
+      switchMap(({ d, c, proyectos }) => this.http.get<BeDocumento[]>(`${this.be.api}/colaboradores/${d.colaboradorId}/documentos-mensuales`,
+        { params: new HttpParams().set('periodo', d.periodo) }).pipe(map((docs): LiquidacionDetalle => ({
+        ...this.aResumen(d, c.lista, c.nombres, docs.length > 0),
         detalleProyectos: d.honorarios.map((h) => {
           const p: BeProyecto | undefined = proyectos.find((x) => x.id === h.proyectoId);
           return {
@@ -70,7 +79,7 @@ export class LiquidacionesService {
             retencionIva: h.retencionIva, totalRetenciones: h.totalRetenciones, neto: h.neto,
           };
         }),
-      })),
+      })))),
     );
   }
 
@@ -79,7 +88,7 @@ export class LiquidacionesService {
     return this.http.post<BeLiquidacion>(`${this.base}/${id}/revisar`, {}).pipe(map(() => undefined));
   }
 
-  private aResumen(l: BeLiquidacion, colaboradores: BeColaborador[], nombres: Map<string, TmrColaborador>): LiquidacionResumen {
+  private aResumen(l: BeLiquidacion, colaboradores: BeColaborador[], nombres: Map<string, TmrColaborador>, documento: boolean): LiquidacionResumen {
     const c = colaboradores.find((x) => x.id === l.colaboradorId);
     return {
       id: l.id, periodo: mesDe(l.periodo), colaboradorId: l.colaboradorId,
@@ -90,6 +99,7 @@ export class LiquidacionesService {
         corte: x.tipo, base: x.valorBase, descuento: x.recuperacionAdicional, valor: x.valorPreparado,
         recuperacionNoAplicada: x.recuperacionNoAplicada, ajustePorProrrateo: x.ajustePorProrrateo,
       })),
+      documento: documento ? 'Registrado' : 'Pendiente',
       revisado: l.revisado, revisadoEn: l.revisadoEn,
       revisadoPorMi: l.revisadoPorUsuarioId !== null && l.revisadoPorUsuarioId === this.sesion.usuario()?.id,
       calculadoEn: l.creadoEn,
