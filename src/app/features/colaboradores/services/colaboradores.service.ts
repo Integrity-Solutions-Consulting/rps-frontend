@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
-  ColaboradorDetalle, EventoHistorial, ColaboradorResumen, CrearColaboradorRequest, CuentaBancaria, FiltrosColaboradores,
+  ColaboradorDetalle, EventoHistorial, ColaboradorResumen, CuentaBancaria, FiltrosColaboradores,
   FrecuenciaVigencia, Clasificacion, RegistrarCuentaBancariaRequest, RegistrarFrecuenciaRequest,
 } from '../models/colaborador.models';
 
@@ -27,10 +27,7 @@ export class ColaboradoresService {
     return this.http.get<ColaboradorDetalle>(`${this.base}/${id}`);
   }
 
-  /** POST /api/colaboradores · vincula una persona de TMR (temporal hasta la sincronización) */
-  crear(request: CrearColaboradorRequest): Observable<ColaboradorDetalle> {
-    return this.http.post<ColaboradorDetalle>(this.base, request);
-  }
+  // Sin crear() a propósito (RN 03): un colaborador solo entra a RPS por sincronización con TMR.
 
   /** PUT /api/colaboradores/{id}/clasificacion */
   actualizarClasificacion(id: string, clasificacion: Clasificacion | null): Observable<ColaboradorDetalle> {

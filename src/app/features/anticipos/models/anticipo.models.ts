@@ -26,6 +26,8 @@ export interface Anticipo {
   /** Monto menos la suma de sus cuotas (lo calcula el backend). */
   saldoPendiente: number;
   cuotas: CuotaAnticipo[];
+  /** true si lo registró el usuario de la sesión actual (no hay directorio de usuarios en el frontend). */
+  creadoPorMi: boolean;
   creadoEn: string;
 }
 

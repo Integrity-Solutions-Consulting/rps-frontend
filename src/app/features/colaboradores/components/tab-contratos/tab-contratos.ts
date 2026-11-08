@@ -64,6 +64,20 @@ export class TabContratos {
     return estado === 'Vencido' ? 'danger' : estado === 'ProximoAVencer' ? 'warn' : estado === 'Vigente' ? 'ok' : 'neutral';
   }
 
+  /** Nombres de los proyectos del contrato, o "Sin proyecto" (personal de RR. HH.). */
+  protected nombresProyectos(d: ContratoDetalle): string {
+    return d.proyectos.length ? d.proyectos.map((p) => p.proyecto).join(', ') : 'Sin proyecto';
+  }
+
+  protected clientesTexto(d: ContratoDetalle): string {
+    return [...new Set(d.proyectos.map((p) => p.cliente).filter((c): c is string => !!c))].join(', ');
+  }
+
+  /** Alguno de sus proyectos está vencido con la asignación todavía activa en TMR (RN 15). */
+  protected tieneVencidoConAsignacion(d: ContratoDetalle): boolean {
+    return d.proyectos.some((p) => p.estado === 'Vencido' && p.asignacionActiva);
+  }
+
   /** Abre la pantalla Contratos con este contrato seleccionado. */
   protected gestionar(contratoId: string | null, tmrColaboradorId: string | null): void {
     void this.router.navigate(['/contratos'], {

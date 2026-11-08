@@ -93,7 +93,7 @@ export class ColaboradorFicha {
   /** Etiqueta de contrato de la cabecera: vigente, vencido con asignación activa o sin contrato. */
   protected readonly chipContrato = computed<{ texto: string; tono: TonoChip }>(() => {
     const lista = this.contratos();
-    if (lista.some((c) => c.estado === 'Vencido' && c.asignacionActiva)) return { texto: 'Contrato vencido', tono: 'danger' };
+    if (lista.some((c) => c.proyectos.some((p) => p.estado === 'Vencido' && p.asignacionActiva))) return { texto: 'Contrato vencido', tono: 'danger' };
     if (lista.some((c) => c.estado === 'ProximoAVencer')) return { texto: 'Contrato por vencer', tono: 'warn' };
     if (lista.some((c) => c.estado === 'Vigente')) return { texto: 'Contrato vigente', tono: 'ok' };
     return { texto: 'Sin contrato', tono: 'warn' };

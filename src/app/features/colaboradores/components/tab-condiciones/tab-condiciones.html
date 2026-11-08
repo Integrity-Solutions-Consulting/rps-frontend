@@ -60,12 +60,15 @@
   </div>
 </section>
 
-<!-- ── 2. Honorarios por proyecto ────────────────────────────────── -->
+<!-- ── 2. Honorarios por proyecto (solo lectura) ───────────────────── -->
 <section class="card bloque">
   <header class="bloque__head">
     <h2>Honorarios por proyecto</h2>
     <span class="origen"><app-icon name="info" [size]="15" /> Proyectos de TMR · importes de RPS</span>
-    <p>Cada proyecto tiene su honorario mensual fijo y su modalidad. Un proyecto puede ser neto y otro más IVA en el mismo mes.</p>
+    <p>
+      Cada proyecto tiene su honorario mensual fijo y su modalidad. Un proyecto puede ser neto y otro más IVA en el mismo mes.
+      Se registran y se corrigen desde <a routerLink="/contratos" [queryParams]="{ colaborador: colaborador().tmrColaboradorId }">Contratos</a>.
+    </p>
   </header>
 
   @if (cargandoHonorarios()) {
@@ -128,82 +131,26 @@
   }
 </section>
 
-<!-- ── 3. Registrar honorario o frecuencia ───────────────────────── -->
+<!-- ── 3. Registrar frecuencia ──────────────────────────────────────
+     El honorario por proyecto se registra desde Contratos (ver nota arriba), no aquí. -->
 <section class="card bloque">
-  <header class="bloque__head"><h2>Registrar honorario o frecuencia</h2></header>
-
-  <div class="selector" role="radiogroup" aria-label="Qué quieres cambiar">
-    <label class="selector__opcion" [class.is-on]="queCambia() === 'honorario'">
-      <input type="radio" name="queCambia" value="honorario" [ngModel]="queCambia()" (ngModelChange)="queCambia.set($event); erroresCambio.set({})" />
-      Honorario de un proyecto
-    </label>
-    <label class="selector__opcion" [class.is-on]="queCambia() === 'frecuencia'">
-      <input type="radio" name="queCambia" value="frecuencia" [ngModel]="queCambia()" (ngModelChange)="queCambia.set($event); erroresCambio.set({})" />
-      Frecuencia de pago
-    </label>
-  </div>
+  <header class="bloque__head"><h2>Registrar frecuencia de pago</h2></header>
 
   <form class="form-grid" (submit)="$event.preventDefault(); programarCambio()">
-    @if (queCambia() === 'honorario') {
-      <div class="field">
-        <label for="c-proyecto">Proyecto</label>
-        <select id="c-proyecto" name="proyecto" class="select" [disabled]="bloqueado()" [class.is-invalid]="erroresCambio()['proyectoId']"
-                [ngModel]="proyectoForm()" (ngModelChange)="elegirProyecto($event)">
-          <option value="">Elige un proyecto</option>
-          @for (h of honorarios(); track h.tmrProyectoId) {
-            <option [value]="h.tmrProyectoId" [disabled]="!h.asignacionActiva">{{ h.proyecto }}{{ h.asignacionActiva ? '' : ' (finalizado)' }}</option>
-          }
-        </select>
-        @if (erroresCambio()['proyectoId']; as e) { <span class="field__error">{{ e }}</span> }
-      </div>
-      <div class="field">
-        <label for="c-contrato">Contrato</label>
-        <select id="c-contrato" name="contrato" class="select" [disabled]="bloqueado() || !proyectoForm()"
-                [class.is-invalid]="erroresCambio()['contratoId']" [ngModel]="contratoForm()" (ngModelChange)="contratoForm.set($event)">
-          <option value="">Elige el contrato</option>
-          @for (c of proyectoElegido()?.contratos ?? []; track c.id) {
-            <option [value]="c.id">{{ c.referencia ?? 'Sin referencia' }} · {{ c.fechaInicio | date: 'dd MMM yyyy' }} a {{ c.fechaFinVigente | date: 'dd MMM yyyy' }}</option>
-          }
-        </select>
-        @if (proyectoForm() && !(proyectoElegido()?.contratos?.length)) {
-          <span class="field__hint">Este proyecto no tiene contratos. Regístralo primero en Contratos.</span>
-        }
-        @if (erroresCambio()['contratoId']; as e) { <span class="field__error">{{ e }}</span> }
-      </div>
-      <div class="field">
-        <label for="c-importe">Nuevo honorario mensual</label>
-        <div class="dinero" [class.is-invalid]="erroresCambio()['importeMensual']">
-          <span>$</span>
-          <input id="c-importe" name="importe" class="input num" appSoloNumeros="monto" placeholder="0,00" [disabled]="bloqueado()"
-                 [ngModel]="importeForm()" (ngModelChange)="importeForm.set($event)" />
-        </div>
-        @if (erroresCambio()['importeMensual']; as e) { <span class="field__error">{{ e }}</span> }
-      </div>
-      <div class="field">
-        <label for="c-modalidad">Modalidad económica</label>
-        <select id="c-modalidad" name="modalidad" class="select" [disabled]="bloqueado()"
-                [ngModel]="modalidadForm()" (ngModelChange)="modalidadForm.set($event)">
-          <option value="Neto">{{ etiquetaModalidad.Neto }}</option>
-          <option value="MasIva">{{ etiquetaModalidad.MasIva }}</option>
-        </select>
-        <span class="field__hint">{{ detalleModalidad[modalidadForm()] }}</span>
-      </div>
-    } @else {
-      <div class="field">
-        <label for="c-frecuencia">Nueva frecuencia de pago</label>
-        <select id="c-frecuencia" name="frecuencia" class="select" [disabled]="bloqueado()" [class.is-invalid]="erroresCambio()['frecuencia']"
-                [ngModel]="frecuenciaForm()" (ngModelChange)="frecuenciaForm.set($event)">
-          <option value="DosPagos">{{ etiquetaFrecuencia.DosPagos }}</option>
-          <option value="FinDeMes">{{ etiquetaFrecuencia.FinDeMes }}</option>
-        </select>
-        @if (erroresCambio()['frecuencia']; as e) { <span class="field__error">{{ e }}</span> }
-      </div>
-    }
+    <div class="field">
+      <label for="c-frecuencia">Nueva frecuencia de pago</label>
+      <select id="c-frecuencia" name="frecuencia" class="select" [disabled]="bloqueado()" [class.is-invalid]="erroresCambio()['frecuencia']"
+              [ngModel]="frecuenciaForm()" (ngModelChange)="frecuenciaForm.set($event)">
+        <option value="DosPagos">{{ etiquetaFrecuencia.DosPagos }}</option>
+        <option value="FinDeMes">{{ etiquetaFrecuencia.FinDeMes }}</option>
+      </select>
+      @if (erroresCambio()['frecuencia']; as e) { <span class="field__error">{{ e }}</span> }
+    </div>
     <div class="field">
       <label for="c-mes">Aplicar desde</label>
       <input id="c-mes" name="mes" type="month" class="input" [disabled]="bloqueado()"
-             [class.is-invalid]="erroresCambio()['vigenteDesdeMes'] || erroresCambio()['mesInicioVigencia']" [ngModel]="mesForm()" (ngModelChange)="mesForm.set($event)" />
-      @if (erroresCambio()['vigenteDesdeMes'] || erroresCambio()['mesInicioVigencia']; as e) { <span class="field__error">{{ e }}</span> }
+             [class.is-invalid]="erroresCambio()['vigenteDesdeMes']" [ngModel]="mesForm()" (ngModelChange)="mesForm.set($event)" />
+      @if (erroresCambio()['vigenteDesdeMes']; as e) { <span class="field__error">{{ e }}</span> }
     </div>
 
     @if (errorCambio(); as e) {

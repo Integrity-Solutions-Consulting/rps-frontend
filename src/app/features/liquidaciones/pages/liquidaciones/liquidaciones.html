@@ -238,10 +238,27 @@
                   <strong>{{ etiquetaCorte[c.corte] }} <span class="muted">({{ rangoCorte(c.corte, det.periodo) }})</span></strong>
                 </header>
                 <dl class="desglose">
+                  @if (c.ajustePorProrrateo > 0) {
+                    <div><dt>Ajuste por salida en el mes</dt><dd>− {{ c.ajustePorProrrateo | dinero }}</dd></div>
+                  }
                   <div><dt>Base del corte</dt><dd>{{ c.base | dinero }}</dd></div>
                   <div><dt>Cuotas de anticipos</dt><dd>− {{ c.descuento | dinero }}</dd></div>
                   <div class="desglose__total"><dt>Valor preparado</dt><dd>{{ c.valor | dinero }}</dd></div>
                 </dl>
+                @if (c.ajustePorProrrateo > 0) {
+                  <app-estado-chip tono="warn">Quincena reducida por salida en el mes</app-estado-chip>
+                  <small class="muted">
+                    El mes resultó más corto de lo previsto para este colaborador: se restaron {{ c.ajustePorProrrateo | dinero }} de la
+                    mitad ordinaria para no sobrepagar. Revisa si corresponde ajustar algo ya exportado.
+                  </small>
+                }
+                @if (c.recuperacionNoAplicada > 0) {
+                  <app-estado-chip tono="danger">Saldo insuficiente para el anticipo</app-estado-chip>
+                  <small class="muted">
+                    Este corte no alcanzó para descontar {{ c.recuperacionNoAplicada | dinero }} de la cuota de anticipo programada.
+                    Revisa el plan de recuperación en Anticipos antes de exportar.
+                  </small>
+                }
               </article>
             }
 
@@ -249,7 +266,10 @@
             <div class="revision">
               @if (det.revisado) {
                 <app-estado-chip tono="ok">Revisada para envío</app-estado-chip>
-                <small class="muted">@if (det.revisadoEn) { El {{ det.revisadoEn | date: 'dd MMM yyyy, HH:mm' }}. } No confirma una transferencia.</small>
+                <small class="muted">
+                  @if (det.revisadoEn) { El {{ det.revisadoEn | date: 'dd MMM yyyy, HH:mm' }}@if (det.revisadoPorMi) { , por ti }. }
+                  No confirma una transferencia.
+                </small>
               } @else {
                 <button type="button" class="btn btn--primary" (click)="marcarRevisado(det)" [disabled]="guardandoRevision()">
                   <app-icon name="check" [size]="17" /> {{ guardandoRevision() ? 'Guardando…' : 'Marcar revisada para envío' }}

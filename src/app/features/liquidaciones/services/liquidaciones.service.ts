@@ -6,6 +6,7 @@ import {
   LiquidacionDetalle, LiquidacionResumen, LiquidacionesPeriodo, ResultadoCalculo,
 } from '../models/liquidacion.models';
 import { BackendRps, diaUno, mesDe } from '../../../core/backend/backend-rps.service';
+import { SessionService } from '../../../core/services/session.service';
 import {
   BeColaborador, BeDocumento, BeLiquidacion, BeLiquidacionDetalle, BeProyecto,
 } from '../../../core/backend/backend-rps.models';
@@ -15,12 +16,15 @@ import { TmrColaborador } from '../../integracion-tmr/models/tmr.models';
  * Liquidaciones del mes (rps-backend):
  *   POST /api/honorarios/generar y POST /api/liquidaciones/generar (botón "Calcular")
  *   GET  /api/liquidaciones?periodo=2026-11-01 · GET /api/liquidaciones/{id} · POST /api/liquidaciones/{id}/revisar
- * El backend no recalcula una liquidación ya generada ni permite quitar "Revisado".
+ * Volver a "Calcular" el mismo período suma a la liquidación existente los honorarios nuevos
+ * (ej. un contrato tardío) en vez de duplicarla, y retira la marca "Revisado" si cambia el total.
+ * El backend no permite quitar "Revisado" manualmente, solo al recalcular con un total distinto.
  */
 @Injectable({ providedIn: 'root' })
 export class LiquidacionesService {
   private readonly http = inject(HttpClient);
   private readonly be = inject(BackendRps);
+  private readonly sesion = inject(SessionService);
   private readonly base = `${environment.apiUrl}/liquidaciones`;
 
   listar(periodo: string): Observable<LiquidacionesPeriodo> {
@@ -91,9 +95,14 @@ export class LiquidacionesService {
       tmrColaboradorId: c?.tmrColaboradorId ?? '',
       colaborador: c ? this.be.nombreDe(nombres, c.tmrColaboradorId) : 'Colaborador',
       netoConsolidado: l.netoConsolidado,
-      cortes: l.cortes.map((x) => ({ corte: x.tipo, base: x.valorBase, descuento: x.recuperacionAdicional, valor: x.valorPreparado })),
+      cortes: l.cortes.map((x) => ({
+        corte: x.tipo, base: x.valorBase, descuento: x.recuperacionAdicional, valor: x.valorPreparado,
+        recuperacionNoAplicada: x.recuperacionNoAplicada, ajustePorProrrateo: x.ajustePorProrrateo,
+      })),
       documento: documento ? 'Registrado' : 'Pendiente',
-      revisado: l.revisado, revisadoEn: l.revisadoEn, calculadoEn: l.creadoEn,
+      revisado: l.revisado, revisadoEn: l.revisadoEn,
+      revisadoPorMi: l.revisadoPorUsuarioId !== null && l.revisadoPorUsuarioId === this.sesion.usuario()?.id,
+      calculadoEn: l.creadoEn,
     };
   }
 }

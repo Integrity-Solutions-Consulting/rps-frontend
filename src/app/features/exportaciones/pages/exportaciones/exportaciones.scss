@@ -1,6 +1,18 @@
 :host { display: block; }
 
-.todos { display: flex; align-items: center; gap: 8px; height: 38px; font-size: 13.5px; cursor: pointer; }
+.pago { margin-bottom: 28px; padding: 18px; }
+.pago__head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;
+  h2 { font-size: 16.5px; margin: 0; } }
+.pago__cortes { display: flex; gap: 6px; }
+.chip-toggle { border: 1px solid var(--rps-border, #d8dde3); background: transparent; border-radius: 999px; padding: 6px 14px;
+  font-size: 13px; cursor: pointer;
+  &.is-activo { background: var(--rps-teal-50); color: var(--rps-teal); border-color: var(--rps-teal); font-weight: 600; } }
+.pago__total { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+.advertencias { margin: 0; padding-left: 16px; font-size: 12.5px; color: var(--rps-danger, #b3261e);
+  li { line-height: 1.5; } }
+.subtitulo--seccion { margin: 8px 0 12px; }
+
+.todos { display: flex; align-items: center; gap: 8px; height: 38px; font-size: 13.5px; cursor: pointer; margin-bottom: 12px; }
 
 .opciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .opcion { padding: 18px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: start;

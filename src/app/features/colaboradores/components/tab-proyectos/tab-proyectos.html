@@ -22,7 +22,9 @@
               <td class="num">{{ a.fechaFinAsignacion ? (a.fechaFinAsignacion | date: 'dd MMM yyyy') : 'Sin fecha de salida' }}</td>
               <td>
                 @for (c of a.contratos; track c.id) {
-                  <app-estado-chip [tono]="tonoContrato(c)">{{ c.referencia ?? 'Contrato' }} · {{ etiquetaContrato[c.estado] }}</app-estado-chip>
+                  <app-estado-chip [tono]="tonoContrato(estadoProyecto(c, a.tmrProyectoId))">
+                    {{ c.referencia ?? 'Contrato' }} · {{ etiquetaContrato[estadoProyecto(c, a.tmrProyectoId)] }}
+                  </app-estado-chip>
                 } @empty {
                   <app-estado-chip tono="warn">Sin contrato</app-estado-chip>
                 }

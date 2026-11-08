@@ -37,6 +37,10 @@
 .campo-ancho { grid-column: 1 / -1; }
 @media (max-width: 760px) { .form-grid--contrato { grid-template-columns: minmax(0, 1fr); } }
 
+.lista-checks { display: grid; gap: 6px; max-height: 220px; overflow-y: auto; padding: 10px; border: 1px solid var(--rps-border, #d8dde3); border-radius: 8px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer;
+  &.is-disabled { color: var(--rps-muted); cursor: not-allowed; } }
+
 /* Lista + detalle */
 .grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 @media (max-width: 1180px) { .grid { grid-template-columns: minmax(0, 1fr); } }

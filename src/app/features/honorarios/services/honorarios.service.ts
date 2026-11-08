@@ -41,7 +41,7 @@ export class HonorariosService {
             vigente: historial.find((v) => v.vigenteDesdeMes <= mes) ?? null,
             programado: historial.find((v) => v.vigenteDesdeMes > mes) ?? null,
             historial,
-            contratos: contratos.filter((c) => c.proyectoId === proyectoId).map((c) => ({
+            contratos: contratos.filter((c) => c.proyectos.some((p) => p.proyectoId === proyectoId)).map((c) => ({
               id: c.id, referencia: c.referencia, fechaInicio: c.fechaInicio, fechaFinVigente: c.fechaFinVigente, vigente: c.vigente,
             })),
           };

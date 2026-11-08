@@ -1,7 +1,7 @@
 <header class="head">
   <div>
     <h1>Contratos y adendas</h1>
-    <p>Un contrato por colaborador y proyecto. Las adendas extienden la fecha de fin sin borrar la original.</p>
+    <p>Un contrato puede cubrir uno, varios o ningún proyecto. Las adendas extienden la fecha de fin sin borrar la original.</p>
   </div>
   <button type="button" class="btn btn--primary" (click)="abrirRegistro()" [disabled]="registrando()">
     <app-icon name="file" [size]="18" /> Registrar contrato
@@ -44,58 +44,148 @@
   <section class="card panel-form" aria-label="Registrar contrato">
     <header>
       <h2>Registrar contrato</h2>
-      <p>Elige la asignación de TMR. Para extender un contrato existente usa “Registrar adenda” en su detalle.</p>
+      <p>Elige el colaborador y, si aplica, uno o varios proyectos de TMR. Para extender un contrato existente usa “Registrar adenda” en su detalle.</p>
     </header>
-    <form class="form-grid form-grid--contrato" (submit)="$event.preventDefault(); guardarContrato()">
-      <div class="field campo-ancho">
-        <label for="asignacion">Colaborador y proyecto (TMR)</label>
-        <select id="asignacion" name="asignacion" class="select" [class.is-invalid]="erroresContrato()['asignacion']"
-                [disabled]="cargandoAsignaciones()" [ngModel]="asignacionForm()" (ngModelChange)="elegirAsignacion($event)">
-          <option value="">{{ cargandoAsignaciones() ? 'Cargando asignaciones…' : 'Elige una asignación' }}</option>
-          @for (a of asignaciones(); track clave(a)) {
-            <option [value]="clave(a)">{{ etiquetaAsignacion(a) }}</option>
-          }
-        </select>
-        @if (erroresContrato()['asignacion']; as e) { <span class="field__error">{{ e }}</span> }
-        @else if (asignacionElegida(); as a) {
-          <span class="field__hint">
-            Asignación en TMR desde {{ a.fechaAsignacion ? (a.fechaAsignacion | date: 'dd MMM yyyy') : 'sin fecha' }}
-            {{ a.fechaFinAsignacion ? 'hasta ' + (a.fechaFinAsignacion | date: 'dd MMM yyyy') : '· sin fecha de salida' }}
-          </span>
+
+    @if (cargandoFormulario()) {
+      <p class="muted">Cargando…</p>
+    } @else {
+      <form class="form-grid form-grid--contrato" (submit)="$event.preventDefault(); guardarContrato()">
+        <!-- Paso 1: colaborador -->
+        <div class="field campo-ancho">
+          <label for="buscar-colaborador">Colaborador</label>
+          <input id="buscar-colaborador" type="search" class="input" placeholder="Busca por nombre…"
+                 [ngModel]="busquedaColaborador()" (ngModelChange)="busquedaColaborador.set($event)" />
+          <select id="colaborador" name="colaborador" class="select" [class.is-invalid]="erroresContrato()['colaborador']"
+                  [ngModel]="colaboradorElegidoId()" (ngModelChange)="elegirColaborador($event)">
+            <option value="">{{ colaboradoresFiltrados().length }} resultado(s) — elige uno</option>
+            @for (c of colaboradoresFiltrados(); track c.tmrColaboradorId) {
+              <option [value]="c.tmrColaboradorId">{{ c.colaborador }}</option>
+            }
+          </select>
+          @if (erroresContrato()['colaborador']; as e) { <span class="field__error">{{ e }}</span> }
+        </div>
+
+        <!-- Paso 2: proyectos (0, 1 o varios) -->
+        @if (colaboradorElegidoId()) {
+          <div class="field campo-ancho">
+            <label>Proyectos que cubre este contrato (opcional)</label>
+            @if (asignacionesDelColaborador().length === 0) {
+              <p class="field__hint">Sin asignaciones disponibles en TMR: este contrato queda sin proyecto (ej. personal de RR. HH.).</p>
+            } @else {
+              <div class="lista-checks">
+                @for (a of asignacionesDelColaborador(); track a.tmrProyectoId) {
+                  <label class="check" [class.is-disabled]="a.tieneContratoVigente">
+                    <input type="checkbox" [checked]="proyectosElegidos().has(a.tmrProyectoId)" [disabled]="a.tieneContratoVigente"
+                           (change)="alternarProyecto(a)" />
+                    <span>
+                      {{ a.proyecto }}
+                      <small class="muted">
+                        · en TMR desde {{ a.fechaAsignacion ? (a.fechaAsignacion | date: 'dd MMM yyyy') : 'sin fecha' }}
+                        {{ a.fechaFinAsignacion ? 'hasta ' + (a.fechaFinAsignacion | date: 'dd MMM yyyy') : '· sin fecha de salida' }}
+                        {{ a.tieneContratoVigente ? ' · ya tiene contrato vigente' : '' }}
+                      </small>
+                    </span>
+                  </label>
+                }
+              </div>
+            }
+          </div>
         }
-      </div>
-      <div class="field">
-        <label for="inicio">Inicio</label>
-        <input id="inicio" name="inicio" type="date" class="input" [class.is-invalid]="erroresContrato()['fechaInicio']"
-               [ngModel]="inicioForm()" (ngModelChange)="inicioForm.set($event)" />
-        @if (erroresContrato()['fechaInicio']; as e) { <span class="field__error">{{ e }}</span> }
-      </div>
-      <div class="field">
-        <label for="fin">Fin</label>
-        <input id="fin" name="fin" type="date" class="input" [class.is-invalid]="erroresContrato()['fechaFin']"
-               [min]="inicioForm()" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
-        @if (erroresContrato()['fechaFin']; as e) { <span class="field__error">{{ e }}</span> }
-      </div>
-      <div class="field">
-        <label for="referencia">Referencia (opcional)</label>
-        <input id="referencia" name="referencia" class="input" maxlength="100" placeholder="Ej. CT-2026-031"
-               [ngModel]="referenciaForm()" (ngModelChange)="referenciaForm.set($event)" />
-      </div>
-      <div class="field campo-ancho">
-        <label for="observaciones">Observaciones (opcional)</label>
-        <input id="observaciones" name="observaciones" class="input" maxlength="500"
-               [ngModel]="observacionesForm()" (ngModelChange)="observacionesForm.set($event)" />
-      </div>
-      @if (errorContrato(); as e) {
-        <div class="aviso aviso--danger campo-ancho"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
-      }
-      <div class="form-actions campo-ancho">
-        <button type="button" class="btn" (click)="registrando.set(false)" [disabled]="guardandoContrato()">Cancelar</button>
-        <button type="submit" class="btn btn--primary" [disabled]="guardandoContrato()">
-          {{ guardandoContrato() ? 'Guardando…' : 'Registrar contrato' }}
-        </button>
-      </div>
-    </form>
+
+        <!-- Paso 3: fechas, referencia, observaciones -->
+        <div class="field">
+          <label for="inicio">Inicio</label>
+          <input id="inicio" name="inicio" type="date" class="input" [class.is-invalid]="erroresContrato()['fechaInicio']"
+                 [ngModel]="inicioForm()" (ngModelChange)="inicioForm.set($event)" />
+          @if (erroresContrato()['fechaInicio']; as e) { <span class="field__error">{{ e }}</span> }
+        </div>
+        <div class="field">
+          <label for="fin">Fin</label>
+          <input id="fin" name="fin" type="date" class="input" [class.is-invalid]="erroresContrato()['fechaFin']"
+                 [min]="inicioForm()" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
+          @if (erroresContrato()['fechaFin']; as e) { <span class="field__error">{{ e }}</span> }
+        </div>
+        <div class="field">
+          <label for="referencia">Referencia (opcional)</label>
+          <input id="referencia" name="referencia" class="input" maxlength="100" placeholder="Ej. CT-2026-031"
+                 [ngModel]="referenciaForm()" (ngModelChange)="referenciaForm.set($event)" />
+          <span class="field__hint">El número o código con el que Contabilidad archiva este documento.</span>
+        </div>
+        <div class="field campo-ancho">
+          <label for="observaciones">Observaciones (opcional)</label>
+          <input id="observaciones" name="observaciones" class="input" maxlength="500"
+                 [ngModel]="observacionesForm()" (ngModelChange)="observacionesForm.set($event)" />
+        </div>
+
+        <!-- Paso 4: honorario por proyecto elegido -->
+        @if (proyectosElegidos().size > 0) {
+          <div class="field campo-ancho">
+            <label>Honorario mensual por proyecto (opcional; se puede completar después)</label>
+            <div class="table-wrap marco">
+              <table class="tbl">
+                <thead><tr><th>Proyecto</th><th class="r">Importe mensual</th><th>Modalidad</th></tr></thead>
+                <tbody>
+                  @for (a of asignacionesDelColaborador(); track a.tmrProyectoId) {
+                    @if (proyectosElegidos().has(a.tmrProyectoId)) {
+                      <tr>
+                        <td>{{ a.proyecto }}</td>
+                        <td class="r">
+                          <div class="dinero">
+                            <span>$</span>
+                            <input class="input num" placeholder="0.00" [ngModel]="honorarioDe(a.tmrProyectoId).importe"
+                                   (ngModelChange)="actualizarImporte(a.tmrProyectoId, $event)" />
+                          </div>
+                        </td>
+                        <td>
+                          <select class="select" [ngModel]="honorarioDe(a.tmrProyectoId).modalidad"
+                                  (ngModelChange)="actualizarModalidad(a.tmrProyectoId, $event)">
+                            <option value="Neto">Neto</option>
+                            <option value="MasIva">Más IVA</option>
+                          </select>
+                        </td>
+                      </tr>
+                    }
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+
+        <!-- Paso 5: datos bancarios -->
+        <div class="field campo-ancho">
+          <label>Datos bancarios (opcional; se puede completar después)</label>
+        </div>
+        <div class="field">
+          <label for="banco">Banco</label>
+          <input id="banco" class="input" maxlength="100" [ngModel]="bancoForm()" (ngModelChange)="bancoForm.set($event)" />
+        </div>
+        <div class="field">
+          <label for="tipo-cuenta">Tipo de cuenta</label>
+          <select id="tipo-cuenta" class="select" [ngModel]="tipoCuentaForm()" (ngModelChange)="tipoCuentaForm.set($event)">
+            <option value="">Elige el tipo</option>
+            <option value="Ahorros">Ahorros</option>
+            <option value="Corriente">Corriente</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="numero-cuenta">Número de cuenta</label>
+          <input id="numero-cuenta" class="input num" maxlength="30" placeholder="Solo dígitos"
+                 [ngModel]="numeroCuentaForm()" (ngModelChange)="numeroCuentaForm.set($event)" />
+        </div>
+
+        @if (errorContrato(); as e) {
+          <div class="aviso aviso--danger campo-ancho"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+        }
+        <div class="form-actions campo-ancho">
+          <button type="button" class="btn" (click)="registrando.set(false)" [disabled]="guardandoContrato()">Cancelar</button>
+          <button type="submit" class="btn btn--primary" [disabled]="guardandoContrato()">
+            {{ guardandoContrato() ? 'Guardando…' : 'Registrar contrato' }}
+          </button>
+        </div>
+      </form>
+    }
   </section>
 }
 
@@ -145,7 +235,7 @@
           <div class="table-wrap">
             <table class="tbl">
               <thead>
-                <tr><th>Colaborador · proyecto</th><th>Inicio</th><th>Fin vigente</th><th>Estado</th><th><span class="sr-only">Ver</span></th></tr>
+                <tr><th>Colaborador · proyectos</th><th>Inicio</th><th>Fin vigente</th><th>Estado</th><th><span class="sr-only">Ver</span></th></tr>
               </thead>
               <tbody>
                 @for (c of filasPagina(); track c.id) {
@@ -156,7 +246,7 @@
                         <span class="avatar" aria-hidden="true">{{ iniciales(c.colaborador) }}</span>
                         <span class="persona__txt">
                           <strong>{{ c.colaborador }}</strong>
-                          <small>{{ c.proyecto }}{{ c.numeroAdendas ? ' · ' + c.numeroAdendas + (c.numeroAdendas === 1 ? ' adenda' : ' adendas') : '' }}</small>
+                          <small>{{ nombresProyectos(c) }}{{ c.numeroAdendas ? ' · ' + c.numeroAdendas + (c.numeroAdendas === 1 ? ' adenda' : ' adendas') : '' }}</small>
                         </span>
                       </div>
                     </td>
@@ -197,13 +287,13 @@
       <header class="detalle__head">
         <div>
           <h2>{{ d.colaborador }}</h2>
-          <span class="muted">{{ d.proyecto }}{{ d.cliente ? ' · ' + d.cliente : '' }}</span>
+          <span class="muted">{{ nombresProyectos(d) }}{{ clientesTexto(d) ? ' · ' + clientesTexto(d) : '' }}</span>
         </div>
-        <app-estado-chip [tono]="tono(d.estado)">{{ etiquetaEstado[d.estado] }}@if (textoPlazo(d); as p) { · {{ p }} }</app-estado-chip>
+        <app-estado-chip [tono]="tono(d.estado)">{{ etiquetaEstado[d.estado] }}</app-estado-chip>
       </header>
 
-      @if (d.estado === 'Vencido' && d.asignacionActiva) {
-        <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>Asignación activa: requiere revisión.</div></div>
+      @if (tieneVencidoConAsignacion(d)) {
+        <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>Hay un proyecto vencido con asignación todavía activa: requiere revisión.</div></div>
       }
 
       <dl class="datos">
@@ -211,15 +301,28 @@
         <div><dt>Inicio</dt><dd>{{ d.fechaInicio | date: 'dd MMM yyyy' }}</dd></div>
         <div><dt>Fin original</dt><dd>{{ d.fechaFinOriginal | date: 'dd MMM yyyy' }}</dd></div>
         <div><dt>Fin vigente</dt><dd><strong>{{ d.fechaFinVigente | date: 'dd MMM yyyy' }}</strong></dd></div>
-        <div>
-          <dt>Asignación en TMR</dt>
-          <dd>
-            {{ d.asignacionInicio ? (d.asignacionInicio | date: 'dd MMM yyyy') : 'sin fecha' }} →
-            {{ d.asignacionSalida ? (d.asignacionSalida | date: 'dd MMM yyyy') : 'sin salida' }}
-          </dd>
-        </div>
         @if (d.observaciones) { <div><dt>Observaciones</dt><dd>{{ d.observaciones }}</dd></div> }
       </dl>
+
+      <h3 class="sub"><app-icon name="folder" [size]="18" /> Proyectos</h3>
+      @if (d.proyectos.length === 0) {
+        <p class="muted small">Sin proyecto (ej. personal de RR. HH.).</p>
+      } @else {
+        <div class="table-wrap marco">
+          <table class="tbl">
+            <thead><tr><th>Proyecto</th><th>Estado</th><th>Plazo</th></tr></thead>
+            <tbody>
+              @for (p of d.proyectos; track p.proyectoId) {
+                <tr>
+                  <td>{{ p.proyecto }}{{ p.cliente ? ' · ' + p.cliente : '' }}</td>
+                  <td><app-estado-chip [tono]="tono(p.estado)">{{ etiquetaEstado[p.estado] }}</app-estado-chip></td>
+                  <td class="muted">{{ textoPlazo(p) ?? '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
 
       <div class="adendas__head">
         <h3>Adendas</h3>

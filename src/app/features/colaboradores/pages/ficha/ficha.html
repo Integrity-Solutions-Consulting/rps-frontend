@@ -102,7 +102,7 @@
       <app-tab-condiciones [colaborador]="c" [frecuencias]="frecuencias()" (actualizado)="alActualizar()" />
     }
     @case ('bancarios') {
-      <app-tab-bancarios [colaborador]="c" [titular]="datosTmr() ? nombre() : null" (actualizado)="alActualizar()" />
+      <app-tab-bancarios [colaborador]="c" [titular]="datosTmr() ? nombre() : null" />
     }
     @case ('contratos') {
       <app-tab-contratos [contratos]="contratos()" />

@@ -50,7 +50,7 @@ export class SessionService {
   readonly usuario = computed(() => {
     const u = this.sesion()?.usuario;
     if (!u) return null;
-    return { nombre: u.nombre, email: u.email, iniciales: iniciales(u.nombre), area: u.roles[0] ?? 'Contabilidad' };
+    return { id: u.id, nombre: u.nombre, email: u.email, iniciales: iniciales(u.nombre), area: u.roles[0] ?? 'Contabilidad' };
   });
 
   /** POST /api/auth/login */

@@ -11,7 +11,7 @@ import { TipoCorte } from '../../shared/models/corte';
 export interface BeColaborador {
   id: string;
   tmrColaboradorId: string;
-  /** Copia de TMR (la llena la sincronización). Nulos si el colaborador se creó a mano en RPS. */
+  /** Copia de TMR (la llena la sincronización). Nulos solo antes de la primera sincronización. */
   nombres: string | null;
   apellidos: string | null;
   identificacion: string | null;
@@ -84,8 +84,11 @@ export interface BeDashboard {
   contratosPorVencer: { en30Dias: number; en15Dias: number; en7Dias: number };
 }
 
+export interface BeProyectoDeContrato { proyectoId: string; proyectoNombre: string }
+
+/** proyectos: 0, 1 o varios — un contrato puede cubrir varios proyectos, o ninguno (RR. HH.). */
 export interface BeContrato {
-  id: string; colaboradorId: string; proyectoId: string; proyectoNombre: string;
+  id: string; colaboradorId: string; proyectos: BeProyectoDeContrato[];
   fechaInicio: string; fechaFin: string; fechaFinVigente: string;
   referencia: string | null; observaciones: string | null; vigente: boolean;
 }
@@ -105,11 +108,17 @@ export interface BeHonorario {
   totalRetenciones: number; neto: number; liquidacionId: string | null; creadoEn: string;
 }
 
-export interface BeCorte { id: string; tipo: TipoCorte; valorBase: number; recuperacionAdicional: number; valorPreparado: number }
+export interface BeCorte {
+  id: string; tipo: TipoCorte; valorBase: number; recuperacionAdicional: number; valorPreparado: number;
+  /** > 0: el anticipo programado no cupo completo en este corte (no se oculta, se muestra). */
+  recuperacionNoAplicada: number;
+  /** > 0: la quincena se redujo porque el mes resultó más corto de lo previsto (salida, RN 27). */
+  ajustePorProrrateo: number;
+}
 
 export interface BeLiquidacion {
   id: string; colaboradorId: string; periodo: string; netoConsolidado: number;
-  revisado: boolean; revisadoEn: string | null; creadoEn: string; cortes: BeCorte[];
+  revisado: boolean; revisadoEn: string | null; revisadoPorUsuarioId: string | null; creadoEn: string; cortes: BeCorte[];
 }
 
 export interface BeLiquidacionDetalle extends BeLiquidacion { honorarios: BeHonorario[] }
@@ -118,13 +127,29 @@ export interface BeCuota { id: string; periodo: string; corte: TipoCorte; import
 
 export interface BeAnticipo {
   id: string; colaboradorId: string; monto: number; fecha: string; observaciones: string | null;
-  saldoPendiente: number; cuotas: BeCuota[]; creadoEn: string;
+  saldoPendiente: number; cuotas: BeCuota[]; creadoPor: string; creadoEn: string;
 }
 
 /** GET /api/colaboradores/{id}/anticipos/resumen · mismos cálculos con los que el backend valida. */
 export interface BeResumenAnticipos {
   colaboradorId: string; activo: boolean; netoMensualCompleto: number; porcentajeMaximoAnticipo: number;
   limite: number; saldoPendiente: number; disponible: number; periodo: string; cortesPermitidos: TipoCorte[];
+}
+
+// GET /api/exportaciones/pago/preview — el Excel de pago por corte (RN 52-57).
+export interface BeItemPreviewExportacionPago {
+  colaboradorId: string; colaborador: string; importe: number; tieneCuentaBancaria: boolean; advertencias: string[];
+}
+
+export interface BePreviewExportacionPago {
+  periodo: string; corte: TipoCorte; versionSiguiente: number; items: BeItemPreviewExportacionPago[]; total: number;
+}
+
+export interface BeExportacionPagoItem { colaboradorId: string; colaborador: string; importe: number }
+
+export interface BeExportacionPago {
+  id: string; periodo: string; corte: TipoCorte; version: number; generadoPor: string; generadoEn: string;
+  nombreArchivo: string; total: number; items: BeExportacionPagoItem[];
 }
 
 export interface BeDocumento {
