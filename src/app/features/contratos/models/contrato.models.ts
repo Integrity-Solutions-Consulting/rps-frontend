@@ -40,10 +40,10 @@ export interface ContratoResumen {
   proyectos: ProyectoDeContrato[];
   referencia: string | null;
   fechaInicio: string;
-  /** Nunca cambia (RN 12). */
-  fechaFinOriginal: string;
-  /** Refleja la última adenda (RN 12). */
-  fechaFinVigente: string;
+  /** Null: contrato indefinido (sin fecha de fin). Nunca cambia (RN 12). */
+  fechaFinOriginal: string | null;
+  /** Refleja la última adenda (RN 12). Null si es indefinido: nunca vence. */
+  fechaFinVigente: string | null;
   /** El peor estado entre sus proyectos; Vigente/NoVigente si no tiene proyectos. */
   estado: EstadoContrato;
   numeroAdendas: number;
@@ -85,7 +85,10 @@ export interface RegistrarContratoRequest {
   /** Vacío: contrato sin proyecto. */
   tmrProyectoIds: string[];
   fechaInicio: string;
+  /** Ignorada por el backend si indefinido es true. */
   fechaFin: string;
+  /** true: contrato sin fecha de fin (nunca vence, sin adendas). */
+  indefinido: boolean;
   referencia: string | null;
   observaciones: string | null;
   /** Uno por cada proyecto en tmrProyectoIds que Contabilidad quiera dejar configurado de una vez. */

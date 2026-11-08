@@ -65,8 +65,8 @@ export class ContratosService {
         const proyectoIds = request.tmrProyectoIds.map(idDe).filter((id): id is string => id !== null);
 
         return this.http.post<BeContrato>(`${this.be.api}/colaboradores/${colaboradorId}/contratos`, {
-          proyectoIds, fechaInicio: request.fechaInicio || null, fechaFin: request.fechaFin || null,
-          referencia: request.referencia, observaciones: request.observaciones,
+          proyectoIds, fechaInicio: request.fechaInicio || null, fechaFin: request.indefinido ? null : (request.fechaFin || null),
+          indefinido: request.indefinido, referencia: request.referencia, observaciones: request.observaciones,
         }).pipe(
           switchMap((contrato) => {
             const pasos: Observable<unknown>[] = [];
