@@ -99,7 +99,7 @@
       <app-tab-proyectos [asignaciones]="datosTmr()?.asignaciones ?? []" [contratos]="contratos()" [errorTmr]="errorTmr()" />
     }
     @case ('condiciones') {
-      <app-tab-condiciones [colaborador]="c" [frecuencias]="frecuencias()" (actualizado)="alActualizar()" />
+      <app-tab-condiciones [colaborador]="c" [frecuencias]="frecuencias()" />
     }
     @case ('bancarios') {
       <app-tab-bancarios [colaborador]="c" [titular]="datosTmr() ? nombre() : null" />

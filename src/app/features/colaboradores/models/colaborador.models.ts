@@ -68,7 +68,7 @@ export interface FiltrosColaboradores {
 
 /** Movimiento del historial del colaborador (RN 48, sección 12 "Historial por colaborador"). */
 export type TipoEvento =
-  | 'Vinculación' | 'Frecuencia' | 'Contrato' | 'Adenda' | 'Honorario' | 'Liquidación' | 'Anticipo' | 'Documento';
+  | 'Vinculación' | 'Frecuencia' | 'Contrato' | 'Adenda' | 'Honorario' | 'Liquidación' | 'Anticipo';
 
 export interface EventoHistorial {
   fecha: string;

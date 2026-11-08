@@ -47,10 +47,6 @@ export const routes: Routes = [
         loadChildren: () => import('./features/liquidaciones/liquidaciones.routes').then((r) => r.LIQUIDACIONES_ROUTES),
       },
       {
-        path: 'documentos',
-        loadChildren: () => import('./features/documentos/documentos.routes').then((r) => r.DOCUMENTOS_ROUTES),
-      },
-      {
         path: 'exportaciones',
         loadChildren: () => import('./features/exportaciones/exportaciones.routes').then((r) => r.EXPORTACIONES_ROUTES),
       },
