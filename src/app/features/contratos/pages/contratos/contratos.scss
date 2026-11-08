@@ -41,6 +41,7 @@
 .check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer;
   &.is-disabled { color: var(--rps-muted); cursor: not-allowed; } }
 .check--inline { margin-top: 6px; }
+.valor-fijo { margin: 0; padding: 9px 12px; border: 1px solid var(--rps-border, #d8dde3); border-radius: 8px; background: #f6fafb; font-size: 14px; }
 
 /* Colaborador: buscador + selector en un solo cuadro */
 .combo { position: relative; }

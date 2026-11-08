@@ -5,6 +5,8 @@
  * Vigente / NoVigente, del campo `vigente` del contrato (inicio ≤ hoy ≤ fin vigente).
  */
 
+import { Clasificacion, Frecuencia } from '../../colaboradores/models/colaborador.models';
+
 export type EstadoContrato = 'Vigente' | 'ProximoAVencer' | 'Vencido' | 'NoVigente';
 
 export interface Adenda {
@@ -69,7 +71,7 @@ export interface AsignacionDisponible {
   proyecto: string;
   fechaAsignacion: string | null;
   fechaFinAsignacion: string | null;
-  /** Ya hay un contrato vigente que cubre este proyecto para este colaborador. */
+  /** Ya hay un contrato vigente (distinto del que se está editando) que cubre este proyecto. */
   tieneContratoVigente: boolean;
 }
 
@@ -80,7 +82,19 @@ export interface HonorarioDeRegistro {
   modalidad: 'Neto' | 'MasIva';
 }
 
-export interface RegistrarContratoRequest {
+/** Lo que el formulario del contrato también deja configurar del colaborador (RN 05, RN 36):
+ * tipo de servicio, frecuencia de pago, honorario por proyecto y datos bancarios. Null/vacío = no
+ * cambiar lo que ya tiene. La ficha del colaborador solo lo muestra, ya no lo edita. */
+export interface ConfiguracionColaboradorForm {
+  clasificacion: Clasificacion | null;
+  frecuencia: { frecuencia: Frecuencia; vigenteDesdeMes: string } | null;
+  /** Uno por cada proyecto elegido que Contabilidad quiera dejar configurado de una vez. */
+  honorarios: HonorarioDeRegistro[];
+  /** Null: no se tocan los datos bancarios en este registro. */
+  cuentaBancaria: { banco: string | null; tipoCuenta: string | null; numeroCuenta: string } | null;
+}
+
+export interface RegistrarContratoRequest extends ConfiguracionColaboradorForm {
   tmrColaboradorId: string;
   /** Vacío: contrato sin proyecto. */
   tmrProyectoIds: string[];
@@ -91,10 +105,15 @@ export interface RegistrarContratoRequest {
   indefinido: boolean;
   referencia: string | null;
   observaciones: string | null;
-  /** Uno por cada proyecto en tmrProyectoIds que Contabilidad quiera dejar configurado de una vez. */
-  honorarios: HonorarioDeRegistro[];
-  /** Null: no se tocan los datos bancarios en este registro. */
-  cuentaBancaria: { banco: string | null; tipoCuenta: string | null; numeroCuenta: string } | null;
+}
+
+// FechaFin/Indefinido no se editan (RN 12): para extender la vigencia se usa una Adenda.
+export interface EditarContratoRequest extends ConfiguracionColaboradorForm {
+  /** Vacío: contrato sin proyecto. */
+  tmrProyectoIds: string[];
+  fechaInicio: string;
+  referencia: string | null;
+  observaciones: string | null;
 }
 
 export interface RegistrarAdendaRequest {
