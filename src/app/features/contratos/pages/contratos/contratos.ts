@@ -11,10 +11,13 @@ import {
   ProyectoDeContrato, ResumenContratos,
 } from '../../models/contrato.models';
 import { Modalidad } from '../../../honorarios/models/honorario.models';
+import { HonorariosService } from '../../../honorarios/services/honorarios.service';
+import { ColaboradoresService } from '../../../colaboradores/services/colaboradores.service';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
+import { periodoActual, primerDia } from '../../../../shared/utils/periodo';
 
 type Carga<T> = { estado: 'cargando' } | { estado: 'ok'; datos: T } | { estado: 'error'; mensaje: string };
 
@@ -35,6 +38,8 @@ function cargaDe<T>(obs: Observable<T>): Observable<Carga<T>> {
 })
 export class Contratos {
   private readonly api = inject(ContratosService);
+  private readonly honorariosApi = inject(HonorariosService);
+  private readonly colaboradoresApi = inject(ColaboradoresService);
   private readonly avisos = inject(NotificationService);
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -99,6 +104,12 @@ export class Contratos {
     return c.datos.find((x) => x.tmrColaboradorId === id)?.colaborador ?? `ID TMR ${id}`;
   });
 
+  /** Selecciona un contrato para verlo en modo lectura, cerrando cualquier edición abierta de otro. */
+  protected verDetalle(id: string): void {
+    this.editando.set(false);
+    this.seleccionadoId.set(id);
+  }
+
   protected quitarFiltroColaborador(): void {
     this.filtroColaborador.set(null);
     void this.router.navigate([], { relativeTo: this.ruta, queryParams: {} });
@@ -149,14 +160,116 @@ export class Contratos {
     this.cargarDetalle(this.seleccionadoId());
   }
 
+  // ── Editar honorario y datos bancarios de un contrato ya existente ────
+  protected readonly editando = signal(false);
+  /** El contrato que se está editando: el panel solo se dibuja cuando detalle() ya es este mismo
+   * (evita que, al cambiar de fila antes de que termine de cargar, se edite el contrato equivocado). */
+  protected readonly idEnEdicion = signal<string | null>(null);
+  protected readonly cargandoEdicion = signal(false);
+  protected readonly honorariosEdicion = signal<{ tmrProyectoId: string; proyecto: string; importe: string; modalidad: Modalidad }[]>([]);
+  protected readonly bancoEdicionForm = signal('');
+  protected readonly tipoCuentaEdicionForm = signal('');
+  protected readonly numeroCuentaEdicionForm = signal('');
+  protected readonly guardandoEdicion = signal(false);
+  protected readonly errorEdicion = signal<string | null>(null);
+
+  /** Abre, en el mismo detalle, los campos para completar o corregir honorario y datos bancarios
+   * de un contrato ya registrado — sin tener que ir a la ficha del colaborador (ahora de solo lectura). */
+  protected abrirEdicion(c: ContratoResumen): void {
+    this.seleccionadoId.set(c.id);
+    this.idEnEdicion.set(c.id);
+    this.editando.set(true);
+    this.cargandoEdicion.set(false);
+    this.errorEdicion.set(null);
+    this.bancoEdicionForm.set('');
+    this.tipoCuentaEdicionForm.set('');
+    this.numeroCuentaEdicionForm.set('');
+    this.honorariosEdicion.set(c.proyectos.map((p) => ({ tmrProyectoId: p.tmrProyectoId, proyecto: p.proyecto, importe: '', modalidad: 'Neto' as Modalidad })));
+    if (c.proyectos.length === 0) return;
+
+    this.cargandoEdicion.set(true);
+    forkJoin({
+      honorarios: this.honorariosApi.porColaborador(c.tmrColaboradorId),
+      colaborador: this.colaboradoresApi.obtener(c.colaboradorId),
+    }).subscribe({
+      next: ({ honorarios, colaborador }) => {
+        this.honorariosEdicion.set(c.proyectos.map((p) => {
+          const vigente = honorarios.find((h) => h.tmrProyectoId === p.tmrProyectoId)?.vigente;
+          return { tmrProyectoId: p.tmrProyectoId, proyecto: p.proyecto, importe: vigente ? String(vigente.importe) : '', modalidad: vigente?.modalidad ?? 'Neto' };
+        }));
+        this.bancoEdicionForm.set(colaborador.cuentaBancaria?.banco ?? '');
+        this.tipoCuentaEdicionForm.set(colaborador.cuentaBancaria?.tipoCuenta ?? '');
+        this.cargandoEdicion.set(false);
+      },
+      error: (e: unknown) => { this.cargandoEdicion.set(false); this.errorEdicion.set(leerErrorApi(e).mensaje); },
+    });
+  }
+
+  protected cerrarEdicion(): void {
+    this.editando.set(false);
+  }
+
+  protected honorarioEdicionDe(tmrProyectoId: string): { importe: string; modalidad: Modalidad } {
+    return this.honorariosEdicion().find((h) => h.tmrProyectoId === tmrProyectoId) ?? { importe: '', modalidad: 'Neto' };
+  }
+
+  protected actualizarImporteEdicion(tmrProyectoId: string, importe: string): void {
+    this.honorariosEdicion.update((lista) => lista.map((h) => h.tmrProyectoId === tmrProyectoId ? { ...h, importe } : h));
+  }
+
+  protected actualizarModalidadEdicion(tmrProyectoId: string, modalidad: Modalidad): void {
+    this.honorariosEdicion.update((lista) => lista.map((h) => h.tmrProyectoId === tmrProyectoId ? { ...h, modalidad } : h));
+  }
+
+  protected guardarEdicion(): void {
+    const d = this.detalle();
+    if (!d) return;
+
+    const vigenteDesdeMes = primerDia(periodoActual());
+    const pasos: Observable<unknown>[] = [];
+
+    for (const h of this.honorariosEdicion()) {
+      const importe = h.importe.trim() ? Number(h.importe.replace(',', '.')) : null;
+      if (importe === null || importe <= 0) continue;
+      pasos.push(this.honorariosApi.programar({
+        tmrColaboradorId: d.tmrColaboradorId, tmrProyectoId: h.tmrProyectoId, contratoId: d.id,
+        importe, modalidad: h.modalidad, vigenteDesdeMes,
+      }));
+    }
+
+    const numero = this.numeroCuentaEdicionForm().trim();
+    if (numero) {
+      pasos.push(this.colaboradoresApi.registrarCuentaBancaria(d.colaboradorId, {
+        banco: this.bancoEdicionForm().trim() || null, tipoCuenta: this.tipoCuentaEdicionForm() || null, numeroCuenta: numero,
+      }));
+    }
+
+    if (pasos.length === 0) { this.editando.set(false); return; }
+
+    this.guardandoEdicion.set(true);
+    this.errorEdicion.set(null);
+    forkJoin(pasos).subscribe({
+      next: () => {
+        this.guardandoEdicion.set(false);
+        this.editando.set(false);
+        this.avisos.ok('Honorario y datos bancarios actualizados.');
+        this.recargar$.next();
+      },
+      error: (e: unknown) => { this.guardandoEdicion.set(false); this.errorEdicion.set(leerErrorApi(e).mensaje); },
+    });
+  }
+
   // ── Registrar contrato ───────────────────────────────────────────────
   protected readonly registrando = signal(false);
   protected readonly cargandoFormulario = signal(false);
 
-  // Paso 1: elegir colaborador (todos, incluso sin proyecto todavía).
+  // Paso 1: elegir colaborador (todos, incluso sin proyecto todavía). Un solo cuadro de texto hace
+  // de buscador y de selector a la vez: se escribe para filtrar y se elige una opción de la lista.
   protected readonly colaboradoresTodos = signal<{ tmrColaboradorId: string; colaborador: string }[]>([]);
   protected readonly busquedaColaborador = signal('');
   protected readonly colaboradorElegidoId = signal('');
+  protected readonly listaColaboradorAbierta = signal(false);
+  private cerrarListaTimeout: ReturnType<typeof setTimeout> | undefined;
 
   protected readonly colaboradoresFiltrados = computed(() => {
     const t = this.busquedaColaborador().trim().toLowerCase();
@@ -174,9 +287,13 @@ export class Contratos {
   // Paso 3-4: fechas, referencia, observaciones, honorario por proyecto elegido.
   protected readonly inicioForm = signal('');
   protected readonly finForm = signal('');
+  protected readonly indefinidoForm = signal(false);
   protected readonly referenciaForm = signal('');
   protected readonly observacionesForm = signal('');
   protected readonly honorariosForm = signal<Record<string, { importe: string; modalidad: Modalidad }>>({});
+  /** Cuando el contrato cubre más de un proyecto: un solo honorario para todos, o uno por proyecto. */
+  protected readonly honorarioGrupal = signal(false);
+  protected readonly honorarioGrupalForm = signal<{ importe: string; modalidad: Modalidad }>({ importe: '', modalidad: 'Neto' });
 
   // Paso 5: datos bancarios (opcional, se puede completar después desde aquí mismo).
   protected readonly bancoForm = signal('');
@@ -190,12 +307,16 @@ export class Contratos {
   protected abrirRegistro(): void {
     this.busquedaColaborador.set('');
     this.colaboradorElegidoId.set('');
+    this.listaColaboradorAbierta.set(false);
     this.proyectosElegidos.set(new Set());
     this.inicioForm.set('');
     this.finForm.set('');
+    this.indefinidoForm.set(false);
     this.referenciaForm.set('');
     this.observacionesForm.set('');
     this.honorariosForm.set({});
+    this.honorarioGrupal.set(false);
+    this.honorarioGrupalForm.set({ importe: '', modalidad: 'Neto' });
     this.bancoForm.set('');
     this.tipoCuentaForm.set('');
     this.numeroCuentaForm.set('');
@@ -213,10 +334,32 @@ export class Contratos {
     });
   }
 
-  protected elegirColaborador(tmrColaboradorId: string): void {
+  /** El cuadro es a la vez buscador y selector: escribir filtra, y limpia la elección anterior. */
+  protected buscarColaborador(texto: string): void {
+    this.busquedaColaborador.set(texto);
+    this.listaColaboradorAbierta.set(true);
+    const elegido = this.colaboradoresTodos().find((c) => c.tmrColaboradorId === this.colaboradorElegidoId());
+    if (elegido && elegido.colaborador !== texto) this.elegirColaboradorInterno('');
+  }
+
+  protected elegirColaborador(c: { tmrColaboradorId: string; colaborador: string }): void {
+    this.busquedaColaborador.set(c.colaborador);
+    this.listaColaboradorAbierta.set(false);
+    this.elegirColaboradorInterno(c.tmrColaboradorId);
+  }
+
+  /** El click en una opción dispara (mousedown) antes que el (blur) del input la cierre. */
+  protected cerrarListaColaboradorConRetraso(): void {
+    clearTimeout(this.cerrarListaTimeout);
+    this.cerrarListaTimeout = setTimeout(() => this.listaColaboradorAbierta.set(false), 150);
+  }
+
+  private elegirColaboradorInterno(tmrColaboradorId: string): void {
     this.colaboradorElegidoId.set(tmrColaboradorId);
     this.proyectosElegidos.set(new Set());
     this.honorariosForm.set({});
+    this.honorarioGrupal.set(false);
+    this.honorarioGrupalForm.set({ importe: '', modalidad: 'Neto' });
   }
 
   protected alternarProyecto(a: AsignacionDisponible): void {
@@ -232,6 +375,8 @@ export class Contratos {
       if (actual.size === 1 && a.fechaAsignacion && !this.inicioForm()) this.inicioForm.set(a.fechaAsignacion);
       this.honorariosForm.update((h) => ({ ...h, [a.tmrProyectoId]: h[a.tmrProyectoId] ?? { importe: '', modalidad: 'Neto' } }));
     }
+    // El honorario grupal solo tiene sentido con más de un proyecto elegido.
+    if (actual.size <= 1) this.honorarioGrupal.set(false);
     this.proyectosElegidos.set(actual);
   }
 
@@ -247,16 +392,38 @@ export class Contratos {
     this.honorariosForm.update((h) => ({ ...h, [tmrProyectoId]: { ...this.honorarioDe(tmrProyectoId), modalidad } }));
   }
 
-  /** Las fechas y demás campos los valida el backend; aquí solo se exige elegir a quién. */
+  protected actualizarHonorarioGrupalImporte(importe: string): void {
+    this.honorarioGrupalForm.update((h) => ({ ...h, importe }));
+  }
+
+  protected actualizarHonorarioGrupalModalidad(modalidad: Modalidad): void {
+    this.honorarioGrupalForm.update((h) => ({ ...h, modalidad }));
+  }
+
+  /** Las fechas y demás campos los valida el backend; aquí solo se exige elegir a quién y, si no es
+   * indefinido, poner la fecha de fin. */
   protected guardarContrato(): void {
     const tmrColaboradorId = this.colaboradorElegidoId();
     if (!tmrColaboradorId) { this.erroresContrato.set({ colaborador: 'Elige el colaborador.' }); return; }
 
-    const honorarios: HonorarioDeRegistro[] = [...this.proyectosElegidos()].map((tmrProyectoId) => {
-      const h = this.honorarioDe(tmrProyectoId);
-      const importeMensual = h.importe.trim() ? Number(h.importe.replace(',', '.')) : null;
-      return { tmrProyectoId, importeMensual, modalidad: h.modalidad };
-    }).filter((h) => h.importeMensual !== null && h.importeMensual > 0);
+    if (!this.indefinidoForm() && !this.finForm()) {
+      this.erroresContrato.set({ fechaFin: 'Pon la fecha de fin o marca "Indefinido".' });
+      return;
+    }
+
+    const esGrupal = this.honorarioGrupal() && this.proyectosElegidos().size > 1;
+    const honorarios: HonorarioDeRegistro[] = esGrupal
+      ? (() => {
+          const g = this.honorarioGrupalForm();
+          const importeMensual = g.importe.trim() ? Number(g.importe.replace(',', '.')) : null;
+          if (importeMensual === null || importeMensual <= 0) return [];
+          return [...this.proyectosElegidos()].map((tmrProyectoId) => ({ tmrProyectoId, importeMensual, modalidad: g.modalidad }));
+        })()
+      : [...this.proyectosElegidos()].map((tmrProyectoId) => {
+          const h = this.honorarioDe(tmrProyectoId);
+          const importeMensual = h.importe.trim() ? Number(h.importe.replace(',', '.')) : null;
+          return { tmrProyectoId, importeMensual, modalidad: h.modalidad };
+        }).filter((h) => h.importeMensual !== null && h.importeMensual > 0);
 
     const numero = this.numeroCuentaForm().trim();
     const cuentaBancaria = numero
@@ -271,6 +438,7 @@ export class Contratos {
       tmrProyectoIds: [...this.proyectosElegidos()],
       fechaInicio: this.inicioForm(),
       fechaFin: this.finForm(),
+      indefinido: this.indefinidoForm(),
       referencia: this.referenciaForm().trim() || null,
       observaciones: this.observacionesForm().trim() || null,
       honorarios,

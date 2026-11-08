@@ -19,7 +19,8 @@ export interface ContratoDelProyecto {
   id: string;
   referencia: string | null;
   fechaInicio: string;
-  fechaFinVigente: string;
+  /** Null: contrato indefinido (sin fecha de fin). */
+  fechaFinVigente: string | null;
   vigente: boolean;
 }
 

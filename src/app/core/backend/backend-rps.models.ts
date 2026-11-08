@@ -89,7 +89,8 @@ export interface BeProyectoDeContrato { proyectoId: string; proyectoNombre: stri
 /** proyectos: 0, 1 o varios — un contrato puede cubrir varios proyectos, o ninguno (RR. HH.). */
 export interface BeContrato {
   id: string; colaboradorId: string; proyectos: BeProyectoDeContrato[];
-  fechaInicio: string; fechaFin: string; fechaFinVigente: string;
+  /** Null: contrato indefinido (sin fecha de fin). */
+  fechaInicio: string; fechaFin: string | null; fechaFinVigente: string | null;
   referencia: string | null; observaciones: string | null; vigente: boolean;
 }
 

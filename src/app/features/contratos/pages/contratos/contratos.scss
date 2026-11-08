@@ -40,6 +40,34 @@
 .lista-checks { display: grid; gap: 6px; max-height: 220px; overflow-y: auto; padding: 10px; border: 1px solid var(--rps-border, #d8dde3); border-radius: 8px; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer;
   &.is-disabled { color: var(--rps-muted); cursor: not-allowed; } }
+.check--inline { margin-top: 6px; }
+
+/* Colaborador: buscador + selector en un solo cuadro */
+.combo { position: relative; }
+.combo__lista {
+  position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 4px;
+  list-style: none; max-height: 240px; overflow-y: auto; background: var(--rps-surface, #fff);
+  border: 1px solid var(--rps-border, #d8dde3); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
+}
+.combo__lista li[role="option"] { padding: 7px 10px; border-radius: 6px; font-size: 13.5px; cursor: pointer;
+  &:hover, &.is-sel { background: var(--rps-teal-50); } }
+.combo__vacio { padding: 7px 10px; font-size: 13px; color: var(--rps-muted); }
+
+/* Honorario: un proyecto por fila, o uno solo para varios */
+.selector { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.selector__opcion {
+  display: flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--rps-border, #d8dde3);
+  border-radius: 999px; font-size: 13px; cursor: pointer;
+  &.is-on { border-color: var(--rps-teal); background: var(--rps-teal-50); }
+  input { margin: 0; }
+}
+
+.stack-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.btn--icono {
+  display: inline-flex; align-items: center; justify-content: center; padding: 4px; border: 0; background: transparent;
+  color: inherit; cursor: pointer; border-radius: 6px;
+  &:hover { background: var(--rps-teal-50); }
+}
 
 /* Lista + detalle */
 .grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; align-items: start; }
