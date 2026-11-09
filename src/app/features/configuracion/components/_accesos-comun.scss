@@ -1,0 +1,39 @@
+// Estilos compartidos por las pestañas Roles y Usuarios de Configuración.
+
+.indicadores { grid-template-columns: repeat(auto-fit, minmax(200px, 260px)); }
+.indicador { justify-content: space-between; min-height: 96px; padding: 18px 20px; border-left: 3px solid var(--rps-border); }
+.indicador__valor { font-size: 30px; }
+.indicador__icono--neutral { background: #eef2f5; color: var(--rps-muted); }
+.indicador--destacado { background: var(--rps-navy); border-color: var(--rps-navy); color: #fff;
+  .indicador__etiqueta { color: var(--rps-navy-text); font-weight: 600; }
+  .indicador__icono { background: rgba(255, 255, 255, .12); color: #fff; } }
+
+.filtros-barra .field--estado { flex: 0 1 220px; }
+.btn--azul { background: var(--rps-navy); border-color: var(--rps-navy); color: #fff; margin-left: auto;
+  &:hover:not(:disabled) { background: var(--rps-navy-700); border-color: var(--rps-navy-700); color: #fff; } }
+.buscador { position: relative;
+  app-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--rps-muted); pointer-events: none; }
+  .input { padding-left: 34px; } }
+
+.bloque-texto { display: block; }
+.rol { color: var(--rps-navy); font-size: 13.5px; letter-spacing: .01em; }
+.usuario-id { font-weight: 500; }
+
+.modulos { display: flex; flex-wrap: wrap; gap: 6px; max-width: 360px; }
+.modulo { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px;
+  font-size: 12px; background: var(--rps-info-50); color: var(--rps-info); border: 1px solid #c7d9ee; white-space: nowrap; }
+.modulo--mas { background: #f3f6f8; color: var(--rps-muted); border-color: var(--rps-border); }
+.rol-chip { background: var(--rps-teal-50); color: var(--rps-teal-700); border-color: #b9dfe2; }
+
+.punto { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+th.acciones, td.acciones { width: 56px; text-align: right; }
+.menu-fila { position: relative; display: inline-block; }
+.kebab { padding: 0 6px; color: var(--rps-muted); }
+.menu-fila__lista { position: fixed; width: 210px; padding: 6px; z-index: 50;
+  background: var(--rps-surface); border: 1px solid var(--rps-border); border-radius: var(--rps-radius);
+  box-shadow: 0 10px 30px rgba(19, 38, 61, .14); display: grid; gap: 2px; }
+.menu-fila__item { display: flex; align-items: center; gap: 10px; text-align: left; border: 0; background: none;
+  padding: 9px 10px; border-radius: 6px; font-size: 13.5px; color: var(--rps-text); cursor: pointer; white-space: nowrap;
+  app-icon { color: var(--rps-muted); }
+  &:hover { background: #f6f8fa; } }

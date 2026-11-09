@@ -1,0 +1,48 @@
+<div class="fondo" (click)="cancelar.emit()"></div>
+<form class="ventana" role="dialog" aria-modal="true" aria-labelledby="crear-rol-titulo" novalidate (submit)="$event.preventDefault(); crear()">
+  <header class="ventana__head">
+    <div>
+      <h2 id="crear-rol-titulo">Agregar rol</h2>
+      <p class="muted small">Después podrás asignarlo al crear usuarios.</p>
+    </div>
+    <button type="button" class="btn btn--ghost btn--sm cerrar" aria-label="Cerrar" (click)="cancelar.emit()">
+      <app-icon name="x" [size]="18" />
+    </button>
+  </header>
+
+  <div class="ventana__cuerpo">
+    <div class="field nombre">
+      <label for="nr-nombre">Nombre del rol</label>
+      <input id="nr-nombre" name="nombre" class="input" maxlength="50" placeholder="Auditor interno" autocomplete="off"
+             [class.is-invalid]="errores()['nombre']" [ngModel]="nombre()" (ngModelChange)="cambiarNombre($event)" />
+      @if (errores()['nombre']; as e) { <span class="field__error">{{ e }}</span> }
+    </div>
+
+    <p class="permisos-titulo">Permisos del rol</p>
+    <div class="permiso permiso--todos">
+      <div>
+        <strong>Activar todos los permisos</strong>
+        <span class="muted small">Habilita o deshabilita todos los módulos a la vez.</span>
+      </div>
+      <button type="button" role="switch" class="switch switch--oscuro" [class.is-on]="todos()" [attr.aria-checked]="todos()"
+              aria-label="Activar todos los permisos" (click)="cambiarTodos()"><span></span></button>
+    </div>
+    @for (m of modulos; track m.clave) {
+      <div class="permiso">
+        <span>Permitir {{ m.etiqueta.toLowerCase() }}</span>
+        <button type="button" role="switch" class="switch" [class.is-on]="permisos()[m.clave]" [attr.aria-checked]="permisos()[m.clave]"
+                [attr.aria-label]="'Permitir ' + m.etiqueta" (click)="cambiar(m.clave)"><span></span></button>
+      </div>
+    }
+    @if (error(); as e) {
+      <div class="aviso aviso--danger" style="margin: 12px 20px"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+    }
+  </div>
+
+  <footer class="ventana__pie">
+    <button type="button" class="btn" (click)="cancelar.emit()" [disabled]="guardando()">Cancelar</button>
+    <button type="submit" class="btn btn--azul" [disabled]="guardando()">
+      <app-icon name="plus" [size]="17" /> {{ guardando() ? 'Creando…' : 'Crear rol' }}
+    </button>
+  </footer>
+</form>

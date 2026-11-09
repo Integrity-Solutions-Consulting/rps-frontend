@@ -1,0 +1,40 @@
+<div class="fondo" (click)="cancelar.emit()"></div>
+<section class="ventana" role="dialog" aria-modal="true" aria-labelledby="permisos-titulo">
+  <header class="ventana__head">
+    <div>
+      <h2 id="permisos-titulo">Editar permisos</h2>
+      <p class="muted small">Rol {{ titulo() }}</p>
+    </div>
+    <button type="button" class="btn btn--ghost btn--sm cerrar" aria-label="Cerrar" (click)="cancelar.emit()">
+      <app-icon name="x" [size]="18" />
+    </button>
+  </header>
+
+  <div class="ventana__cuerpo">
+    <div class="permiso permiso--todos">
+      <div>
+        <strong>Activar todos los permisos</strong>
+        <span class="muted small">Habilita o deshabilita todos los módulos a la vez.</span>
+      </div>
+      <button type="button" role="switch" class="switch switch--oscuro" [class.is-on]="todos()" [attr.aria-checked]="todos()"
+              aria-label="Activar todos los permisos" (click)="cambiarTodos()"><span></span></button>
+    </div>
+    @for (m of modulos; track m.clave) {
+      <div class="permiso">
+        <span>Permitir {{ m.etiqueta.toLowerCase() }}</span>
+        <button type="button" role="switch" class="switch" [class.is-on]="permisos()[m.clave]" [attr.aria-checked]="permisos()[m.clave]"
+                [attr.aria-label]="'Permitir ' + m.etiqueta" (click)="cambiar(m.clave)"><span></span></button>
+      </div>
+    }
+    @if (error(); as e) {
+      <div class="aviso aviso--danger" style="margin: 12px 20px"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+    }
+  </div>
+
+  <footer class="ventana__pie">
+    <button type="button" class="btn" (click)="cancelar.emit()" [disabled]="guardando()">Cancelar</button>
+    <button type="button" class="btn btn--azul" (click)="guardar.emit(permisos())" [disabled]="!hayCambios() || guardando()">
+      <app-icon name="save" [size]="17" /> {{ guardando() ? 'Guardando…' : 'Guardar permisos' }}
+    </button>
+  </footer>
+</section>

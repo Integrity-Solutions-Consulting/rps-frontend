@@ -53,6 +53,9 @@ export class SessionService {
     return { nombre: u.nombre, email: u.email, iniciales: iniciales(u.nombre), area: u.roles[0] ?? 'Contabilidad' };
   });
 
+  /** Roles del usuario en sesión (Administrador, Administrador Contable, Asistente Contable). */
+  readonly roles = computed(() => this.sesion()?.usuario.roles ?? []);
+
   /** POST /api/auth/login */
   iniciarSesion(email: string, password: string): Observable<void> {
     return this.http.post<RespuestaAuth>(`${this.base}/login`, { email, password }).pipe(

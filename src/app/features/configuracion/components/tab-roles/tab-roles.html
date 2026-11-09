@@ -1,0 +1,111 @@
+<div class="indicadores">
+  <div class="card indicador indicador--destacado">
+    <div class="indicador__cuerpo">
+      <span class="indicador__valor num">{{ roles().length }}</span>
+      <span class="indicador__etiqueta">Total roles</span>
+    </div>
+    <span class="indicador__icono"><app-icon name="shield" [size]="24" /></span>
+  </div>
+  <div class="card indicador">
+    <div class="indicador__cuerpo">
+      <span class="indicador__valor num">{{ activos() }}</span>
+      <span class="indicador__etiqueta">Activos</span>
+    </div>
+    <span class="indicador__icono indicador__icono--ok"><app-icon name="userCheck" [size]="22" /></span>
+  </div>
+  <div class="card indicador">
+    <div class="indicador__cuerpo">
+      <span class="indicador__valor num">{{ roles().length - activos() }}</span>
+      <span class="indicador__etiqueta">Inactivos</span>
+    </div>
+    <span class="indicador__icono indicador__icono--neutral"><app-icon name="userX" [size]="22" /></span>
+  </div>
+</div>
+
+<div class="card filtros-barra">
+  <div class="field">
+    <label for="roles-buscar">Búsqueda</label>
+    <div class="buscador">
+      <app-icon name="search" [size]="17" />
+      <input id="roles-buscar" class="input" placeholder="Buscar por nombre o descripción del rol…"
+             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+    </div>
+  </div>
+  <div class="field field--estado">
+    <label for="roles-estado">Estado</label>
+    <select id="roles-estado" class="select" [ngModel]="estado()" (ngModelChange)="estado.set($event)">
+      <option value="todos">Todos</option>
+      <option value="activos">Activos</option>
+      <option value="inactivos">Inactivos</option>
+    </select>
+  </div>
+  @if (puedeCrear()) {
+    <button type="button" class="btn btn--azul" (click)="creando.set(true)">
+      <app-icon name="plus" [size]="17" /> Agregar rol
+    </button>
+  }
+</div>
+
+@if (error(); as e) {
+  <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+}
+
+<div class="card">
+  <div class="table-wrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>Rol</th><th>Usuarios</th><th>Módulos accesibles</th><th>Estado</th><th class="acciones"><span class="sr-only">Acciones</span></th></tr>
+      </thead>
+      <tbody>
+        @for (r of filas(); track r.id) {
+          <tr>
+            <td>
+              <strong class="rol">{{ r.nombre.toUpperCase() }}</strong>
+              <span class="muted small bloque-texto">{{ descripcion(r) }}</span>
+            </td>
+            <td class="num">{{ r.usuarios }}</td>
+            <td>
+              <div class="modulos">
+                @for (m of modulosDe(r).slice(0, 3); track m) { <span class="modulo">{{ m }}</span> }
+                @if (modulosDe(r).length > 3) { <span class="modulo modulo--mas">+{{ modulosDe(r).length - 3 }} más</span> }
+                @if (!modulosDe(r).length) { <span class="muted small">Sin módulos</span> }
+              </div>
+            </td>
+            <td>
+              <app-estado-chip [tono]="r.activo ? 'ok' : 'neutral'"><span class="punto"></span>{{ r.activo ? 'Activo' : 'Inactivo' }}</app-estado-chip>
+            </td>
+            <td class="acciones">
+              <button type="button" class="btn btn--ghost btn--sm kebab" [attr.aria-label]="'Acciones del rol ' + r.nombre"
+                      [attr.aria-expanded]="menuAbierto()?.id === r.id" (click)="abrirMenu(r.id, $event)">
+                <app-icon name="moreVertical" [size]="18" />
+              </button>
+              @if (menuAbierto(); as menu) {
+                @if (menu.id === r.id) {
+                  <div class="menu-fila__lista" role="menu" [style.top.px]="menu.top" [style.left.px]="menu.left" (click)="$event.stopPropagation()">
+                    <button type="button" role="menuitem" class="menu-fila__item" (click)="cambiarEstado(r)">
+                      <app-icon [name]="r.activo ? 'userX' : 'userCheck'" [size]="17" />
+                      {{ r.activo ? 'Desactivar rol' : 'Activar rol' }}
+                    </button>
+                    <button type="button" role="menuitem" class="menu-fila__item" (click)="editarPermisos(r)">
+                      <app-icon name="key" [size]="17" /> Editar permisos
+                    </button>
+                  </div>
+                }
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr><td colspan="5"><p class="vacio">{{ cargando() ? 'Cargando roles…' : 'No hay roles que coincidan con la búsqueda.' }}</p></td></tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+@if (editando(); as r) {
+  <app-dialogo-permisos [titulo]="r.nombre" [permisosIniciales]="permisosDe(r)" [guardando]="guardando()" [error]="errorPermisos()"
+                        (cancelar)="editando.set(null)" (guardar)="guardarPermisos($event)" />
+}
+@if (creando()) {
+  <app-dialogo-crear-rol (cancelar)="creando.set(false)" (creado)="alCrear($event)" />
+}
