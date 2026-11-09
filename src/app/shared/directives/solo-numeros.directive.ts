@@ -4,15 +4,19 @@ import { Directive, ElementRef, inject, input } from '@angular/core';
  * Qué se puede escribir en el campo:
  *   - 'monto':      dinero, hasta 2 decimales con coma o punto (1250,50)
  *   - 'porcentaje': igual que monto, máximo 100
- *   - 'entero':     solo dígitos (días, número de cuenta)
+ *   - 'entero':     solo dígitos (número de cuenta)
+ *   - 'dia':        día del mes, 1 o 2 dígitos, máximo 31
+ *   - 'ruc':        RUC de Ecuador, solo dígitos, máximo 13
  *   - 'documento':  dígitos y guiones, formato del SRI 001-001-000001234
  */
-export type TipoNumero = 'monto' | 'porcentaje' | 'entero' | 'documento';
+export type TipoNumero = 'monto' | 'porcentaje' | 'entero' | 'documento' | 'dia' | 'ruc';
 
 const PATRONES: Record<TipoNumero, RegExp> = {
   monto: /^\d{0,9}([.,]\d{0,2})?$/,
   porcentaje: /^\d{0,3}([.,]\d{0,2})?$/,
   entero: /^\d*$/,
+  dia: /^\d{0,2}$/,
+  ruc: /^\d{0,13}$/,
   documento: /^\d{0,3}(-\d{0,3}(-\d{0,9})?)?$/,
 };
 
@@ -24,7 +28,8 @@ const PATRONES: Record<TipoNumero, RegExp> = {
 @Directive({
   selector: 'input[appSoloNumeros]',
   host: {
-    '[attr.inputmode]': 'tipo() === "entero" || tipo() === "documento" ? "numeric" : "decimal"',
+    '[attr.inputmode]': 'tipo() === "monto" || tipo() === "porcentaje" ? "decimal" : "numeric"',
+    '[attr.maxlength]': 'tipo() === "dia" ? 2 : tipo() === "ruc" ? 13 : null',
     autocomplete: 'off',
     '(beforeinput)': 'revisar($event)',
   },
@@ -46,7 +51,8 @@ export class SoloNumeros {
     const resultado = this.campo.value.slice(0, inicio) + limpio + this.campo.value.slice(fin);
 
     const valido = PATRONES[this.tipo()].test(resultado)
-      && (this.tipo() !== 'porcentaje' || Number(resultado.replace(',', '.')) <= 100);
+      && (this.tipo() !== 'porcentaje' || Number(resultado.replace(',', '.')) <= 100)
+      && (this.tipo() !== 'dia' || Number(resultado) <= 31);
     if (!valido) { evento.preventDefault(); return; }
 
     // Si se limpió lo pegado, se escribe la versión limpia en lugar del texto original.

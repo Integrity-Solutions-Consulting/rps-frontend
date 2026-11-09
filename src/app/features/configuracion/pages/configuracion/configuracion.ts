@@ -80,7 +80,7 @@ export class Configuracion {
     const b = this.borrador();
     if (!b) return;
     const request = Object.fromEntries(this.campos.map((c) => [
-      c.clave, c.tipo === 'texto' ? b[c.clave].trim() : Number(b[c.clave].replace(',', '.')),
+      c.clave, c.tipo === 'texto' || c.tipo === 'ruc' ? b[c.clave].trim() : Number(b[c.clave].replace(',', '.')),
     ])) as unknown as ActualizarConfiguracionRequest;
     this.guardando.set(true);
     this.errores.set({});

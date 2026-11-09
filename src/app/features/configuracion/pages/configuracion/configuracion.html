@@ -35,7 +35,7 @@
                 } @else {
                   <div class="con-sufijo">
                     <input class="input num" [id]="'cfg-' + c.clave" [name]="c.clave" [class.is-invalid]="errores()[c.clave]"
-                           [appSoloNumeros]="c.tipo === 'entero' ? 'entero' : 'porcentaje'"
+                           [appSoloNumeros]="c.tipo"
                            [ngModel]="b[c.clave]" (ngModelChange)="cambiar(c.clave, $event)" />
                     @if (c.tipo === 'porcentaje') { <span>%</span> }
                   </div>
