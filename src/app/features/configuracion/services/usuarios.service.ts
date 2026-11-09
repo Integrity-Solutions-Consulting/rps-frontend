@@ -27,6 +27,7 @@ export interface CrearUsuarioRequest {
  * Usuarios de RPS. Las reglas viven en rps-backend:
  *  - GET   /api/usuarios               lista (Administrador y Administrador Contable)
  *  - PATCH /api/usuarios/{id}/estado   activar/desactivar (valida quién puede tocar a quién)
+ *  - PUT   /api/usuarios/{id}/rol      cambiar rol (solo Administrador)
  *  - POST  /api/auth/register          crear usuario (solo Administrador)
  */
 @Injectable({ providedIn: 'root' })
@@ -51,6 +52,13 @@ export class UsuariosService {
 
   cambiarEstado(id: string, activo: boolean): Observable<UsuarioSistema> {
     return this.http.patch<UsuarioAdminApi>(`${this.base}/${id}/estado`, { activo }).pipe(
+      map(convertir),
+      tap((u) => this.datos.update((lista) => lista.map((x) => (x.id === u.id ? u : x)))),
+    );
+  }
+
+  cambiarRol(id: string, rol: RolSistema): Observable<UsuarioSistema> {
+    return this.http.put<UsuarioAdminApi>(`${this.base}/${id}/rol`, { rol }).pipe(
       map(convertir),
       tap((u) => this.datos.update((lista) => lista.map((x) => (x.id === u.id ? u : x)))),
     );

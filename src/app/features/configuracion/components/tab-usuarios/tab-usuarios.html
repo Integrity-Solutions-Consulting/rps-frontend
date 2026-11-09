@@ -75,6 +75,11 @@
                 @if (menuAbierto(); as menu) {
                   @if (menu.id === u.id) {
                     <div class="menu-fila__lista" role="menu" [style.top.px]="menu.top" [style.left.px]="menu.left" (click)="$event.stopPropagation()">
+                      @if (puedeCambiarRol(u)) {
+                        <button type="button" role="menuitem" class="menu-fila__item" (click)="abrirCambiarRol(u)">
+                          <app-icon name="shield" [size]="17" /> Cambiar rol
+                        </button>
+                      }
                       <button type="button" role="menuitem" class="menu-fila__item" (click)="cambiarEstado(u)">
                         <app-icon [name]="u.activo ? 'userX' : 'userCheck'" [size]="17" />
                         {{ u.activo ? 'Desactivar usuario' : 'Activar usuario' }}
@@ -93,6 +98,9 @@
   </div>
 </div>
 
+@if (cambiandoRol(); as u) {
+  <app-dialogo-cambiar-rol [usuario]="u" [rolSesion]="rolSesion()" (cancelar)="cambiandoRol.set(null)" (cambiado)="alCambiarRol($event)" />
+}
 @if (creando()) {
   <app-dialogo-crear-usuario (cancelar)="creando.set(false)" (creado)="alCrear($event)" />
 }

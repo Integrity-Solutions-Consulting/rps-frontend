@@ -17,3 +17,8 @@ docs/UX-FRONTEND.md
 graphify-out/
 .agents/
 
+
+# Impeccable (herramienta local del editor)
+.github/skills/
+.github/agents/
+.github/hooks/impeccable.json
