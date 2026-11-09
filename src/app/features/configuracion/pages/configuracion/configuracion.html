@@ -6,7 +6,19 @@
     </div>
   </header>
 
-  @if (cargando()) {
+  @if (administraCuentas()) {
+    <nav class="tabs" role="tablist" aria-label="Secciones de configuración">
+      <button type="button" role="tab" class="tab" [class.is-on]="pestana() === 'general'" [attr.aria-selected]="pestana() === 'general'" (click)="pestana.set('general')">General</button>
+      <button type="button" role="tab" class="tab" [class.is-on]="pestana() === 'roles'" [attr.aria-selected]="pestana() === 'roles'" (click)="pestana.set('roles')">Roles</button>
+      <button type="button" role="tab" class="tab" [class.is-on]="pestana() === 'usuarios'" [attr.aria-selected]="pestana() === 'usuarios'" (click)="pestana.set('usuarios')">Usuarios</button>
+    </nav>
+  }
+
+  @if (pestana() === 'roles') {
+    <app-tab-roles [rolSesion]="rol()" />
+  } @else if (pestana() === 'usuarios') {
+    <app-tab-usuarios [rolSesion]="rol()" />
+  } @else if (cargando()) {
     <div class="card skeleton" style="height: 320px"></div>
   } @else if (borrador(); as b) {
     <form class="card formulario" (submit)="$event.preventDefault(); guardar()">

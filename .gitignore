@@ -12,3 +12,8 @@ Thumbs.db
 # Documentos de trabajo locales (no subir por ahora)
 CLAUDE.md
 docs/UX-FRONTEND.md
+
+# Graphify & Antigravity (local)
+graphify-out/
+.agents/
+

@@ -8,8 +8,13 @@ import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
+import { SessionService } from '../../../../core/services/session.service';
+import { RolSistema } from '../../models/accesos.models';
+import { TabRoles } from '../../components/tab-roles/tab-roles';
+import { TabUsuarios } from '../../components/tab-usuarios/tab-usuarios';
 
 type Borrador = Record<keyof ActualizarConfiguracionRequest, string>;
+type Pestana = 'general' | 'roles' | 'usuarios';
 
 /**
  * Configuración: los campos de ConfiguracionGlobal de rps-backend.
@@ -18,13 +23,25 @@ type Borrador = Record<keyof ActualizarConfiguracionRequest, string>;
 @Component({
   selector: 'app-configuracion',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, Icon, SoloNumeros],
+  imports: [DatePipe, FormsModule, Icon, SoloNumeros, TabRoles, TabUsuarios],
   templateUrl: './configuracion.html',
   styleUrl: './configuracion.scss',
 })
 export class Configuracion {
   private readonly api = inject(ConfiguracionService);
   private readonly avisos = inject(NotificationService);
+  private readonly session = inject(SessionService);
+
+  /** Rol de mayor nivel del usuario en sesión. */
+  protected readonly rol = computed<RolSistema>(() => {
+    const roles = this.session.roles();
+    if (roles.includes('Administrador')) return 'Administrador';
+    if (roles.includes('Administrador Contable')) return 'Administrador Contable';
+    return roles[0] ?? 'Asistente Contable';
+  });
+  /** Roles y Usuarios solo para quien administra cuentas (Administrador y Administrador Contable). */
+  protected readonly administraCuentas = computed(() => this.rol() === 'Administrador' || this.rol() === 'Administrador Contable');
+  protected readonly pestana = signal<Pestana>('general');
 
   protected readonly campos = CAMPOS_CONFIGURACION;
   protected readonly grupos = [...new Set(CAMPOS_CONFIGURACION.map((c) => c.grupo))];
