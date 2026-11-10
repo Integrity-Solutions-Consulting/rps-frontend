@@ -50,3 +50,4 @@
 .paginas { display: flex; gap: 4px;
   .btn { min-width: 30px; justify-content: center; padding: 0 8px; }
   .is-on { background: var(--rps-navy); border-color: var(--rps-navy); color: #fff; } }
+.paginas__salto { min-width: 24px; display: grid; place-items: center; color: var(--rps-muted); user-select: none; }

@@ -91,7 +91,27 @@ export class ColaboradoresLista {
   protected readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.filas().length / this.porPagina)));
   /** Página que se muestra: nunca pasa de la última (por ejemplo, si al recargar hay menos colaboradores). */
   protected readonly paginaActual = computed(() => Math.min(this.pagina(), this.totalPaginas()));
-  protected readonly numerosPagina = computed(() => Array.from({ length: this.totalPaginas() }, (_, i) => i + 1));
+  /**
+   * Botones de página compactos: primera, última, la actual y sus vecinas; null marca un salto ("…").
+   * Nunca más de 7 posiciones: 1 … 4 [5] 6 … 23 · [1] 2 3 4 5 … 23 · 1 … 19 20 21 22 [23].
+   */
+  protected readonly numerosPagina = computed<(number | null)[]>(() => {
+    const total = this.totalPaginas();
+    const actual = this.paginaActual();
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const visibles = new Set([1, total, actual - 1, actual, actual + 1]);
+    if (actual <= 4) [2, 3, 4, 5].forEach((n) => visibles.add(n));
+    if (actual >= total - 3) [total - 4, total - 3, total - 2, total - 1].forEach((n) => visibles.add(n));
+    const orden = [...visibles].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
+    const resultado: (number | null)[] = [];
+    orden.forEach((n, i) => {
+      const previo = orden[i - 1];
+      if (previo !== undefined && n - previo === 2) resultado.push(previo + 1);
+      else if (previo !== undefined && n - previo > 2) resultado.push(null);
+      resultado.push(n);
+    });
+    return resultado;
+  });
   protected readonly filasPagina = computed(() => {
     const inicio = (this.paginaActual() - 1) * this.porPagina;
     return this.filas().slice(inicio, inicio + this.porPagina);

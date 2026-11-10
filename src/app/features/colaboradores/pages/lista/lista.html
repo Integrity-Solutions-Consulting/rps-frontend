@@ -116,9 +116,13 @@
           @if (totalPaginas() > 1) {
             <nav class="paginas" aria-label="Páginas de colaboradores">
               <button type="button" class="btn btn--sm" [disabled]="paginaActual() === 1" (click)="pagina.set(paginaActual() - 1)" aria-label="Página anterior">‹</button>
-              @for (n of numerosPagina(); track n) {
-                <button type="button" class="btn btn--sm" [class.is-on]="paginaActual() === n" [attr.aria-current]="paginaActual() === n ? 'page' : null"
-                        (click)="pagina.set(n)">{{ n }}</button>
+              @for (n of numerosPagina(); track $index) {
+                @if (n !== null) {
+                  <button type="button" class="btn btn--sm" [class.is-on]="paginaActual() === n" [attr.aria-current]="paginaActual() === n ? 'page' : null"
+                          [attr.aria-label]="'Página ' + n" (click)="pagina.set(n)">{{ n }}</button>
+                } @else {
+                  <span class="paginas__salto" aria-hidden="true">…</span>
+                }
               }
               <button type="button" class="btn btn--sm" [disabled]="paginaActual() === totalPaginas()" (click)="pagina.set(paginaActual() + 1)" aria-label="Página siguiente">›</button>
             </nav>
