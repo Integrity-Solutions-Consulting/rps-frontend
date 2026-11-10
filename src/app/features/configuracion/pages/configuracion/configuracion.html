@@ -142,7 +142,7 @@
           </div>
           <div class="ajuste__campos">
             <div class="avisos">
-              @for (k of avisos; track k; let i = $index) {
+              @for (k of plazosAviso; track k; let i = $index) {
                 <div class="field">
                   <label [for]="'cfg-' + k">{{ etiquetasAviso[i] }}</label>
                   <div class="con-sufijo">

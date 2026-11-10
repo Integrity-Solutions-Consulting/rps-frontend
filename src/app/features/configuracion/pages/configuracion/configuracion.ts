@@ -83,17 +83,17 @@ export class Configuracion {
   protected readonly anchoAnticipo = computed(() => Math.min(100, Math.max(0, this.numero('porcentajeMaximoAnticipo'))));
 
   // ── Alertas de vencimiento (RN 13) ────────────────────────────────
-  protected readonly avisos: Clave[] = ['diasAvisoVencimiento1', 'diasAvisoVencimiento2', 'diasAvisoVencimiento3'];
+  protected readonly plazosAviso: Clave[] = ['diasAvisoVencimiento1', 'diasAvisoVencimiento2', 'diasAvisoVencimiento3'];
   protected readonly etiquetasAviso = ['Primer aviso', 'Segundo aviso', 'Último aviso'];
   /** Línea de tiempo: posición de cada aviso entre el primero (0 %) y el fin del contrato (100 %). */
   protected readonly lineaAvisos = computed(() => {
-    const dias = this.avisos.map((k) => this.numero(k));
+    const dias = this.plazosAviso.map((k) => this.numero(k));
     const escala = Math.max(...dias, 1);
     return dias.map((d, i) => ({ dias: d, posicion: Math.min(100, Math.max(0, ((escala - d) / escala) * 100)), ultimo: i === dias.length - 1 }));
   });
   /** Misma regla que el backend: cada aviso menor que el anterior. */
   protected readonly avisosDesordenados = computed(() => {
-    const [a, b, c] = this.avisos.map((k) => this.numero(k));
+    const [a, b, c] = this.plazosAviso.map((k) => this.numero(k));
     return !(a > b && b > c);
   });
 

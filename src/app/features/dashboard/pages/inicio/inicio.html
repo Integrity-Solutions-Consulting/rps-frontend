@@ -116,7 +116,7 @@
       }
       @case ('ok') {
         @if (listaVencimientos().length === 0) {
-          <p class="pad muted">No hay contratos por vencer en los próximos {{ datos()?.contratosPorVencer.diasAviso1 ?? 30 }} días.</p>
+          <p class="pad muted">No hay contratos por vencer en los próximos {{ diasPrimerAviso() }} días.</p>
         } @else {
           <div class="table-wrap">
             <table class="tbl">

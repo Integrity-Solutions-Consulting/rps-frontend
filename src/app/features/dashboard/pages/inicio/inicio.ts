@@ -83,6 +83,8 @@ export class Inicio {
     const r = this.indicadores();
     return r.estado === 'ok' ? r.datos : null;
   });
+  /** RN 13: primer plazo de aviso configurado (30 mientras no carga el resumen). */
+  protected readonly diasPrimerAviso = computed(() => this.datos()?.contratosPorVencer.diasAviso1 ?? 30);
 
   protected readonly cargando = computed(() =>
     [this.indicadores(), this.vencimientos(), this.estadoTmr(), this.cambiosTmr(), this.pendientes(), this.preparacion()]
