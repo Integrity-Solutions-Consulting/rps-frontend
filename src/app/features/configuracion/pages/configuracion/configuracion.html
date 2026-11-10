@@ -134,6 +134,49 @@
           </div>
         </section>
 
+        <!-- ── Alertas de vencimiento (RN 13) ──────────────────── -->
+        <section class="card ajuste" [class.is-modificada]="cambiado('diasAvisoVencimiento1') || cambiado('diasAvisoVencimiento2') || cambiado('diasAvisoVencimiento3')" aria-labelledby="aj-alertas">
+          <div class="ajuste__titulo">
+            <h2 id="aj-alertas">Alertas de vencimiento</h2>
+            <p>Cuántos días antes del fin de un contrato avisa Inicio. Cada aviso dice colaborador y proyecto.</p>
+          </div>
+          <div class="ajuste__campos">
+            <div class="avisos">
+              @for (k of avisos; track k; let i = $index) {
+                <div class="field">
+                  <label [for]="'cfg-' + k">{{ etiquetasAviso[i] }}</label>
+                  <div class="con-sufijo">
+                    <input class="input num" [id]="'cfg-' + k" [name]="k" [appSoloNumeros]="'entero'" maxlength="3"
+                           [class.is-invalid]="errores()[k]" [ngModel]="b[k]" (ngModelChange)="cambiar(k, $event)" />
+                    <span>días</span>
+                  </div>
+                  @if (errores()[k]; as e) { <span class="field__error">{{ e }}</span> }
+                  @else if (cambiado(k)) { <span class="modificado">Antes {{ antes(k) }}</span> }
+                </div>
+              }
+            </div>
+            <div class="linea" aria-hidden="true">
+              <div class="linea__barra">
+                @for (p of lineaAvisos(); track $index) {
+                  <span class="linea__punto" [class.linea__punto--ultimo]="p.ultimo" [style.left.%]="p.posicion"></span>
+                }
+                <span class="linea__fin"></span>
+              </div>
+              <div class="linea__etiquetas">
+                @for (p of lineaAvisos(); track $index) {
+                  <span [class.linea__etiqueta--primera]="$first" [class.linea__etiqueta--ultima]="p.ultimo" [style.left.%]="p.posicion">{{ p.dias }} días</span>
+                }
+                <span class="linea__etiqueta--fin">Fin del contrato</span>
+              </div>
+            </div>
+            @if (avisosDesordenados()) {
+              <span class="field__error">Los avisos deben ir de mayor a menor (por ejemplo 30, 15 y 7).</span>
+            } @else {
+              <p class="ayuda">De mayor a menor, entre 1 y 365 días. Avisar no bloquea la liquidación ni recorta días.</p>
+            }
+          </div>
+        </section>
+
         <!-- ── Impuestos ───────────────────────────────────────── -->
         <section class="card ajuste" [class.is-modificada]="cambiado('porcentajeIva') || cambiado('porcentajeRetencionFuente') || cambiado('porcentajeRetencionIvaProfesional') || cambiado('porcentajeRetencionIvaJunior')" aria-labelledby="aj-impuestos">
           <div class="ajuste__titulo">

@@ -92,3 +92,20 @@
   &:hover { color: var(--rps-navy); } }
 
 @media (prefers-reduced-motion: reduce) { .ajuste, .barra__relleno { transition: none; } }
+
+/* Alertas de vencimiento: tres plazos y su línea de tiempo hasta el fin del contrato */
+.avisos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 560px) { .avisos { grid-template-columns: minmax(0, 1fr); } }
+.linea { padding: 6px 8px 0; }
+.linea__barra { position: relative; height: 8px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--rps-warn-50), #fde4c2 60%, var(--rps-danger-50)); }
+.linea__punto { position: absolute; top: -4px; width: 16px; height: 16px; margin-left: -8px; box-sizing: border-box;
+  border-radius: 50%; background: var(--rps-surface); border: 3px solid var(--rps-warn); transition: left .25s ease-out; }
+.linea__punto--ultimo { border-color: var(--rps-danger); }
+.linea__fin { position: absolute; right: -2px; top: -6px; width: 4px; height: 20px; border-radius: 2px; background: var(--rps-navy); }
+.linea__etiquetas { position: relative; height: 22px; margin-top: 8px; font-size: 12px; color: var(--rps-muted); font-variant-numeric: tabular-nums;
+  > span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; transition: left .25s ease-out; } }
+.linea__etiquetas > .linea__etiqueta--primera { transform: none; }
+.linea__etiquetas > .linea__etiqueta--ultima { color: var(--rps-danger); font-weight: 600; }
+.linea__etiquetas > .linea__etiqueta--fin { left: auto; right: 0; transform: none; color: var(--rps-text); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .linea__punto, .linea__etiquetas > span { transition: none; } }

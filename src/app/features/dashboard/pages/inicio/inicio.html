@@ -74,8 +74,8 @@
       <span class="kpi__icon kpi__icon--warn"><app-icon name="clock" [size]="22" /></span>
       <div class="kpi__body">
         <span class="kpi__label">Contratos por vencer</span>
-        <strong class="kpi__value num">{{ d.contratosPorVencer.en30Dias }}</strong>
-        <span class="kpi__hint">próximos 30 días · {{ d.contratosPorVencer.en15Dias }} en 15 · {{ d.contratosPorVencer.en7Dias }} en 7</span>
+        <strong class="kpi__value num">{{ d.contratosPorVencer.enAviso1 }}</strong>
+        <span class="kpi__hint">próximos {{ d.contratosPorVencer.diasAviso1 }} días · {{ d.contratosPorVencer.enAviso2 }} en {{ d.contratosPorVencer.diasAviso2 }} · {{ d.contratosPorVencer.enAviso3 }} en {{ d.contratosPorVencer.diasAviso3 }}</span>
       </div>
     </article>
 
@@ -116,7 +116,7 @@
       }
       @case ('ok') {
         @if (listaVencimientos().length === 0) {
-          <p class="pad muted">No hay contratos por vencer en los próximos 30 días.</p>
+          <p class="pad muted">No hay contratos por vencer en los próximos {{ datos()?.contratosPorVencer.diasAviso1 ?? 30 }} días.</p>
         } @else {
           <div class="table-wrap">
             <table class="tbl">

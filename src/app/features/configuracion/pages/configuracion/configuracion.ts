@@ -80,7 +80,22 @@ export class Configuracion {
     this.cambiados().map((k) => this.campos.find((c) => c.clave === k)!.etiqueta).join(' · '));
 
   /** Ancho de la barra del límite de anticipos (0 a 100). */
-  protected readonly anchoAnticipo = computed(() => Math.min(100, Math.max(0, this.porcentaje('porcentajeMaximoAnticipo'))));
+  protected readonly anchoAnticipo = computed(() => Math.min(100, Math.max(0, this.numero('porcentajeMaximoAnticipo'))));
+
+  // ── Alertas de vencimiento (RN 13) ────────────────────────────────
+  protected readonly avisos: Clave[] = ['diasAvisoVencimiento1', 'diasAvisoVencimiento2', 'diasAvisoVencimiento3'];
+  protected readonly etiquetasAviso = ['Primer aviso', 'Segundo aviso', 'Último aviso'];
+  /** Línea de tiempo: posición de cada aviso entre el primero (0 %) y el fin del contrato (100 %). */
+  protected readonly lineaAvisos = computed(() => {
+    const dias = this.avisos.map((k) => this.numero(k));
+    const escala = Math.max(...dias, 1);
+    return dias.map((d, i) => ({ dias: d, posicion: Math.min(100, Math.max(0, ((escala - d) / escala) * 100)), ultimo: i === dias.length - 1 }));
+  });
+  /** Misma regla que el backend: cada aviso menor que el anterior. */
+  protected readonly avisosDesordenados = computed(() => {
+    const [a, b, c] = this.avisos.map((k) => this.numero(k));
+    return !(a > b && b > c);
+  });
 
   // ── Cambios recientes ─────────────────────────────────────────────
   protected readonly historial = signal<CambioConfiguracion[]>([]);
@@ -153,8 +168,8 @@ export class Configuracion {
     });
   }
 
-  /** Porcentaje del borrador como número; si el campo está vacío o a medio escribir, el guardado. */
-  private porcentaje(clave: Clave): number {
+  /** Valor numérico del borrador; si el campo está vacío o a medio escribir, el guardado. */
+  private numero(clave: Clave): number {
     const n = Number((this.borrador()?.[clave] ?? '').replace(',', '.'));
     if (this.borrador()?.[clave] !== '' && !Number.isNaN(n)) return n;
     return Number(this.datos()?.[clave] ?? 0);

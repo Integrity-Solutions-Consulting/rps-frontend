@@ -81,7 +81,8 @@ export interface BeDashboard {
   honorarios: { cantidad: number; netoTotal: number };
   liquidaciones: { revisadas: number; sinRevisar: number };
   anticipos: { conSaldoPendiente: number; montoPendiente: number };
-  contratosPorVencer: { en30Dias: number; en15Dias: number; en7Dias: number };
+  /** RN 13: plazos configurables (Configuración) y cuántos contratos vencen dentro de cada uno. */
+  contratosPorVencer: { diasAviso1: number; diasAviso2: number; diasAviso3: number; enAviso1: number; enAviso2: number; enAviso3: number };
 }
 
 export interface BeProyectoDeContrato { proyectoId: string; proyectoNombre: string }
