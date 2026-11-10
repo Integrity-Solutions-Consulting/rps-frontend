@@ -1,105 +1,123 @@
-<div class="indicadores">
-  <div class="card indicador indicador--destacado">
-    <div class="indicador__cuerpo">
-      <span class="indicador__valor num">{{ usuarios().length }}</span>
-      <span class="indicador__etiqueta">Total usuarios</span>
-    </div>
-    <span class="indicador__icono"><app-icon name="users" [size]="24" /></span>
+<div class="barra">
+  <div class="buscador">
+    <app-icon name="search" [size]="17" />
+    <label for="usuarios-buscar" class="sr-only">Buscar usuario</label>
+    <input id="usuarios-buscar" class="input" type="search" placeholder="Buscar por nombre, correo o rol"
+           [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
   </div>
-  <div class="card indicador">
-    <div class="indicador__cuerpo">
-      <span class="indicador__valor num">{{ activos() }}</span>
-      <span class="indicador__etiqueta">Activos</span>
-    </div>
-    <span class="indicador__icono indicador__icono--ok"><app-icon name="userCheck" [size]="22" /></span>
-  </div>
-  <div class="card indicador">
-    <div class="indicador__cuerpo">
-      <span class="indicador__valor num">{{ usuarios().length - activos() }}</span>
-      <span class="indicador__etiqueta">Inactivos</span>
-    </div>
-    <span class="indicador__icono indicador__icono--neutral"><app-icon name="userX" [size]="22" /></span>
-  </div>
-</div>
 
-<div class="card filtros-barra">
-  <div class="field">
-    <label for="usuarios-buscar">Búsqueda</label>
-    <div class="buscador">
-      <app-icon name="search" [size]="17" />
-      <input id="usuarios-buscar" class="input" placeholder="Buscar por usuario, nombre, correo o rol…"
-             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
-    </div>
+  <div class="estados" role="radiogroup" aria-label="Estado">
+    <button type="button" role="radio" [class.is-on]="estado() === 'todos'" [attr.aria-checked]="estado() === 'todos'" (click)="estado.set('todos')">
+      Todos <span class="num">{{ usuarios().length }}</span>
+    </button>
+    <button type="button" role="radio" [class.is-on]="estado() === 'activos'" [attr.aria-checked]="estado() === 'activos'" (click)="estado.set('activos')">
+      Activos <span class="num">{{ activos() }}</span>
+    </button>
+    <button type="button" role="radio" [class.is-on]="estado() === 'inactivos'" [attr.aria-checked]="estado() === 'inactivos'" (click)="estado.set('inactivos')">
+      Inactivos <span class="num">{{ inactivos() }}</span>
+    </button>
   </div>
-  <div class="field field--estado">
-    <label for="usuarios-estado">Estado</label>
-    <select id="usuarios-estado" class="select" [ngModel]="estado()" (ngModelChange)="estado.set($event)">
-      <option value="todos">Todos</option>
-      <option value="activos">Activos</option>
-      <option value="inactivos">Inactivos</option>
-    </select>
-  </div>
+
+  <label for="usuarios-rol" class="sr-only">Filtrar por rol</label>
+  <select id="usuarios-rol" class="select filtro-rol" [ngModel]="filtroRol()" (ngModelChange)="filtroRol.set($event)">
+    <option value="">Todos los roles</option>
+    @for (r of rolesEnLista(); track r) { <option [value]="r">{{ r }}</option> }
+  </select>
+
   @if (puedeCrear()) {
-    <button type="button" class="btn btn--azul" (click)="creando.set(true)">
+    <button type="button" class="btn btn--oscuro agregar" (click)="creando.set(true)">
       <app-icon name="plus" [size]="17" /> Agregar usuario
     </button>
   }
 </div>
 
 @if (error(); as e) {
-  <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+  <div class="aviso aviso--danger" role="alert"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
 }
 
-<div class="card">
+<div class="card tabla">
   <div class="table-wrap">
     <table class="tbl">
       <thead>
-        <tr><th>Usuario</th><th>Nombre</th><th>Correo electrónico</th><th>Rol</th><th>Estado</th><th class="acciones"><span class="sr-only">Acciones</span></th></tr>
+        <tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Creado</th><th class="acciones">Acciones</th></tr>
       </thead>
       <tbody>
-        @for (u of filas(); track u.id) {
-          <tr>
-            <td class="usuario-id">{{ alias(u.email) }}</td>
-            <td>{{ u.nombre }}</td>
-            <td>{{ u.email }}</td>
-            <td><span class="modulo rol-chip">{{ u.rol }}</span></td>
-            <td>
-              <app-estado-chip [tono]="u.activo ? 'ok' : 'neutral'"><span class="punto"></span>{{ u.activo ? 'Activo' : 'Inactivo' }}</app-estado-chip>
-            </td>
-            <td class="acciones">
-              @if (puedeCambiar(u)) {
-                <button type="button" class="btn btn--ghost btn--sm kebab" [attr.aria-label]="'Acciones de ' + u.nombre"
-                        [attr.aria-expanded]="menuAbierto()?.id === u.id" (click)="abrirMenu(u.id, $event)">
-                  <app-icon name="moreVertical" [size]="18" />
-                </button>
-                @if (menuAbierto(); as menu) {
-                  @if (menu.id === u.id) {
-                    <div class="menu-fila__lista" role="menu" [style.top.px]="menu.top" [style.left.px]="menu.left" (click)="$event.stopPropagation()">
-                      @if (puedeCambiarRol(u)) {
-                        <button type="button" role="menuitem" class="menu-fila__item" (click)="abrirCambiarRol(u)">
-                          <app-icon name="shield" [size]="17" /> Cambiar rol
-                        </button>
-                      }
-                      <button type="button" role="menuitem" class="menu-fila__item" (click)="cambiarEstado(u)">
-                        <app-icon [name]="u.activo ? 'userX' : 'userCheck'" [size]="17" />
-                        {{ u.activo ? 'Desactivar usuario' : 'Activar usuario' }}
+        @if (cargando() && usuarios().length === 0) {
+          @for (i of [1, 2, 3, 4]; track i) {
+            <tr><td colspan="5"><div class="skeleton" style="height: 36px"></div></td></tr>
+          }
+        } @else {
+          @for (u of filas(); track u.id) {
+            <tr [class.is-inactivo]="!u.activo">
+              <td>
+                <div class="persona">
+                  <span class="avatar" [class]="'avatar--' + (u.activo ? tonoAvatar(u.email) : 'gris')" aria-hidden="true">{{ iniciales(u.nombre) }}</span>
+                  <div class="persona__txt">
+                    <strong>{{ u.nombre }} @if (esYo(u)) { <span class="yo">(tú)</span> }</strong>
+                    <span>{{ u.email }}</span>
+                  </div>
+                </div>
+              </td>
+              <td><span class="rol-chip">{{ u.rol }}</span></td>
+              <td>
+                <app-estado-chip [tono]="u.activo ? 'ok' : 'neutral'"><span class="punto"></span>{{ u.activo ? 'Activo' : 'Inactivo' }}</app-estado-chip>
+              </td>
+              <td class="num muted">{{ u.creadoEn | date: 'dd MMM yyyy' }}</td>
+              <td class="acciones">
+                @if (puedeCambiar(u)) {
+                  <div class="acciones__botones">
+                    @if (puedeCambiarRol(u)) {
+                      <button type="button" class="icono" [attr.aria-label]="'Cambiar rol de ' + u.nombre" title="Cambiar rol" (click)="abrirCambiarRol(u)">
+                        <app-icon name="shield" [size]="17" />
                       </button>
-                    </div>
+                    }
+                    <button type="button" class="icono" [attr.aria-label]="'Más acciones de ' + u.nombre" aria-haspopup="menu"
+                            [attr.aria-expanded]="menuAbierto()?.id === u.id" (click)="abrirMenu(u.id, $event)">
+                      <app-icon name="moreVertical" [size]="18" />
+                    </button>
+                  </div>
+                  @if (menuAbierto(); as menu) {
+                    @if (menu.id === u.id) {
+                      <div class="menu-fila__lista" role="menu" [style.top.px]="menu.top" [style.left.px]="menu.left" (click)="$event.stopPropagation()">
+                        @if (puedeCambiarRol(u)) {
+                          <button type="button" role="menuitem" class="menu-fila__item" (click)="abrirCambiarRol(u)">
+                            <app-icon name="shield" [size]="17" /> Cambiar rol
+                          </button>
+                        }
+                        <button type="button" role="menuitem" class="menu-fila__item" [class.menu-fila__item--peligro]="u.activo"
+                                (click)="pedirCambioEstado(u)" [disabled]="guardandoEstado()">
+                          <app-icon [name]="u.activo ? 'userX' : 'userCheck'" [size]="17" />
+                          {{ u.activo ? 'Desactivar usuario' : 'Activar usuario' }}
+                        </button>
+                      </div>
+                    }
                   }
                 }
-              }
-            </td>
-          </tr>
-        } @empty {
-          <tr><td colspan="6"><p class="vacio">{{ cargando() ? 'Cargando usuarios…' : 'No hay usuarios que coincidan con la búsqueda.' }}</p></td></tr>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5">
+              <div class="vacio-tabla">
+                <p>{{ hayFiltros() ? 'No hay usuarios que coincidan con estos filtros.' : 'Todavía no hay usuarios.' }}</p>
+                @if (hayFiltros()) { <button type="button" class="btn btn--sm" (click)="limpiarFiltros()">Limpiar filtros</button> }
+              </div>
+            </td></tr>
+          }
         }
       </tbody>
     </table>
   </div>
+  <p class="pie">
+    <span class="num">Mostrando {{ filas().length }} de {{ usuarios().length }} {{ usuarios().length === 1 ? 'usuario' : 'usuarios' }}</span>
+    <span>Los cambios de rol se aplican en la próxima sesión del usuario.</span>
+  </p>
 </div>
 
 @if (cambiandoRol(); as u) {
   <app-dialogo-cambiar-rol [usuario]="u" [rolSesion]="rolSesion()" (cancelar)="cambiandoRol.set(null)" (cambiado)="alCambiarRol($event)" />
+}
+@if (desactivando(); as u) {
+  <app-dialogo-confirmar-estado [usuario]="u" [guardando]="guardandoEstado()" (cancelar)="desactivando.set(null)" (confirmar)="confirmarDesactivar()" />
 }
 @if (creando()) {
   <app-dialogo-crear-usuario (cancelar)="creando.set(false)" (creado)="alCrear($event)" />

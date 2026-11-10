@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { ConfiguracionService } from '../../services/configuracion.service';
+import { AuditoriaService, CambioConfiguracion } from '../../services/auditoria.service';
 import { ActualizarConfiguracionRequest, CAMPOS_CONFIGURACION, Configuracion as DatosConfiguracion } from '../../models/configuracion.models';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -12,23 +13,39 @@ import { SessionService } from '../../../../core/services/session.service';
 import { RolSistema } from '../../models/accesos.models';
 import { TabRoles } from '../../components/tab-roles/tab-roles';
 import { TabUsuarios } from '../../components/tab-usuarios/tab-usuarios';
+import { DialogoHistorial } from '../../components/dialogo-historial/dialogo-historial';
 
-type Borrador = Record<keyof ActualizarConfiguracionRequest, string>;
+type Clave = keyof ActualizarConfiguracionRequest;
+type Borrador = Record<Clave, string>;
 type Pestana = 'general' | 'roles' | 'usuarios';
+type TipoColaborador = 'profesional' | 'junior';
+
+/** Honorario fijo del ejemplo "Así queda un honorario". No es de ningún colaborador. */
+const HONORARIO_EJEMPLO = 1000;
+
+/** Ayuda de cada impuesto: qué hace el porcentaje en el cálculo (CalculoTributario del backend). */
+const AYUDA_IMPUESTO: Partial<Record<Clave, string>> = {
+  porcentajeIva: 'Se suma al subtotal del honorario',
+  porcentajeRetencionFuente: 'Se descuenta del subtotal',
+  porcentajeRetencionIvaProfesional: 'Parte del IVA que se retiene a profesionales',
+  porcentajeRetencionIvaJunior: 'Parte del IVA que se retiene a juniors',
+};
 
 /**
  * Configuración: los campos de ConfiguracionGlobal de rps-backend.
  * Se guarda todo junto (PUT /api/configuracion); los rangos los valida el backend y los errores vuelven por campo.
+ * Al costado: un ejemplo de cálculo con los valores que se están editando y los últimos cambios (GET /api/auditoria).
  */
 @Component({
   selector: 'app-configuracion',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, Icon, SoloNumeros, TabRoles, TabUsuarios],
+  imports: [CurrencyPipe, DatePipe, FormsModule, Icon, SoloNumeros, TabRoles, TabUsuarios, DialogoHistorial],
   templateUrl: './configuracion.html',
   styleUrl: './configuracion.scss',
 })
 export class Configuracion {
   private readonly api = inject(ConfiguracionService);
+  private readonly auditoria = inject(AuditoriaService);
   private readonly avisos = inject(NotificationService);
   private readonly session = inject(SessionService);
 
@@ -44,7 +61,8 @@ export class Configuracion {
   protected readonly pestana = signal<Pestana>('general');
 
   protected readonly campos = CAMPOS_CONFIGURACION;
-  protected readonly grupos = [...new Set(CAMPOS_CONFIGURACION.map((c) => c.grupo))];
+  protected readonly ayudaImpuesto = AYUDA_IMPUESTO;
+  protected readonly impuestos = CAMPOS_CONFIGURACION.filter((c) => c.grupo === 'Impuestos');
 
   protected readonly datos = signal<DatosConfiguracion | null>(null);
   protected readonly borrador = signal<Borrador | null>(null);
@@ -53,22 +71,77 @@ export class Configuracion {
   protected readonly error = signal<string | null>(null);
   protected readonly errores = signal<Record<string, string>>({});
 
-  protected readonly hayCambios = computed(() => {
+  // ── Cambios sin guardar ───────────────────────────────────────────
+  /** Campos cuyo valor del borrador difiere del guardado (compara números, no textos: "15" = "15,0"). */
+  protected readonly cambiados = computed<Clave[]>(() => {
     const d = this.datos();
     const b = this.borrador();
-    return !!d && !!b && this.campos.some((c) => String(d[c.clave]) !== b[c.clave]);
+    if (!d || !b) return [];
+    return this.campos.filter((c) => !iguales(c.tipo, d[c.clave], b[c.clave])).map((c) => c.clave);
   });
+  protected readonly hayCambios = computed(() => this.cambiados().length > 0);
+  protected readonly nombresCambiados = computed(() =>
+    this.cambiados().map((k) => this.campos.find((c) => c.clave === k)!.etiqueta).join(' · '));
+
+  // ── Ejemplo de honorario ──────────────────────────────────────────
+  protected readonly honorarioEjemplo = HONORARIO_EJEMPLO;
+  protected readonly tipoEjemplo = signal<TipoColaborador>('profesional');
+  /** Mismas fórmulas que CalculoTributario (modalidad Más IVA: el honorario es el subtotal). */
+  protected readonly ejemplo = computed(() => {
+    const pctIva = this.porcentaje('porcentajeIva');
+    const pctFuente = this.porcentaje('porcentajeRetencionFuente');
+    const pctRetIva = this.porcentaje(this.tipoEjemplo() === 'profesional' ? 'porcentajeRetencionIvaProfesional' : 'porcentajeRetencionIvaJunior');
+    const subtotal = HONORARIO_EJEMPLO;
+    const iva = redondear(subtotal * pctIva / 100);
+    const total = subtotal + iva;
+    const retFuente = redondear(subtotal * pctFuente / 100);
+    const retIva = redondear(iva * pctRetIva / 100);
+    const neto = total - retFuente - retIva;
+    const pctAnticipo = this.porcentaje('porcentajeMaximoAnticipo');
+    return { pctIva, pctFuente, pctRetIva, subtotal, iva, total, retFuente, retIva, neto, pctAnticipo,
+      tope: redondear(neto * pctAnticipo / 100) };
+  });
+  /** Ancho de la barra del límite de anticipos (0 a 100). */
+  protected readonly anchoAnticipo = computed(() => Math.min(100, Math.max(0, this.porcentaje('porcentajeMaximoAnticipo'))));
+
+  // ── Cambios recientes ─────────────────────────────────────────────
+  protected readonly historial = signal<CambioConfiguracion[]>([]);
+  protected readonly nombres = signal<Record<string, string>>({});
+  protected readonly cargandoHistorial = signal(true);
+  protected readonly errorHistorial = signal<string | null>(null);
+  protected readonly recientes = computed(() => this.historial().slice(0, 3));
+  protected readonly verHistorial = signal(false);
 
   constructor() {
     this.cargar();
+    this.cargarHistorial();
+    if (this.administraCuentas()) this.auditoria.nombresUsuarios().subscribe((n) => this.nombres.set(n));
   }
 
-  protected camposDe(grupo: string) {
-    return this.campos.filter((c) => c.grupo === grupo);
+  protected campo(clave: Clave) {
+    return this.campos.find((c) => c.clave === clave)!;
   }
 
-  protected cambiar(clave: keyof ActualizarConfiguracionRequest, valor: string): void {
+  protected cambiado(clave: Clave): boolean {
+    return this.cambiados().includes(clave);
+  }
+
+  /** Valor guardado, para la marca "Modificado · antes …". */
+  protected antes(clave: Clave): string {
+    const d = this.datos();
+    if (!d) return '';
+    const valor = String(d[clave]).replace('.', ',');
+    return this.campo(clave).tipo === 'porcentaje' ? `${valor} %` : valor;
+  }
+
+  protected autor(c: CambioConfiguracion): string {
+    if (!c.usuarioId) return 'Sistema';
+    return this.nombres()[c.usuarioId] ?? 'Usuario';
+  }
+
+  protected cambiar(clave: Clave, valor: string): void {
     this.borrador.update((b) => (b ? { ...b, [clave]: valor } : b));
+    if (this.errores()[clave]) this.errores.update(({ [clave]: _, ...resto }) => resto);
   }
 
   protected deshacer(): void {
@@ -78,7 +151,7 @@ export class Configuracion {
 
   protected guardar(): void {
     const b = this.borrador();
-    if (!b) return;
+    if (!b || !this.hayCambios()) return;
     const request = Object.fromEntries(this.campos.map((c) => [
       c.clave, c.tipo === 'texto' || c.tipo === 'ruc' ? b[c.clave].trim() : Number(b[c.clave].replace(',', '.')),
     ])) as unknown as ActualizarConfiguracionRequest;
@@ -86,7 +159,13 @@ export class Configuracion {
     this.errores.set({});
     this.error.set(null);
     this.api.guardar(request).subscribe({
-      next: (c) => { this.guardando.set(false); this.datos.set(c); this.llenar(c); this.avisos.ok('Configuración guardada.'); },
+      next: (c) => {
+        this.guardando.set(false);
+        this.datos.set(c);
+        this.llenar(c);
+        this.avisos.ok('Configuración guardada.');
+        this.cargarHistorial();
+      },
       error: (e: unknown) => {
         this.guardando.set(false);
         const err = leerErrorApi(e);
@@ -94,6 +173,13 @@ export class Configuracion {
         else this.error.set(err.mensaje);
       },
     });
+  }
+
+  /** Porcentaje del borrador como número; si el campo está vacío o a medio escribir, el guardado. */
+  private porcentaje(clave: Clave): number {
+    const n = Number((this.borrador()?.[clave] ?? '').replace(',', '.'));
+    if (this.borrador()?.[clave] !== '' && !Number.isNaN(n)) return n;
+    return Number(this.datos()?.[clave] ?? 0);
   }
 
   private cargar(): void {
@@ -104,8 +190,29 @@ export class Configuracion {
     });
   }
 
+  private cargarHistorial(): void {
+    this.cargandoHistorial.set(true);
+    this.errorHistorial.set(null);
+    this.auditoria.cambiosConfiguracion().subscribe({
+      next: (lista) => { this.historial.set(lista); this.cargandoHistorial.set(false); },
+      error: (e: unknown) => { this.cargandoHistorial.set(false); this.errorHistorial.set(leerErrorApi(e).mensaje); },
+    });
+  }
+
   private llenar(c: DatosConfiguracion): void {
     this.borrador.set(Object.fromEntries(this.campos.map((x) => [x.clave, String(c[x.clave]).replace('.', ',')])) as Borrador);
     this.errores.set({});
   }
+}
+
+/** Compara el valor guardado con el del borrador según el tipo del campo. */
+function iguales(tipo: string, guardado: unknown, borrador: string): boolean {
+  if (tipo === 'texto' || tipo === 'ruc') return String(guardado).trim() === borrador.trim();
+  const n = Number(borrador.replace(',', '.'));
+  return borrador.trim() !== '' && !Number.isNaN(n) && n === Number(guardado);
+}
+
+/** Redondeo a 2 decimales alejándose de cero, como MidpointRounding.AwayFromZero del backend. */
+function redondear(x: number): number {
+  return Math.sign(x) * Math.round((Math.abs(x) + Number.EPSILON) * 100) / 100;
 }

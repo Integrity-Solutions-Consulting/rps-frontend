@@ -1,63 +1,92 @@
 <div class="fondo" (click)="cancelar.emit()"></div>
-<form class="ventana" role="dialog" aria-modal="true" aria-labelledby="crear-usuario-titulo" novalidate (submit)="$event.preventDefault(); crear()">
-  <header class="ventana__head">
+<form class="dialogo" role="dialog" aria-modal="true" aria-labelledby="crear-usuario-titulo" novalidate (submit)="$event.preventDefault(); crear()">
+  <header class="dialogo__head">
     <div>
       <h2 id="crear-usuario-titulo">Agregar usuario</h2>
-      <p class="muted small">La cuenta queda activa y puede entrar con estos datos.</p>
+      <p>La cuenta queda activa y puede entrar con estos datos</p>
     </div>
-    <button type="button" class="btn btn--ghost btn--sm cerrar" aria-label="Cerrar" (click)="cancelar.emit()">
-      <app-icon name="x" [size]="18" />
-    </button>
+    <button type="button" class="dialogo__cerrar" aria-label="Cerrar" (click)="cancelar.emit()"><app-icon name="x" [size]="18" /></button>
   </header>
 
-  <div class="ventana__cuerpo">
-    <div class="field">
-      <label for="nu-nombre">Nombre</label>
-      <input id="nu-nombre" name="nombre" class="input" placeholder="María Pérez" autocomplete="off"
-             [class.is-invalid]="errores()['nombre']" [ngModel]="nombre()" (ngModelChange)="nombre.set($event); limpiar('nombre')" />
-      @if (errores()['nombre']; as e) { <span class="field__error">{{ e }}</span> }
-    </div>
-
-    <div class="field">
-      <label for="nu-email">Correo</label>
-      <input id="nu-email" name="email" type="email" class="input" placeholder="maria.perez@integritysolutions.com.ec" autocomplete="off"
-             [class.is-invalid]="errores()['email']" [ngModel]="email()" (ngModelChange)="email.set($event); limpiar('email')" />
-      @if (errores()['email']; as e) { <span class="field__error">{{ e }}</span> }
-    </div>
-
-    <div class="field">
-      <label for="nu-password">Contraseña</label>
-      <div class="con-boton">
-        <input id="nu-password" name="password" class="input" autocomplete="new-password"
-               [type]="verPassword() ? 'text' : 'password'"
-               [class.is-invalid]="errores()['password']" [ngModel]="password()" (ngModelChange)="password.set($event); limpiar('password')" />
-        <button type="button" class="btn btn--ghost btn--sm" (click)="verPassword.set(!verPassword())">{{ verPassword() ? 'Ocultar' : 'Mostrar' }}</button>
+  <div class="dialogo__cuerpo">
+    <div class="identidad">
+      <div class="identidad__foto" aria-hidden="true">
+        @if (iniciales()) { <span class="avatar">{{ iniciales() }}</span> }
+        @else { <app-icon name="users" [size]="24" /> }
       </div>
-      @if (errores()['password']; as e) { <span class="field__error">{{ e }}</span> }
-      @else { <span class="field__hint">Mínimo 10 caracteres, con letras y números.</span> }
+      <div class="field identidad__campo">
+        <label for="nu-nombre">Nombre</label>
+        <input #campoNombre id="nu-nombre" name="nombre" class="input" placeholder="Nombre y apellido" autocomplete="off"
+               [class.is-invalid]="errores()['nombre']" [ngModel]="nombre()" (ngModelChange)="nombre.set($event); limpiar('nombre')" />
+        @if (errores()['nombre']; as e) { <span class="field__error">{{ e }}</span> }
+      </div>
+    </div>
+
+    <div class="dos">
+      <div class="field">
+        <label for="nu-email">Correo</label>
+        <input id="nu-email" name="email" type="email" class="input" placeholder="nombre@integritysolutions.com.ec" autocomplete="off"
+               [class.is-invalid]="errores()['email']" [ngModel]="email()" (ngModelChange)="email.set($event); limpiar('email')" />
+        @if (errores()['email']; as e) { <span class="field__error">{{ e }}</span> }
+      </div>
+      <div class="field">
+        <label for="nu-password">Contraseña</label>
+        <div class="clave">
+          <input id="nu-password" name="password" class="input" autocomplete="new-password" placeholder="Mínimo 10 caracteres"
+                 [type]="verPassword() ? 'text' : 'password'"
+                 [class.is-invalid]="errores()['password']" [ngModel]="password()" (ngModelChange)="password.set($event); limpiar('password')" />
+          <button type="button" class="clave__ver" [attr.aria-pressed]="verPassword()" (click)="verPassword.set(!verPassword())">{{ verPassword() ? 'Ocultar' : 'Mostrar' }}</button>
+        </div>
+        @if (errores()['password']; as e) { <span class="field__error">{{ e }}</span> }
+        @else { <span class="field__hint">Con letras y números.</span> }
+      </div>
     </div>
 
     <div class="field">
-      <span class="field__label" id="nu-rol">Rol</span>
-      <div class="roles" role="radiogroup" aria-labelledby="nu-rol">
+      <div class="grupo__etiqueta">
+        <span class="field__label" id="nu-rol">Rol</span>
+        <small>Elige uno</small>
+      </div>
+      <div class="chips" role="radiogroup" aria-labelledby="nu-rol">
         @for (r of roles(); track r) {
-          <button type="button" role="radio" class="rol" [class.is-on]="rol() === r" [attr.aria-checked]="rol() === r" (click)="elegirRol(r)">
-            {{ r }}
-          </button>
+          <button type="button" role="radio" class="chip-op" [class.is-on]="rol() === r" [attr.aria-checked]="rol() === r" (click)="elegirRol(r)">{{ r }}</button>
+        } @empty {
+          <span class="field__hint">Cargando roles…</span>
         }
       </div>
       @if (errores()['rol']; as e) { <span class="field__error">{{ e }}</span> }
     </div>
 
+    <section class="resumen" aria-live="polite">
+      <div class="resumen__head">
+        <span class="resumen__icono" aria-hidden="true"><app-icon name="shield" [size]="18" /></span>
+        <div>
+          <strong>{{ rol() ? 'Con este rol podrá entrar a' : 'Módulos que podrá usar' }}</strong>
+          <span>{{ rol() ? 'Puedes cambiarlo después desde Usuarios' : 'Elige un rol para verlos' }}</span>
+        </div>
+      </div>
+      @if (modulos(); as lista) {
+        <div class="resumen__grid">
+          @for (m of lista; track m.etiqueta) {
+            <div class="mini" [class.mini--si]="m.permitido" [class.mini--no]="!m.permitido">
+              <span>{{ m.etiqueta }}</span>
+              <strong>{{ m.permitido ? 'Sí' : 'No' }}</strong>
+            </div>
+          }
+        </div>
+      }
+    </section>
+
     @if (error(); as e) {
-      <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+      <div class="aviso aviso--danger" role="alert"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
     }
   </div>
 
-  <footer class="ventana__pie">
-    <button type="button" class="btn" (click)="cancelar.emit()" [disabled]="guardando()">Cancelar</button>
-    <button type="submit" class="btn btn--azul" [disabled]="guardando()">
-      <app-icon name="plus" [size]="17" /> {{ guardando() ? 'Creando…' : 'Crear usuario' }}
-    </button>
+  <footer class="dialogo__pie">
+    <span class="dialogo__nota">Podrás desactivar la cuenta cuando quieras</span>
+    <div class="dialogo__acciones">
+      <button type="button" class="btn" (click)="cancelar.emit()" [disabled]="guardando()">Cancelar</button>
+      <button type="submit" class="btn btn--oscuro" [disabled]="guardando()">{{ guardando() ? 'Creando…' : 'Crear usuario' }}</button>
+    </div>
   </footer>
 </form>

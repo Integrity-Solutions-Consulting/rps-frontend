@@ -4,12 +4,15 @@
       <h1>Configuración</h1>
       <p>Datos de la empresa, días de pago, límite de anticipos e impuestos. Los cambios rigen desde que se guardan.</p>
     </div>
+    @if (pestana() === 'general' && datos(); as d) {
+      <p class="guardado">Guardado el {{ d.actualizadoEn | date: 'dd MMM yyyy, HH:mm' }}</p>
+    }
   </header>
 
   @if (administraCuentas()) {
     <nav class="tabs" role="tablist" aria-label="Secciones de configuración">
       <button type="button" role="tab" class="tab" [class.is-on]="pestana() === 'general'" [attr.aria-selected]="pestana() === 'general'" (click)="pestana.set('general')">General</button>
-      <button type="button" role="tab" class="tab" [class.is-on]="pestana() === 'roles'" [attr.aria-selected]="pestana() === 'roles'" (click)="pestana.set('roles')">Roles</button>
+      <button type="button" role="tab" class="tab" [class.is-on]="pestana() === 'roles'" [attr.aria-selected]="pestana() === 'roles'" (click)="pestana.set('roles')">Roles y permisos</button>
       <button type="button" role="tab" class="tab" [class.is-on]="pestana() === 'usuarios'" [attr.aria-selected]="pestana() === 'usuarios'" (click)="pestana.set('usuarios')">Usuarios</button>
     </nav>
   }
@@ -19,46 +22,216 @@
   } @else if (pestana() === 'usuarios') {
     <app-tab-usuarios [rolSesion]="rol()" />
   } @else if (cargando()) {
-    <div class="card skeleton" style="height: 320px"></div>
+    <div class="general" aria-busy="true">
+      <div class="ajustes">
+        @for (i of [1, 2, 3]; track i) { <div class="card skeleton" style="height: 170px"></div> }
+      </div>
+      <div class="card skeleton" style="height: 360px"></div>
+    </div>
   } @else if (borrador(); as b) {
-    <form class="card formulario" (submit)="$event.preventDefault(); guardar()">
-      @for (g of grupos; track g) {
-        <fieldset class="grupo">
-          <legend>{{ g }}</legend>
-          <div class="form-grid">
-            @for (c of camposDe(g); track c.clave) {
+    <div class="general">
+      <form class="ajustes" novalidate (submit)="$event.preventDefault(); guardar()">
+
+        <!-- ── Empresa ─────────────────────────────────────────── -->
+        <section class="card ajuste" [class.is-modificada]="cambiado('razonSocial') || cambiado('ruc') || cambiado('moneda')" aria-labelledby="aj-empresa">
+          <div class="ajuste__titulo">
+            <h2 id="aj-empresa">Empresa</h2>
+            <p>Datos con los que RPS identifica a la empresa.</p>
+          </div>
+          <div class="ajuste__campos ajuste__campos--dos">
+            <div class="field campo--ancho">
+              <div class="campo__etiqueta">
+                <label for="cfg-razonSocial">Razón social</label>
+                @if (cambiado('razonSocial')) { <span class="modificado">Modificado</span> }
+              </div>
+              <input class="input" id="cfg-razonSocial" name="razonSocial" maxlength="200" autocomplete="organization"
+                     [class.is-invalid]="errores()['razonSocial']" [ngModel]="b.razonSocial" (ngModelChange)="cambiar('razonSocial', $event)" />
+              @if (errores()['razonSocial']; as e) { <span class="field__error">{{ e }}</span> }
+            </div>
+            <div class="field">
+              <div class="campo__etiqueta">
+                <label for="cfg-ruc">RUC</label>
+                @if (cambiado('ruc')) { <span class="modificado">Modificado · antes {{ antes('ruc') }}</span> }
+              </div>
+              <input class="input num" id="cfg-ruc" name="ruc" [appSoloNumeros]="'ruc'"
+                     [class.is-invalid]="errores()['ruc']" [ngModel]="b.ruc" (ngModelChange)="cambiar('ruc', $event)" />
+              @if (errores()['ruc']; as e) { <span class="field__error">{{ e }}</span> }
+              @else { <span class="field__hint num">13 dígitos · {{ b.ruc.length }}/13</span> }
+            </div>
+            <div class="field">
+              <div class="campo__etiqueta">
+                <label for="cfg-moneda">Moneda</label>
+                @if (cambiado('moneda')) { <span class="modificado">Modificado · antes {{ antes('moneda') }}</span> }
+              </div>
+              <input class="input moneda" id="cfg-moneda" name="moneda" maxlength="3"
+                     [class.is-invalid]="errores()['moneda']" [ngModel]="b.moneda" (ngModelChange)="cambiar('moneda', $event.toUpperCase())" />
+              @if (errores()['moneda']; as e) { <span class="field__error">{{ e }}</span> }
+              @else { <span class="field__hint">Código de 3 letras, por ejemplo USD</span> }
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Días de pago ────────────────────────────────────── -->
+        <section class="card ajuste" [class.is-modificada]="cambiado('diaPagoDosPagos1') || cambiado('diaPagoDosPagos2') || cambiado('diaPagoFinDeMes')" aria-labelledby="aj-dias">
+          <div class="ajuste__titulo">
+            <h2 id="aj-dias">Días de pago</h2>
+            <p>Según la frecuencia de pago de cada colaborador. Entre 1 y 31.</p>
+          </div>
+          <div class="ajuste__campos pagos">
+            <fieldset class="pago">
+              <legend><span class="pago__marca pago__marca--dos" aria-hidden="true"></span>Dos pagos al mes</legend>
+              <div class="pago__campos">
+                <div class="field">
+                  <label for="cfg-diaPagoDosPagos1">Quincena</label>
+                  <input class="input num" id="cfg-diaPagoDosPagos1" name="diaPagoDosPagos1" [appSoloNumeros]="'dia'"
+                         [class.is-invalid]="errores()['diaPagoDosPagos1']" [ngModel]="b.diaPagoDosPagos1" (ngModelChange)="cambiar('diaPagoDosPagos1', $event)" />
+                  @if (errores()['diaPagoDosPagos1']; as e) { <span class="field__error">{{ e }}</span> }
+                  @else if (cambiado('diaPagoDosPagos1')) { <span class="modificado">Antes {{ antes('diaPagoDosPagos1') }}</span> }
+                </div>
+                <div class="field">
+                  <label for="cfg-diaPagoDosPagos2">Fin de mes</label>
+                  <input class="input num" id="cfg-diaPagoDosPagos2" name="diaPagoDosPagos2" [appSoloNumeros]="'dia'"
+                         [class.is-invalid]="errores()['diaPagoDosPagos2']" [ngModel]="b.diaPagoDosPagos2" (ngModelChange)="cambiar('diaPagoDosPagos2', $event)" />
+                  @if (errores()['diaPagoDosPagos2']; as e) { <span class="field__error">{{ e }}</span> }
+                  @else if (cambiado('diaPagoDosPagos2')) { <span class="modificado">Antes {{ antes('diaPagoDosPagos2') }}</span> }
+                </div>
+              </div>
+            </fieldset>
+            <fieldset class="pago">
+              <legend><span class="pago__marca pago__marca--uno" aria-hidden="true"></span>Un pago al mes</legend>
               <div class="field">
-                <label [for]="'cfg-' + c.clave">{{ c.etiqueta }}</label>
-                @if (c.tipo === 'texto') {
-                  <input class="input" [id]="'cfg-' + c.clave" [name]="c.clave" [class.is-invalid]="errores()[c.clave]"
-                         [ngModel]="b[c.clave]" (ngModelChange)="cambiar(c.clave, $event)" />
-                } @else {
-                  <div class="con-sufijo">
-                    <input class="input num" [id]="'cfg-' + c.clave" [name]="c.clave" [class.is-invalid]="errores()[c.clave]"
-                           [appSoloNumeros]="c.tipo"
-                           [ngModel]="b[c.clave]" (ngModelChange)="cambiar(c.clave, $event)" />
-                    @if (c.tipo === 'porcentaje') { <span>%</span> }
-                  </div>
-                }
-                @if (errores()[c.clave]; as e) { <span class="field__error">{{ e }}</span> }
+                <label for="cfg-diaPagoFinDeMes">Día de pago</label>
+                <input class="input num" id="cfg-diaPagoFinDeMes" name="diaPagoFinDeMes" [appSoloNumeros]="'dia'"
+                       [class.is-invalid]="errores()['diaPagoFinDeMes']" [ngModel]="b.diaPagoFinDeMes" (ngModelChange)="cambiar('diaPagoFinDeMes', $event)" />
+                @if (errores()['diaPagoFinDeMes']; as e) { <span class="field__error">{{ e }}</span> }
+                @else if (cambiado('diaPagoFinDeMes')) { <span class="modificado">Antes {{ antes('diaPagoFinDeMes') }}</span> }
+              </div>
+            </fieldset>
+          </div>
+        </section>
+
+        <!-- ── Anticipos ───────────────────────────────────────── -->
+        <section class="card ajuste" [class.is-modificada]="cambiado('porcentajeMaximoAnticipo')" aria-labelledby="aj-anticipos">
+          <div class="ajuste__titulo">
+            <h2 id="aj-anticipos">Anticipos</h2>
+            <p>Límite general. Aplica a todos los colaboradores.</p>
+          </div>
+          <div class="ajuste__campos">
+            <div class="campo__etiqueta">
+              <label class="etiqueta" for="cfg-porcentajeMaximoAnticipo">Límite de anticipos (% del neto mensual)</label>
+              @if (cambiado('porcentajeMaximoAnticipo')) { <span class="modificado">Modificado · antes {{ antes('porcentajeMaximoAnticipo') }}</span> }
+            </div>
+            <div class="limite">
+              <div class="con-sufijo limite__campo">
+                <input class="input num" id="cfg-porcentajeMaximoAnticipo" name="porcentajeMaximoAnticipo" [appSoloNumeros]="'porcentaje'"
+                       [class.is-invalid]="errores()['porcentajeMaximoAnticipo']" [ngModel]="b.porcentajeMaximoAnticipo" (ngModelChange)="cambiar('porcentajeMaximoAnticipo', $event)" />
+                <span>%</span>
+              </div>
+              <span class="barra" aria-hidden="true"><span class="barra__relleno" [style.width.%]="anchoAnticipo()"></span></span>
+            </div>
+            @if (errores()['porcentajeMaximoAnticipo']; as e) { <span class="field__error">{{ e }}</span> }
+            <p class="ayuda">Nadie puede deber en anticipos más que este porcentaje de lo que recibe al mes.</p>
+          </div>
+        </section>
+
+        <!-- ── Impuestos ───────────────────────────────────────── -->
+        <section class="card ajuste" [class.is-modificada]="cambiado('porcentajeIva') || cambiado('porcentajeRetencionFuente') || cambiado('porcentajeRetencionIvaProfesional') || cambiado('porcentajeRetencionIvaJunior')" aria-labelledby="aj-impuestos">
+          <div class="ajuste__titulo">
+            <h2 id="aj-impuestos">Impuestos</h2>
+            <p>Se aplican al calcular cada honorario.</p>
+          </div>
+          <div class="ajuste__campos impuestos">
+            @for (c of impuestos; track c.clave) {
+              <div class="impuesto">
+                <div class="impuesto__texto">
+                  <label [for]="'cfg-' + c.clave">{{ c.etiqueta }}</label>
+                  <span class="ayuda">{{ ayudaImpuesto[c.clave] }}</span>
+                  @if (cambiado(c.clave)) { <span class="modificado">Modificado · antes {{ antes(c.clave) }}</span> }
+                  @if (errores()[c.clave]; as e) { <span class="field__error">{{ e }}</span> }
+                </div>
+                <div class="con-sufijo impuesto__campo">
+                  <input class="input num" [id]="'cfg-' + c.clave" [name]="c.clave" [appSoloNumeros]="'porcentaje'"
+                         [class.is-invalid]="errores()[c.clave]" [ngModel]="b[c.clave]" (ngModelChange)="cambiar(c.clave, $event)" />
+                  <span>%</span>
+                </div>
               </div>
             }
           </div>
-        </fieldset>
-      }
+        </section>
 
-      @if (error(); as e) {
-        <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
-      }
-      <div class="form-actions">
-        <button type="button" class="btn" (click)="deshacer()" [disabled]="!hayCambios() || guardando()">Deshacer cambios</button>
-        <button type="submit" class="btn btn--primary" [disabled]="!hayCambios() || guardando()">
-          <app-icon name="save" [size]="17" /> {{ guardando() ? 'Guardando…' : 'Guardar' }}
-        </button>
-      </div>
-      @if (datos(); as d) { <p class="muted small">Última actualización: {{ d.actualizadoEn | date: 'dd MMM yyyy, HH:mm' }}</p> }
-    </form>
+        @if (error(); as e) {
+          <div class="aviso aviso--danger" role="alert"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+        }
+
+        @if (hayCambios()) {
+          <div class="barra-guardar" role="region" aria-label="Cambios sin guardar">
+            <p>
+              <strong>{{ cambiados().length }} {{ cambiados().length === 1 ? 'cambio sin guardar' : 'cambios sin guardar' }}</strong>
+              <span>· {{ nombresCambiados() }}</span>
+            </p>
+            <div class="barra-guardar__acciones">
+              <button type="button" class="btn barra-guardar__deshacer" (click)="deshacer()" [disabled]="guardando()">Deshacer</button>
+              <button type="submit" class="btn btn--primary" [disabled]="guardando()">
+                <app-icon name="save" [size]="17" /> {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+              </button>
+            </div>
+          </div>
+        }
+      </form>
+
+      <aside class="lateral">
+        <!-- Ejemplo: no es un colaborador real -->
+        <section class="card lateral__bloque" aria-labelledby="ej-titulo">
+          <div>
+            <h2 id="ej-titulo">Así queda un honorario</h2>
+            <p class="ayuda">Ejemplo con un honorario de {{ honorarioEjemplo | currency: 'USD' : 'symbol' : '1.0-0' }} en modalidad Más IVA y los porcentajes de esta pantalla. No es un colaborador real.</p>
+          </div>
+          <div class="segmento" role="radiogroup" aria-label="Tipo de colaborador del ejemplo">
+            <button type="button" role="radio" [class.is-on]="tipoEjemplo() === 'profesional'" [attr.aria-checked]="tipoEjemplo() === 'profesional'" (click)="tipoEjemplo.set('profesional')">Profesional</button>
+            <button type="button" role="radio" [class.is-on]="tipoEjemplo() === 'junior'" [attr.aria-checked]="tipoEjemplo() === 'junior'" (click)="tipoEjemplo.set('junior')">Junior</button>
+          </div>
+          @let x = ejemplo();
+          <dl class="calculo">
+            <div><dt>Honorario</dt><dd>{{ x.subtotal | currency: 'USD' : 'symbol' : '1.2-2' }}</dd></div>
+            <div><dt>IVA {{ x.pctIva }} %</dt><dd>+ {{ x.iva | currency: 'USD' : 'symbol' : '1.2-2' }}</dd></div>
+            <div class="calculo__sub"><dt>Total factura</dt><dd>{{ x.total | currency: 'USD' : 'symbol' : '1.2-2' }}</dd></div>
+            <div><dt>Retención fuente {{ x.pctFuente }} %</dt><dd>− {{ x.retFuente | currency: 'USD' : 'symbol' : '1.2-2' }}</dd></div>
+            <div><dt>Retención IVA {{ x.pctRetIva }} %</dt><dd>− {{ x.retIva | currency: 'USD' : 'symbol' : '1.2-2' }}</dd></div>
+            <div class="calculo__total"><dt>A pagar</dt><dd>{{ x.neto | currency: 'USD' : 'symbol' : '1.2-2' }}</dd></div>
+          </dl>
+          <p class="tope"><span>Tope de anticipo de este ejemplo ({{ x.pctAnticipo }} %)</span><strong class="num">{{ x.tope | currency: 'USD' : 'symbol' : '1.2-2' }}</strong></p>
+        </section>
+
+        <section class="card lateral__bloque" aria-labelledby="cr-titulo">
+          <h2 id="cr-titulo">Cambios recientes</h2>
+          @if (cargandoHistorial()) {
+            @for (i of [1, 2, 3]; track i) { <div class="skeleton" style="height: 38px"></div> }
+          } @else if (errorHistorial(); as e) {
+            <p class="ayuda">No se pudo cargar el historial. {{ e }}</p>
+          } @else if (recientes().length === 0) {
+            <p class="ayuda">Todavía no hay cambios registrados.</p>
+          } @else {
+            <ul class="recientes">
+              @for (c of recientes(); track c.id) {
+                <li>
+                  <span class="recientes__punto" aria-hidden="true"></span>
+                  <div>
+                    <strong>{{ c.etiqueta }}</strong> <span class="num">{{ c.antes }} → {{ c.despues }}</span>
+                    <span class="recientes__quien">{{ autor(c) }} · {{ c.fecha | date: 'dd MMM, HH:mm' }}</span>
+                  </div>
+                </li>
+              }
+            </ul>
+            <button type="button" class="enlace" (click)="verHistorial.set(true)">Ver historial completo</button>
+          }
+        </section>
+      </aside>
+    </div>
   } @else if (error(); as e) {
-    <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+    <div class="aviso aviso--danger" role="alert"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
   }
 </div>
+
+@if (verHistorial()) {
+  <app-dialogo-historial [cambios]="historial()" [nombres]="nombres()" (cerrar)="verHistorial.set(false)" />
+}

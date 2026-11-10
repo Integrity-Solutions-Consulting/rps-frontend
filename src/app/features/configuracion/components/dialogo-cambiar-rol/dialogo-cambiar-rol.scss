@@ -1,9 +1,29 @@
-@use '../ventana';
+@use '../dialogo';
 
-.cuerpo { padding: 18px 20px; display: grid; gap: 14px; }
-.roles { display: flex; flex-wrap: wrap; gap: 8px; }
-.rol { height: 32px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--rps-border); background: var(--rps-surface);
-  color: var(--rps-text); font-size: 13px; cursor: pointer; transition: background .15s, border-color .15s, color .15s;
-  &:hover { border-color: var(--rps-navy); }
-  &.is-on { background: var(--rps-navy); border-color: var(--rps-navy); color: #fff; } }
-@media (prefers-reduced-motion: reduce) { .rol { transition: none; } }
+.dialogo { width: min(560px, 100%); }
+
+.cuenta { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid #e6ebf0; border-radius: 12px;
+  strong { display: block; font-weight: 600; }
+  span { display: block; font-size: 12.5px; color: var(--rps-muted); overflow-wrap: anywhere; }
+  .avatar { width: 40px; height: 40px; flex: none; font-size: 13px; } }
+.avatar--azul { background: var(--rps-info-50); color: var(--rps-info); }
+.avatar--ambar { background: var(--rps-warn-50); color: #8a5200; }
+.avatar--lila { background: #efe9fb; color: #5b3fa0; }
+
+.opciones { display: grid; gap: 8px; }
+.opcion { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 1px solid var(--rps-border);
+  border-radius: 12px; background: var(--rps-surface); color: var(--rps-text); font: inherit; text-align: left; cursor: pointer;
+  transition: border-color .15s, background .15s;
+  &:hover { border-color: #9fb0c0; }
+  &.is-on { border-color: var(--rps-teal); background: #f4fafa; box-shadow: 0 0 0 1px var(--rps-teal); } }
+.opcion__radio { width: 18px; height: 18px; flex: none; border-radius: 50%; border: 1.5px solid #b9c5d0; display: grid; place-items: center;
+  .is-on & { border: 2px solid var(--rps-teal); }
+  .is-on &::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--rps-teal); } }
+.opcion__texto { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.opcion__nombre { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.opcion__desc { font-size: 12.5px; color: var(--rps-muted); }
+.opcion__modulos { font-size: 12.5px; color: var(--rps-muted); white-space: nowrap; }
+.actual { height: 20px; padding: 0 8px; border-radius: 999px; background: #e9eef2; color: #33445a; font-size: 11px; font-weight: 600;
+  display: inline-flex; align-items: center; }
+
+@media (prefers-reduced-motion: reduce) { .opcion { transition: none; } }

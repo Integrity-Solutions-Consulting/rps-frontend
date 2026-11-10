@@ -1,15 +1,17 @@
-import { ChangeDetectionStrategy, Component, inject, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, computed, inject, output, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { RolSistema } from '../../models/accesos.models';
+import { MODULOS_PERMISO, RolSistema } from '../../models/accesos.models';
 import { RolesService } from '../../services/roles.service';
 import { UsuariosService } from '../../services/usuarios.service';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { iniciales } from '../avatar';
 
 /**
  * Ventana "Agregar usuario". Valida lo básico para avisar antes de enviar;
  * las reglas reales (correo único, contraseña, rol existente) las aplica el backend en POST /api/auth/register.
+ * El resumen de módulos sale de los permisos de cada rol (GET /api/roles).
  */
 @Component({
   selector: 'app-dialogo-crear-usuario',
@@ -26,6 +28,8 @@ export class DialogoCrearUsuario {
   readonly cancelar = output<void>();
   readonly creado = output<string>();
 
+  private readonly campoNombre = viewChild<ElementRef<HTMLInputElement>>('campoNombre');
+
   /** Roles activos que da el backend (GET /api/roles/asignables). */
   protected readonly roles = signal<RolSistema[]>([]);
   protected readonly nombre = signal('');
@@ -37,11 +41,23 @@ export class DialogoCrearUsuario {
   protected readonly error = signal<string | null>(null);
   protected readonly guardando = signal(false);
 
+  protected readonly iniciales = computed(() => (this.nombre().trim() ? iniciales(this.nombre()) : ''));
+
+  /** Módulos del rol elegido, con Sí/No por cada uno; null si no hay rol o no se conocen sus permisos. */
+  protected readonly modulos = computed(() => {
+    const elegido = this.rol();
+    const detalle = elegido ? this.rolesApi.roles().find((r) => r.nombre === elegido) : null;
+    if (!detalle) return null;
+    return MODULOS_PERMISO.map((m) => ({ etiqueta: m.etiqueta, permitido: detalle.permisos.includes(m.clave) }));
+  });
+
   constructor() {
     this.rolesApi.asignables().subscribe({
       next: (r) => this.roles.set(r),
       error: (e: unknown) => this.error.set(leerErrorApi(e).mensaje),
     });
+    if (this.rolesApi.roles().length === 0) this.rolesApi.cargar();
+    afterNextRender(() => this.campoNombre()?.nativeElement.focus());
   }
 
   protected limpiar(campo: string): void {

@@ -1,0 +1,88 @@
+<div class="fondo" (click)="cerrar.emit()"></div>
+<section class="dialogo" role="dialog" aria-modal="true" aria-labelledby="historial-titulo">
+  <header class="dialogo__head">
+    <div>
+      <h2 id="historial-titulo">Historial de cambios</h2>
+      <p>Configuración general · el sistema registra cada cambio solo</p>
+    </div>
+    <button type="button" class="dialogo__cerrar" aria-label="Cerrar" (click)="cerrar.emit()"><app-icon name="x" [size]="18" /></button>
+  </header>
+
+  <div class="dialogo__cuerpo historial">
+    <div class="filtros">
+      <div class="field">
+        <label for="h-desde">Desde</label>
+        <input #primerCampo id="h-desde" class="input" type="date" [max]="hasta() || null"
+               [ngModel]="desde()" (ngModelChange)="cambiarFiltro(desde, $event)" />
+      </div>
+      <div class="field">
+        <label for="h-hasta">Hasta</label>
+        <input id="h-hasta" class="input" type="date" [min]="desde() || null"
+               [ngModel]="hasta()" (ngModelChange)="cambiarFiltro(hasta, $event)" />
+      </div>
+      <div class="field">
+        <label for="h-campo">Campo</label>
+        <select id="h-campo" class="select" [ngModel]="campo()" (ngModelChange)="cambiarFiltro(campo, $event)">
+          <option value="">Todos</option>
+          @for (c of campos; track c.clave) { <option [value]="c.clave">{{ c.etiqueta }}</option> }
+        </select>
+      </div>
+      <div class="field">
+        <label for="h-usuario">Usuario</label>
+        <select id="h-usuario" class="select" [ngModel]="usuario()" (ngModelChange)="cambiarFiltro(usuario, $event)">
+          <option value="">Todos</option>
+          @for (a of autores(); track a.id) { <option [value]="a.id">{{ a.nombre }}</option> }
+        </select>
+      </div>
+      <div class="atajos">
+        <span>Rápido:</span>
+        <button type="button" [class.is-on]="atajo() === '7'" [attr.aria-pressed]="atajo() === '7'" (click)="usarAtajo('7')">Últimos 7 días</button>
+        <button type="button" [class.is-on]="atajo() === '30'" [attr.aria-pressed]="atajo() === '30'" (click)="usarAtajo('30')">Últimos 30 días</button>
+        <button type="button" [class.is-on]="atajo() === 'anio'" [attr.aria-pressed]="atajo() === 'anio'" (click)="usarAtajo('anio')">Este año</button>
+        @if (hayFiltros()) { <button type="button" class="atajos__limpiar" (click)="limpiar()">Limpiar filtros</button> }
+      </div>
+    </div>
+
+    <div class="lista" aria-live="polite">
+      @for (g of grupos(); track g.clave) {
+        <h3 class="dia">{{ g.dia | date: 'EEEE d MMM y' }}</h3>
+        <ul>
+          @for (c of g.items; track c.id) {
+            <li class="cambio">
+              <span class="cambio__hora num">{{ c.fecha | date: 'HH:mm' }}</span>
+              <div class="cambio__texto">
+                <strong>{{ c.etiqueta }}</strong>
+                <span class="cambio__valores num">
+                  <s>{{ c.antes }}</s>
+                  <app-icon name="chevronRight" [size]="14" aria-hidden="true" />
+                  <span class="sr-only">cambió a</span>
+                  <b>{{ c.despues }}</b>
+                </span>
+                <span class="cambio__quien">{{ autor(c.usuarioId) }}</span>
+                @if (c.motivo) { <span class="cambio__motivo">Motivo: {{ c.motivo }}</span> }
+              </div>
+            </li>
+          }
+        </ul>
+      } @empty {
+        <p class="vacio">{{ hayFiltros() ? 'Ningún cambio coincide con estos filtros.' : 'Todavía no hay cambios registrados.' }}</p>
+      }
+    </div>
+  </div>
+
+  <footer class="dialogo__pie">
+    <span class="dialogo__nota num">
+      @if (rango().total) { Mostrando {{ rango().desde }}–{{ rango().hasta }} de {{ rango().total }} {{ rango().total === 1 ? 'cambio' : 'cambios' }} }
+      @else { Sin resultados }
+    </span>
+    @if (totalPaginas() > 1) {
+      <nav class="paginas" aria-label="Páginas del historial">
+        <button type="button" class="pg" aria-label="Página anterior" [disabled]="pagina() === 1" (click)="pagina.set(pagina() - 1)">‹</button>
+        @for (n of paginas(); track n) {
+          <button type="button" class="pg" [class.is-on]="pagina() === n" [attr.aria-current]="pagina() === n ? 'page' : null" (click)="pagina.set(n)">{{ n }}</button>
+        }
+        <button type="button" class="pg" aria-label="Página siguiente" [disabled]="pagina() === totalPaginas()" (click)="pagina.set(pagina() + 1)">›</button>
+      </nav>
+    }
+  </footer>
+</section>

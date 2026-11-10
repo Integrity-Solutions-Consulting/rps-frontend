@@ -1,0 +1,25 @@
+<div class="fondo" (click)="cancelar.emit()"></div>
+<section class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="desactivar-titulo" aria-describedby="desactivar-texto">
+  <div class="dialogo__cuerpo confirmar">
+    <span class="confirmar__icono" aria-hidden="true"><app-icon name="userX" [size]="22" /></span>
+    <div class="confirmar__texto">
+      <h2 id="desactivar-titulo">¿Desactivar a {{ usuario().nombre }}?</h2>
+      <p id="desactivar-texto">Ya no podrá entrar a RPS. Puedes volver a activarlo cuando quieras desde Usuarios.</p>
+      <div class="cuenta">
+        <span class="avatar" [class]="'avatar--' + tonoAvatar(usuario().email)" aria-hidden="true">{{ iniciales(usuario().nombre) }}</span>
+        <div>
+          <strong>{{ usuario().email }}</strong>
+          <span>{{ usuario().rol }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="dialogo__pie">
+    <div class="dialogo__acciones">
+      <button #botonCancelar type="button" class="btn" (click)="cancelar.emit()" [disabled]="guardando()">Cancelar</button>
+      <button type="button" class="btn btn--peligro" (click)="confirmar.emit()" [disabled]="guardando()">
+        {{ guardando() ? 'Desactivando…' : 'Desactivar usuario' }}
+      </button>
+    </div>
+  </footer>
+</section>

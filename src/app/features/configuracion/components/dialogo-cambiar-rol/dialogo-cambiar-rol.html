@@ -1,36 +1,57 @@
 <div class="fondo" (click)="cancelar.emit()"></div>
-<section class="ventana" role="dialog" aria-modal="true" aria-labelledby="cambiar-rol-titulo">
-  <header class="ventana__head">
+<section class="dialogo" role="dialog" aria-modal="true" aria-labelledby="cambiar-rol-titulo">
+  <header class="dialogo__head">
     <div>
       <h2 id="cambiar-rol-titulo">Cambiar rol</h2>
-      <p class="muted small">{{ usuario().nombre }} · {{ usuario().email }}</p>
+      <p>Elige el nuevo rol para esta cuenta</p>
     </div>
-    <button type="button" class="btn btn--ghost btn--sm cerrar" aria-label="Cerrar" (click)="cancelar.emit()">
-      <app-icon name="x" [size]="18" />
-    </button>
+    <button type="button" class="dialogo__cerrar" aria-label="Cerrar" (click)="cancelar.emit()"><app-icon name="x" [size]="18" /></button>
   </header>
 
-  <div class="ventana__cuerpo cuerpo">
-    <div class="field">
-      <span class="field__label" id="cr-rol">Rol</span>
-      <div class="roles" role="radiogroup" aria-labelledby="cr-rol">
-        @for (r of roles(); track r) {
-          <button type="button" role="radio" class="rol" [class.is-on]="rol() === r" [attr.aria-checked]="rol() === r" (click)="elegido.set(r)">
-            {{ r }}
-          </button>
-        }
+  <div class="dialogo__cuerpo">
+    <div class="cuenta">
+      <span class="avatar" [class]="'avatar--' + tonoAvatar(usuario().email)" aria-hidden="true">{{ iniciales(usuario().nombre) }}</span>
+      <div>
+        <strong>{{ usuario().nombre }}</strong>
+        <span>{{ usuario().email }}</span>
       </div>
-      <span class="field__hint">El cambio se aplica en su próxima renovación de sesión o cuando vuelva a entrar.</span>
     </div>
+
+    <div class="opciones" role="radiogroup" aria-label="Rol">
+      @for (o of opciones(); track o.nombre) {
+        <button type="button" role="radio" class="opcion" [class.is-on]="rol() === o.nombre" [attr.aria-checked]="rol() === o.nombre"
+                (click)="elegido.set(o.nombre)">
+          <span class="opcion__radio" aria-hidden="true"></span>
+          <span class="opcion__texto">
+            <span class="opcion__nombre">{{ o.nombre }} @if (o.actual) { <span class="actual">Actual</span> }</span>
+            @if (o.descripcion) { <span class="opcion__desc">{{ o.descripcion }}</span> }
+          </span>
+          @if (o.modulos !== null) { <span class="opcion__modulos num">{{ o.modulos }} {{ o.modulos === 1 ? 'módulo' : 'módulos' }}</span> }
+        </button>
+      } @empty {
+        <p class="field__hint">Cargando roles…</p>
+      }
+    </div>
+
+    <div class="aviso aviso--info">
+      <app-icon name="info" [size]="18" />
+      <div>El cambio se aplica en su próxima renovación de sesión o cuando vuelva a entrar.</div>
+    </div>
+
     @if (error(); as e) {
-      <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+      <div class="aviso aviso--danger" role="alert"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
     }
   </div>
 
-  <footer class="ventana__pie">
-    <button type="button" class="btn" (click)="cancelar.emit()" [disabled]="guardando()">Cancelar</button>
-    <button type="button" class="btn btn--azul" (click)="guardar()" [disabled]="!hayCambio() || guardando()">
-      <app-icon name="save" [size]="17" /> {{ guardando() ? 'Guardando…' : 'Guardar rol' }}
-    </button>
+  <footer class="dialogo__pie">
+    <span class="dialogo__nota">
+      @if (hayCambio()) { {{ usuario().rol }} → {{ rol() }} } @else { Sin cambios }
+    </span>
+    <div class="dialogo__acciones">
+      <button type="button" class="btn" (click)="cancelar.emit()" [disabled]="guardando()">Cancelar</button>
+      <button type="button" class="btn btn--oscuro" (click)="guardar()" [disabled]="!hayCambio() || guardando()">
+        {{ guardando() ? 'Guardando…' : 'Guardar rol' }}
+      </button>
+    </div>
   </footer>
 </section>
