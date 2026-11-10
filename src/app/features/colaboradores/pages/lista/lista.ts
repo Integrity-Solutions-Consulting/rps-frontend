@@ -1,5 +1,5 @@
 import { NotificationService } from '../../../../core/services/notification.service';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -84,6 +84,31 @@ export class ColaboradoresLista {
       configurados: lista.filter((c) => c.estadoConfiguracion === 'Configurado').length,
     };
   });
+
+  // ── Paginación: 6 por página ──────────────────────────────────────────
+  private readonly porPagina = 6;
+  protected readonly pagina = signal(1);
+  protected readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.filas().length / this.porPagina)));
+  /** Página que se muestra: nunca pasa de la última (por ejemplo, si al recargar hay menos colaboradores). */
+  protected readonly paginaActual = computed(() => Math.min(this.pagina(), this.totalPaginas()));
+  protected readonly numerosPagina = computed(() => Array.from({ length: this.totalPaginas() }, (_, i) => i + 1));
+  protected readonly filasPagina = computed(() => {
+    const inicio = (this.paginaActual() - 1) * this.porPagina;
+    return this.filas().slice(inicio, inicio + this.porPagina);
+  });
+  protected readonly rango = computed(() => {
+    const total = this.filas().length;
+    const desde = total === 0 ? 0 : (this.paginaActual() - 1) * this.porPagina + 1;
+    return { desde, hasta: Math.min(desde + this.porPagina - 1, total) };
+  });
+
+  constructor() {
+    // Al cambiar filtros o búsqueda se vuelve a la primera página.
+    effect(() => {
+      this.filtros();
+      untracked(() => this.pagina.set(1));
+    });
+  }
 
   // ── Sincronizar con TMR ─────────────────────────────────────────────
   protected readonly sincronizando = signal(false);

@@ -84,7 +84,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (c of filas(); track c.id) {
+              @for (c of filasPagina(); track c.id) {
                 <tr class="fila" [routerLink]="['/colaboradores', c.id]" tabindex="0" (keydown.enter)="$any($event.currentTarget).click()">
                   <td>
                     <div class="persona">
@@ -110,6 +110,19 @@
               }
             </tbody>
           </table>
+        </div>
+        <div class="pie">
+          <span>Mostrando {{ rango().desde }} a {{ rango().hasta }} de {{ filas().length }} {{ filas().length === 1 ? 'colaborador' : 'colaboradores' }}</span>
+          @if (totalPaginas() > 1) {
+            <nav class="paginas" aria-label="Páginas de colaboradores">
+              <button type="button" class="btn btn--sm" [disabled]="paginaActual() === 1" (click)="pagina.set(paginaActual() - 1)" aria-label="Página anterior">‹</button>
+              @for (n of numerosPagina(); track n) {
+                <button type="button" class="btn btn--sm" [class.is-on]="paginaActual() === n" [attr.aria-current]="paginaActual() === n ? 'page' : null"
+                        (click)="pagina.set(n)">{{ n }}</button>
+              }
+              <button type="button" class="btn btn--sm" [disabled]="paginaActual() === totalPaginas()" (click)="pagina.set(paginaActual() + 1)" aria-label="Página siguiente">›</button>
+            </nav>
+          }
         </div>
       }
     }
