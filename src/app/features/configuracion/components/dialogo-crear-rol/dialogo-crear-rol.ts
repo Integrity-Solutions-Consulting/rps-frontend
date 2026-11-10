@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, computed, inject, output, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { MODULOS_PERMISO, ModuloPermiso, Permisos, RolSistemaDetalle, listaDesdePermisos, permisosDesdeLista } from '../../models/accesos.models';
@@ -6,7 +6,14 @@ import { RolesService } from '../../services/roles.service';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { Icon } from '../../../../shared/components/icon/icon';
 
-/** Ventana "Agregar rol": nombre y permisos. El backend valida nombre único y permisos (POST /api/roles). */
+/** Largos máximos que valida el backend (RolesService: MaxNombre y MaxDescripcion). */
+const MAX_NOMBRE = 50;
+const MAX_DESCRIPCION = 200;
+
+/**
+ * Ventana "Agregar rol": nombre, descripción opcional y módulos.
+ * El backend valida nombre único, largos y permisos (POST /api/roles).
+ */
 @Component({
   selector: 'app-dialogo-crear-rol',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,17 +28,32 @@ export class DialogoCrearRol {
   readonly cancelar = output<void>();
   readonly creado = output<RolSistemaDetalle>();
 
+  private readonly campoNombre = viewChild<ElementRef<HTMLInputElement>>('campoNombre');
+
+  protected readonly maxNombre = MAX_NOMBRE;
+  protected readonly maxDescripcion = MAX_DESCRIPCION;
   protected readonly modulos = MODULOS_PERMISO;
   protected readonly nombre = signal('');
+  protected readonly descripcion = signal('');
   protected readonly permisos = signal<Permisos>(permisosDesdeLista([]));
   protected readonly errores = signal<Record<string, string>>({});
   protected readonly error = signal<string | null>(null);
   protected readonly guardando = signal(false);
   protected readonly todos = computed(() => this.modulos.every((m) => this.permisos()[m.clave]));
+  protected readonly elegidos = computed(() => this.modulos.filter((m) => this.permisos()[m.clave]).length);
+
+  constructor() {
+    afterNextRender(() => this.campoNombre()?.nativeElement.focus());
+  }
 
   protected cambiarNombre(valor: string): void {
     this.nombre.set(valor);
-    if (this.errores()['nombre']) this.errores.set({});
+    this.limpiar('nombre');
+  }
+
+  protected cambiarDescripcion(valor: string): void {
+    this.descripcion.set(valor);
+    this.limpiar('descripcion');
   }
 
   protected cambiar(clave: ModuloPermiso): void {
@@ -45,20 +67,26 @@ export class DialogoCrearRol {
 
   protected crear(): void {
     const nombre = this.nombre().trim();
+    const descripcion = this.descripcion().trim();
     this.error.set(null);
     if (!nombre) {
       this.errores.set({ nombre: 'Escribe el nombre del rol.' });
       return;
     }
     this.guardando.set(true);
-    this.api.crear(nombre, listaDesdePermisos(this.permisos())).subscribe({
+    this.api.crear(nombre, listaDesdePermisos(this.permisos()), descripcion || null).subscribe({
       next: (r) => { this.guardando.set(false); this.creado.emit(r); },
       error: (e: unknown) => {
         this.guardando.set(false);
         const err = leerErrorApi(e);
-        if (err.campos['nombre']) this.errores.set({ nombre: err.campos['nombre'] });
-        else this.error.set(err.mensaje);
+        this.errores.set(err.campos);
+        // Si el error no es de un campo que se muestra aquí, va como aviso general.
+        if (!['nombre', 'descripcion', 'permisos'].some((c) => err.campos[c])) this.error.set(err.mensaje);
       },
     });
+  }
+
+  private limpiar(campo: string): void {
+    if (this.errores()[campo]) this.errores.update(({ [campo]: _, ...resto }) => resto);
   }
 }

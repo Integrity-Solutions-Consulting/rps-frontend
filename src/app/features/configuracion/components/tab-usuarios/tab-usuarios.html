@@ -79,11 +79,6 @@
                   @if (menuAbierto(); as menu) {
                     @if (menu.id === u.id) {
                       <div class="menu-fila__lista" role="menu" [style.top.px]="menu.top" [style.left.px]="menu.left" (click)="$event.stopPropagation()">
-                        @if (puedeCambiarRol(u)) {
-                          <button type="button" role="menuitem" class="menu-fila__item" (click)="abrirCambiarRol(u)">
-                            <app-icon name="shield" [size]="17" /> Cambiar rol
-                          </button>
-                        }
                         <button type="button" role="menuitem" class="menu-fila__item" [class.menu-fila__item--peligro]="u.activo"
                                 (click)="pedirCambioEstado(u)" [disabled]="guardandoEstado()">
                           <app-icon [name]="u.activo ? 'userX' : 'userCheck'" [size]="17" />

@@ -36,8 +36,8 @@ export class RolesService {
     return this.http.get<string[]>(`${this.base}/asignables`);
   }
 
-  crear(nombre: string, permisos: ModuloPermiso[]): Observable<RolSistemaDetalle> {
-    return this.http.post<RolSistemaDetalle>(this.base, { nombre, permisos }).pipe(
+  crear(nombre: string, permisos: ModuloPermiso[], descripcion: string | null = null): Observable<RolSistemaDetalle> {
+    return this.http.post<RolSistemaDetalle>(this.base, { nombre, descripcion, permisos }).pipe(
       tap((r) => this.roles.update((lista) => [...lista, r].sort((a, b) => a.nombre.localeCompare(b.nombre)))),
     );
   }

@@ -111,7 +111,7 @@ export class TabUsuarios {
     }
     const boton = (evento.currentTarget as HTMLElement).getBoundingClientRect();
     const ancho = 220;
-    const alto = 104;
+    const alto = 56;
     const abajo = boton.bottom + 6 + alto <= window.innerHeight;
     this.menuAbierto.set({ id, top: abajo ? boton.bottom + 6 : boton.top - 6 - alto, left: Math.max(8, boton.right - ancho) });
   }

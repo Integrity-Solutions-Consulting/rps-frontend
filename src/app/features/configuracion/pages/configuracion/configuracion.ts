@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { ConfiguracionService } from '../../services/configuracion.service';
@@ -18,10 +18,6 @@ import { DialogoHistorial } from '../../components/dialogo-historial/dialogo-his
 type Clave = keyof ActualizarConfiguracionRequest;
 type Borrador = Record<Clave, string>;
 type Pestana = 'general' | 'roles' | 'usuarios';
-type TipoColaborador = 'profesional' | 'junior';
-
-/** Honorario fijo del ejemplo "Así queda un honorario". No es de ningún colaborador. */
-const HONORARIO_EJEMPLO = 1000;
 
 /** Ayuda de cada impuesto: qué hace el porcentaje en el cálculo (CalculoTributario del backend). */
 const AYUDA_IMPUESTO: Partial<Record<Clave, string>> = {
@@ -34,12 +30,12 @@ const AYUDA_IMPUESTO: Partial<Record<Clave, string>> = {
 /**
  * Configuración: los campos de ConfiguracionGlobal de rps-backend.
  * Se guarda todo junto (PUT /api/configuracion); los rangos los valida el backend y los errores vuelven por campo.
- * Al costado: un ejemplo de cálculo con los valores que se están editando y los últimos cambios (GET /api/auditoria).
+ * Al costado: los últimos cambios (GET /api/auditoria).
  */
 @Component({
   selector: 'app-configuracion',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, FormsModule, Icon, SoloNumeros, TabRoles, TabUsuarios, DialogoHistorial],
+  imports: [DatePipe, FormsModule, Icon, SoloNumeros, TabRoles, TabUsuarios, DialogoHistorial],
   templateUrl: './configuracion.html',
   styleUrl: './configuracion.scss',
 })
@@ -83,24 +79,6 @@ export class Configuracion {
   protected readonly nombresCambiados = computed(() =>
     this.cambiados().map((k) => this.campos.find((c) => c.clave === k)!.etiqueta).join(' · '));
 
-  // ── Ejemplo de honorario ──────────────────────────────────────────
-  protected readonly honorarioEjemplo = HONORARIO_EJEMPLO;
-  protected readonly tipoEjemplo = signal<TipoColaborador>('profesional');
-  /** Mismas fórmulas que CalculoTributario (modalidad Más IVA: el honorario es el subtotal). */
-  protected readonly ejemplo = computed(() => {
-    const pctIva = this.porcentaje('porcentajeIva');
-    const pctFuente = this.porcentaje('porcentajeRetencionFuente');
-    const pctRetIva = this.porcentaje(this.tipoEjemplo() === 'profesional' ? 'porcentajeRetencionIvaProfesional' : 'porcentajeRetencionIvaJunior');
-    const subtotal = HONORARIO_EJEMPLO;
-    const iva = redondear(subtotal * pctIva / 100);
-    const total = subtotal + iva;
-    const retFuente = redondear(subtotal * pctFuente / 100);
-    const retIva = redondear(iva * pctRetIva / 100);
-    const neto = total - retFuente - retIva;
-    const pctAnticipo = this.porcentaje('porcentajeMaximoAnticipo');
-    return { pctIva, pctFuente, pctRetIva, subtotal, iva, total, retFuente, retIva, neto, pctAnticipo,
-      tope: redondear(neto * pctAnticipo / 100) };
-  });
   /** Ancho de la barra del límite de anticipos (0 a 100). */
   protected readonly anchoAnticipo = computed(() => Math.min(100, Math.max(0, this.porcentaje('porcentajeMaximoAnticipo'))));
 
@@ -210,9 +188,4 @@ function iguales(tipo: string, guardado: unknown, borrador: string): boolean {
   if (tipo === 'texto' || tipo === 'ruc') return String(guardado).trim() === borrador.trim();
   const n = Number(borrador.replace(',', '.'));
   return borrador.trim() !== '' && !Number.isNaN(n) && n === Number(guardado);
-}
-
-/** Redondeo a 2 decimales alejándose de cero, como MidpointRounding.AwayFromZero del backend. */
-function redondear(x: number): number {
-  return Math.sign(x) * Math.round((Math.abs(x) + Number.EPSILON) * 100) / 100;
 }

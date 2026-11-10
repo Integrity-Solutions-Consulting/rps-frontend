@@ -2,7 +2,7 @@
 
 .guardado { margin: 0; font-size: 12.5px; color: var(--rps-muted); }
 
-/* ── Distribución: ajustes a la izquierda, ejemplo e historial a la derecha ── */
+/* ── Distribución: ajustes a la izquierda, cambios recientes a la derecha ── */
 .general { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 24px; align-items: start; }
 @media (max-width: 1100px) { .general { grid-template-columns: minmax(0, 1fr); } }
 
@@ -80,20 +80,6 @@
 .lateral__bloque { padding: 20px; display: grid; gap: 14px;
   h2 { font-size: 15px; font-weight: 700; }
   .ayuda { margin-top: 2px; } }
-
-.segmento { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 3px; border-radius: 8px; background: #eef2f5;
-  button { height: 34px; border: 0; border-radius: 6px; background: transparent; color: var(--rps-muted); font: inherit; cursor: pointer;
-    &.is-on { background: var(--rps-surface); color: var(--rps-text); font-weight: 600; box-shadow: 0 1px 2px rgba(19, 38, 61, .12); } } }
-
-.calculo { margin: 0; display: grid; font-size: 13.5px;
-  > div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; }
-  dt { color: #33445a; }
-  dd { margin: 0; font-variant-numeric: tabular-nums; }
-  .calculo__sub { border-top: 1px solid var(--rps-border); margin-top: 4px; padding-top: 9px; font-weight: 600; dt { color: var(--rps-text); } }
-  .calculo__total { border-top: 1px solid var(--rps-border); margin-top: 4px; padding-top: 10px; font-weight: 700; font-size: 15px; dt { color: var(--rps-text); } } }
-
-.tope { margin: 0; display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 8px;
-  background: var(--rps-teal-50); color: var(--rps-teal-700); font-size: 13px; }
 
 .recientes { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px;
   li { display: flex; gap: 10px; font-size: 13.5px; }

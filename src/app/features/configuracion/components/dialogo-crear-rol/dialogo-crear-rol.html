@@ -1,48 +1,82 @@
 <div class="fondo" (click)="cancelar.emit()"></div>
-<form class="ventana" role="dialog" aria-modal="true" aria-labelledby="crear-rol-titulo" novalidate (submit)="$event.preventDefault(); crear()">
-  <header class="ventana__head">
+<form class="dialogo" role="dialog" aria-modal="true" aria-labelledby="crear-rol-titulo" novalidate (submit)="$event.preventDefault(); crear()">
+  <header class="dialogo__head">
     <div>
       <h2 id="crear-rol-titulo">Agregar rol</h2>
-      <p class="muted small">Después podrás asignarlo al crear usuarios.</p>
+      <p>Después podrás asignarlo al crear usuarios</p>
     </div>
-    <button type="button" class="btn btn--ghost btn--sm cerrar" aria-label="Cerrar" (click)="cancelar.emit()">
-      <app-icon name="x" [size]="18" />
-    </button>
+    <button type="button" class="dialogo__cerrar" aria-label="Cerrar" (click)="cancelar.emit()"><app-icon name="x" [size]="18" /></button>
   </header>
 
-  <div class="ventana__cuerpo">
-    <div class="field nombre">
-      <label for="nr-nombre">Nombre del rol</label>
-      <input id="nr-nombre" name="nombre" class="input" maxlength="50" placeholder="Auditor interno" autocomplete="off"
-             [class.is-invalid]="errores()['nombre']" [ngModel]="nombre()" (ngModelChange)="cambiarNombre($event)" />
-      @if (errores()['nombre']; as e) { <span class="field__error">{{ e }}</span> }
+  <div class="dialogo__cuerpo">
+    <div class="identidad">
+      <div class="identidad__foto" aria-hidden="true"><app-icon name="shield" [size]="26" /></div>
+      <div class="field identidad__campo">
+        <label for="nr-nombre">Nombre del rol</label>
+        <input #campoNombre id="nr-nombre" name="nombre" class="input" [maxlength]="maxNombre" placeholder="Por ejemplo, Auditor interno" autocomplete="off"
+               [class.is-invalid]="errores()['nombre']" [ngModel]="nombre()" (ngModelChange)="cambiarNombre($event)" />
+        @if (errores()['nombre']; as e) { <span class="field__error">{{ e }}</span> }
+      </div>
     </div>
 
-    <p class="permisos-titulo">Permisos del rol</p>
-    <div class="permiso permiso--todos">
-      <div>
-        <strong>Activar todos los permisos</strong>
-        <span class="muted small">Habilita o deshabilita todos los módulos a la vez.</span>
-      </div>
-      <button type="button" role="switch" class="switch switch--oscuro" [class.is-on]="todos()" [attr.aria-checked]="todos()"
-              aria-label="Activar todos los permisos" (click)="cambiarTodos()"><span></span></button>
+    <div class="field">
+      <label for="nr-descripcion">Descripción <span class="opcional">(opcional)</span></label>
+      <input id="nr-descripcion" name="descripcion" class="input" [maxlength]="maxDescripcion" placeholder="Para qué sirve este rol" autocomplete="off"
+             [class.is-invalid]="errores()['descripcion']" [ngModel]="descripcion()" (ngModelChange)="cambiarDescripcion($event)" />
+      @if (errores()['descripcion']; as e) { <span class="field__error">{{ e }}</span> }
     </div>
-    @for (m of modulos; track m.clave) {
-      <div class="permiso">
-        <span>Permitir {{ m.etiqueta.toLowerCase() }}</span>
-        <button type="button" role="switch" class="switch" [class.is-on]="permisos()[m.clave]" [attr.aria-checked]="permisos()[m.clave]"
-                [attr.aria-label]="'Permitir ' + m.etiqueta" (click)="cambiar(m.clave)"><span></span></button>
+
+    <div class="field">
+      <div class="grupo__etiqueta">
+        <span class="field__label" id="nr-modulos">Módulos que puede usar</span>
+        <small>Elige uno o más · <button type="button" class="todos" (click)="cambiarTodos()">{{ todos() ? 'Quitar todos' : 'Seleccionar todos' }}</button></small>
       </div>
-    }
+      <div class="chips" role="group" aria-labelledby="nr-modulos">
+        @for (m of modulos; track m.clave) {
+          <button type="button" class="chip-modulo" [class.is-on]="permisos()[m.clave]" [attr.aria-pressed]="permisos()[m.clave]" (click)="cambiar(m.clave)">
+            @if (permisos()[m.clave]) { <app-icon name="check" [size]="14" aria-hidden="true" /> }
+            {{ m.etiqueta }}
+          </button>
+        }
+      </div>
+      @if (errores()['permisos']; as e) { <span class="field__error">{{ e }}</span> }
+    </div>
+
+    <section class="resumen" aria-live="polite">
+      <div class="resumen__head">
+        <span class="resumen__icono" aria-hidden="true"><app-icon name="info" [size]="18" /></span>
+        <div>
+          <strong>Resumen del rol</strong>
+          <span>Así aparecerá en Roles y permisos</span>
+        </div>
+      </div>
+      <div class="resumen__grid">
+        <div class="mini">
+          <span>Módulos</span>
+          <strong class="num">{{ elegidos() }} de {{ modulos.length }}</strong>
+          <span class="mini__barra" aria-hidden="true"><span [style.width.%]="elegidos() / modulos.length * 100"></span></span>
+        </div>
+        <div class="mini">
+          <span>Usuarios</span>
+          <strong>Ninguno aún</strong>
+        </div>
+        <div class="mini">
+          <span>Estado</span>
+          <strong class="activo">Activo</strong>
+        </div>
+      </div>
+    </section>
+
     @if (error(); as e) {
-      <div class="aviso aviso--danger" style="margin: 12px 20px"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+      <div class="aviso aviso--danger" role="alert"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
     }
   </div>
 
-  <footer class="ventana__pie">
-    <button type="button" class="btn" (click)="cancelar.emit()" [disabled]="guardando()">Cancelar</button>
-    <button type="submit" class="btn btn--azul" [disabled]="guardando()">
-      <app-icon name="plus" [size]="17" /> {{ guardando() ? 'Creando…' : 'Crear rol' }}
-    </button>
+  <footer class="dialogo__pie">
+    <span class="dialogo__nota">Puedes editar sus permisos cuando quieras</span>
+    <div class="dialogo__acciones">
+      <button type="button" class="btn" (click)="cancelar.emit()" [disabled]="guardando()">Cancelar</button>
+      <button type="submit" class="btn btn--oscuro" [disabled]="guardando()">{{ guardando() ? 'Creando…' : 'Crear rol' }}</button>
+    </div>
   </footer>
 </form>

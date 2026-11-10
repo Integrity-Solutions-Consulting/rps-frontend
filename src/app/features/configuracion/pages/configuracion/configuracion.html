@@ -180,28 +180,6 @@
       </form>
 
       <aside class="lateral">
-        <!-- Ejemplo: no es un colaborador real -->
-        <section class="card lateral__bloque" aria-labelledby="ej-titulo">
-          <div>
-            <h2 id="ej-titulo">Así queda un honorario</h2>
-            <p class="ayuda">Ejemplo con un honorario de {{ honorarioEjemplo | currency: 'USD' : 'symbol' : '1.0-0' }} en modalidad Más IVA y los porcentajes de esta pantalla. No es un colaborador real.</p>
-          </div>
-          <div class="segmento" role="radiogroup" aria-label="Tipo de colaborador del ejemplo">
-            <button type="button" role="radio" [class.is-on]="tipoEjemplo() === 'profesional'" [attr.aria-checked]="tipoEjemplo() === 'profesional'" (click)="tipoEjemplo.set('profesional')">Profesional</button>
-            <button type="button" role="radio" [class.is-on]="tipoEjemplo() === 'junior'" [attr.aria-checked]="tipoEjemplo() === 'junior'" (click)="tipoEjemplo.set('junior')">Junior</button>
-          </div>
-          @let x = ejemplo();
-          <dl class="calculo">
-            <div><dt>Honorario</dt><dd>{{ x.subtotal | currency: 'USD' : 'symbol' : '1.2-2' }}</dd></div>
-            <div><dt>IVA {{ x.pctIva }} %</dt><dd>+ {{ x.iva | currency: 'USD' : 'symbol' : '1.2-2' }}</dd></div>
-            <div class="calculo__sub"><dt>Total factura</dt><dd>{{ x.total | currency: 'USD' : 'symbol' : '1.2-2' }}</dd></div>
-            <div><dt>Retención fuente {{ x.pctFuente }} %</dt><dd>− {{ x.retFuente | currency: 'USD' : 'symbol' : '1.2-2' }}</dd></div>
-            <div><dt>Retención IVA {{ x.pctRetIva }} %</dt><dd>− {{ x.retIva | currency: 'USD' : 'symbol' : '1.2-2' }}</dd></div>
-            <div class="calculo__total"><dt>A pagar</dt><dd>{{ x.neto | currency: 'USD' : 'symbol' : '1.2-2' }}</dd></div>
-          </dl>
-          <p class="tope"><span>Tope de anticipo de este ejemplo ({{ x.pctAnticipo }} %)</span><strong class="num">{{ x.tope | currency: 'USD' : 'symbol' : '1.2-2' }}</strong></p>
-        </section>
-
         <section class="card lateral__bloque" aria-labelledby="cr-titulo">
           <h2 id="cr-titulo">Cambios recientes</h2>
           @if (cargandoHistorial()) {
