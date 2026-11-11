@@ -69,3 +69,12 @@
 .small { font-size: 12.5px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .vacio { color: var(--rps-muted); margin: 0; padding: 18px 0; }
+
+/* Campo de dinero: el "$" y el importe en una sola línea, del mismo alto que un select
+   (formulario de contratos, ficha del colaborador). */
+.dinero { width: 100%; display: flex; align-items: stretch; border: 1px solid var(--rps-border); border-radius: 8px; overflow: hidden; background: var(--rps-surface);
+  span { display: grid; place-items: center; padding: 0 12px; background: #f3f6f8; color: var(--rps-muted); border-right: 1px solid var(--rps-border); }
+  .input { border: 0; border-radius: 0; &:focus { box-shadow: none; } }
+  &:focus-within { border-color: var(--rps-teal); box-shadow: 0 0 0 3px var(--rps-teal-50); }
+  &.is-invalid { border-color: var(--rps-danger); } }
+.dinero .input { flex: 1; min-width: 0; }

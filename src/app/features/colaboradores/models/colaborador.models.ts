@@ -122,3 +122,11 @@ export const DETALLE_CLASIFICACION: Record<Clasificacion, string> = {
 };
 
 export const TIPOS_CUENTA = ['Ahorros', 'Corriente'] as const;
+
+/**
+ * Bancos que se pueden elegir para la cuenta del colaborador. Para agregar uno nuevo, se suma
+ * aquí y aparece en la lista del formulario de contrato.
+ */
+export const BANCOS: readonly string[] = [
+  'Banco Guayaquil',
+];
