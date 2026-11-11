@@ -1,12 +1,18 @@
 <aside class="sidebar">
-  <a routerLink="/inicio" class="sidebar__logo" aria-label="RPS, ir a Inicio">RPS</a>
+  <div class="sidebar__top">
+    <a routerLink="/inicio" class="sidebar__logo" aria-label="RPS, ir a Inicio">RPS</a>
+    <button type="button" class="sidebar__ocultar" (click)="ocultar.emit()" aria-label="Ocultar menú" title="Ocultar menú">
+      <app-icon name="panelLeft" [size]="18" />
+    </button>
+  </div>
 
+  <!-- Usuario de la sesión y el mes que está viendo (sigue al selector de período de la pantalla) -->
   @if (session.usuario(); as u) {
-    <div class="sidebar__area">
-      <span class="sidebar__area-marca" aria-hidden="true">RPS</span>
+    <div class="sidebar__area" [title]="u.nombre + ' · ' + u.area">
+      <span class="sidebar__avatar" aria-hidden="true">{{ u.iniciales }}</span>
       <span class="sidebar__area-txt">
-        <strong>{{ u.area }}</strong>
-        <small>Honorarios · {{ mesActual() }}</small>
+        <strong>{{ u.nombre }}</strong>
+        <small>{{ u.area }} · {{ mesActual() }}</small>
       </span>
     </div>
   }
@@ -28,15 +34,6 @@
   </nav>
 
   <div class="sidebar__foot">
-    @if (session.usuario(); as u) {
-      <div class="sidebar__user">
-        <span class="sidebar__avatar" aria-hidden="true">{{ u.iniciales }}</span>
-        <span class="sidebar__area-txt">
-          <strong>{{ u.nombre }}</strong>
-          <small>{{ u.area }}</small>
-        </span>
-      </div>
-    }
     <p>Gestión de honorarios para un equipo que avanza</p>
   </div>
 </aside>

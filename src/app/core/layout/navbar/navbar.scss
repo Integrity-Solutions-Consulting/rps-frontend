@@ -5,8 +5,10 @@
 }
 
 .navbar__menu {
-  display: none; border: 0; background: none; color: var(--rps-text); cursor: pointer; padding: 6px;
+  display: none; border: 0; background: none; color: var(--rps-text); cursor: pointer; padding: 6px; border-radius: 8px;
+  &:hover { background: #f1f2f5; }
 }
+.navbar__menu--visible { display: inline-flex; }
 
 
 .navbar__right { margin-left: auto; display: flex; align-items: center; gap: 14px; color: var(--rps-muted); }

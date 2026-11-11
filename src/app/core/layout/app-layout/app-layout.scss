@@ -4,7 +4,22 @@
   min-height: 100vh;
 }
 
-.shell__sidebar { position: sticky; top: 0; height: 100vh; }
+/* align-self: start para que el menú quede fijo (sticky) en toda la altura de la página */
+.shell__sidebar { position: sticky; top: 0; height: 100vh; align-self: start; }
+
+/* La columna del menú siempre es blanca con su borde, aunque la página sea más alta que la ventana:
+   así al bajar mucho nunca se ve el menú "cortado". */
+@media (min-width: 961px) {
+  .shell:not(.shell--oculto) {
+    background: linear-gradient(90deg, var(--rps-surface) 0 247px, var(--rps-border) 247px 248px, transparent 248px);
+  }
+}
+
+/* Menú oculto por el usuario (solo escritorio): el contenido usa todo el ancho */
+@media (min-width: 961px) {
+  .shell--oculto { grid-template-columns: minmax(0, 1fr); }
+  .shell--oculto .shell__sidebar { display: none; }
+}
 .shell__scrim { display: none; }
 
 .shell__main { display: flex; flex-direction: column; min-width: 0; }

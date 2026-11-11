@@ -41,6 +41,10 @@
 
 html, body { height: 100%; }
 
+/* Mismo fondo al llegar al final de la página (sin franja de otro color al "rebotar" el scroll) */
+html { background: var(--rps-bg); }
+body { overscroll-behavior-y: none; }
+
 body {
   margin: 0;
   font-family: var(--rps-font);

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { catchError, filter, of, startWith, switchMap } from 'rxjs';
@@ -17,6 +17,8 @@ import { PeriodoEnPantallaService } from '../../services/periodo-en-pantalla.ser
 })
 export class Sidebar {
   protected readonly menu = MENU;
+  /** Botón "Ocultar menú": el layout decide si lo oculta (escritorio) o cierra el panel (móvil). */
+  readonly ocultar = output<void>();
   protected readonly session = inject(SessionService);
   private readonly colaboradores = inject(ColaboradoresService);
 
