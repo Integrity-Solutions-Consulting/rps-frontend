@@ -14,7 +14,7 @@ import { Modalidad } from '../../../honorarios/models/honorario.models';
 import { HonorariosService } from '../../../honorarios/services/honorarios.service';
 import { ColaboradoresService } from '../../../colaboradores/services/colaboradores.service';
 import {
-  Clasificacion, ColaboradorDetalle, ETIQUETA_CLASIFICACION, ETIQUETA_FRECUENCIA, Frecuencia,
+  BANCOS, Clasificacion, ColaboradorDetalle, ETIQUETA_CLASIFICACION, ETIQUETA_FRECUENCIA, Frecuencia,
 } from '../../../colaboradores/models/colaborador.models';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -23,6 +23,14 @@ import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/
 import { periodoActual, periodoSiguiente, primerDia } from '../../../../shared/utils/periodo';
 
 type FrecuenciaElegida = { frecuencia: Frecuencia; vigenteDesdeMes: string };
+
+const MENSAJE_FECHA_FUERA_DE_RANGO = 'La fecha debe ser desde el año 2000 y el año de 4 dígitos.';
+
+/** "yyyy-MM-dd" con año de 4 dígitos y desde 2000 (el date del navegador deja escribir años de 5-6 dígitos). */
+function fechaEnRango(fecha: string): boolean {
+  const m = /^(\d{4})-\d{2}-\d{2}$/.exec(fecha);
+  return !!m && Number(m[1]) >= 2000;
+}
 
 type Carga<T> = { estado: 'cargando' } | { estado: 'ok'; datos: T } | { estado: 'error'; mensaje: string };
 
@@ -219,6 +227,12 @@ export class Contratos {
 
   // Paso 5: datos bancarios (opcional, se puede completar después desde aquí mismo).
   protected readonly bancoForm = signal('');
+  /** Lista de bancos (BANCOS). Si la cuenta ya registrada es de un banco que no está en la lista,
+   * se agrega a las opciones para no perderlo al editar. */
+  protected readonly bancos = computed(() => {
+    const actual = this.bancoForm().trim();
+    return actual && !BANCOS.includes(actual) ? [...BANCOS, actual] : BANCOS;
+  });
   protected readonly tipoCuentaForm = signal('');
   protected readonly numeroCuentaForm = signal('');
   /** Número de la cuenta activa, enmascarado (el backend nunca devuelve el número completo). */
@@ -449,6 +463,14 @@ export class Contratos {
       this.erroresContrato.set({ fechaInicio: 'Es obligatoria.' });
       return;
     }
+    if (!fechaEnRango(this.inicioForm())) {
+      this.erroresContrato.set({ fechaInicio: MENSAJE_FECHA_FUERA_DE_RANGO });
+      return;
+    }
+    if (!esEdicion && !this.indefinidoForm() && this.finForm() && !fechaEnRango(this.finForm())) {
+      this.erroresContrato.set({ fechaFin: MENSAJE_FECHA_FUERA_DE_RANGO });
+      return;
+    }
 
     if (!esEdicion && !this.indefinidoForm() && !this.finForm()) {
       this.erroresContrato.set({ fechaFin: 'Pon la fecha de fin o marca "Indefinido".' });
@@ -628,6 +650,10 @@ export class Contratos {
   protected guardarAdenda(): void {
     const d = this.detalle();
     if (!d) return;
+    if (this.nuevaFinForm() && !fechaEnRango(this.nuevaFinForm())) {
+      this.errorAdendaCampo.set(MENSAJE_FECHA_FUERA_DE_RANGO);
+      return;
+    }
     const request = { nuevaFechaFin: this.nuevaFinForm(), observaciones: this.observacionesAdendaForm().trim() || null };
     const adendaId = this.editandoAdendaId();
 
