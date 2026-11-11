@@ -8,7 +8,8 @@ import { TipoCorte } from '../../../shared/models/corte';
 
 /** Un honorario del mes (un proyecto): GET /api/liquidaciones/{id} → honorarios. */
 export interface ProyectoLiquidado {
-  proyectoId: string;
+  /** Null: honorario de un contrato que se paga por contrato (proyecto = "Pago por contrato"). */
+  proyectoId: string | null;
   proyecto: string;
   cliente: string | null;
   modalidad: Modalidad;

@@ -66,6 +66,18 @@
     </p>
   </header>
 
+  @for (hc of honorariosContrato(); track hc.contratoId) {
+    @if (hc.programado ?? hc.vigente; as v) {
+      <div class="aviso aviso--info">
+        <app-icon name="info" [size]="18" />
+        <div>
+          <strong>Pago por contrato:</strong> {{ v.importe | currency: 'USD' : 'symbol' : '1.2-2' }} {{ etiquetaModalidad[v.modalidad] }} al mes
+          desde {{ nombrePeriodo(periodoDeFecha(v.vigenteDesdeMes)) }}. Es un monto fijo para todo el contrato: no depende de sus proyectos.
+        </div>
+      </div>
+    }
+  }
+
   @if (cargandoHonorarios()) {
     <div class="skeleton" style="height: 110px"></div>
   } @else if (errorHonorarios()) {
@@ -86,7 +98,9 @@
                 <br /><small class="muted">{{ h.cliente ?? '' }}{{ h.asignacionActiva ? '' : ' · ya no viene de TMR' }}</small>
               </td>
               @if (h.vigente; as v) {
-                <td class="r num"><strong>{{ v.importe | currency: 'USD' : 'symbol' : '1.2-2' }}</strong></td>
+                <td class="r num">
+                  <strong>{{ v.importe | currency: 'USD' : 'symbol' : '1.2-2' }}</strong>
+                </td>
                 <td>{{ etiquetaModalidad[v.modalidad] }}</td>
                 <td>{{ nombrePeriodo(periodoDeFecha(v.vigenteDesdeMes)) }}</td>
               } @else {

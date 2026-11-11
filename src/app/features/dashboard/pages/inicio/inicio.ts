@@ -6,7 +6,7 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, Observable, catchError, combineLatest, map, of, startWith, switchMap } from 'rxjs';
 
 import { DashboardService } from '../../services/dashboard.service';
-import { IndicadoresDashboard, VencimientoContrato } from '../../models/dashboard.models';
+import { IndicadoresDashboard, SalidaProyecto, VencimientoContrato } from '../../models/dashboard.models';
 import { LiquidacionesService } from '../../../liquidaciones/services/liquidaciones.service';
 import { LiquidacionResumen, corteDe } from '../../../liquidaciones/models/liquidacion.models';
 import { IntegracionTmrService } from '../../../integracion-tmr/services/integracion-tmr.service';
@@ -75,6 +75,7 @@ export class Inicio {
   // ── Llamadas al backend ─────────────────────────────────────────────
   protected readonly indicadores = this.cargar<IndicadoresDashboard>((p) => this.api.indicadores(p));
   protected readonly vencimientos = this.cargar<VencimientoContrato[]>(() => this.api.vencimientos());
+  protected readonly salidasProyecto = this.cargar<SalidaProyecto[]>(() => this.api.salidasProyecto());
   protected readonly estadoTmr = this.cargar<BeEstadoTmr>(() => this.tmr.estado());
   protected readonly cambiosTmr = this.cargar<BeCambioTmr[]>(() => this.tmr.cambiosSinRevisar());
   protected readonly pendientes = this.cargar<ColaboradorResumen[]>(() =>
@@ -91,7 +92,7 @@ export class Inicio {
   protected readonly diasPrimerAviso = computed(() => this.datos()?.contratosPorVencer.diasAviso1 ?? 30);
 
   protected readonly cargando = computed(() =>
-    [this.indicadores(), this.vencimientos(), this.estadoTmr(), this.cambiosTmr(), this.pendientes(), this.preparacion()]
+    [this.indicadores(), this.vencimientos(), this.salidasProyecto(), this.estadoTmr(), this.cambiosTmr(), this.pendientes(), this.preparacion()]
       .some((s) => s.estado === 'cargando'));
 
   protected readonly totalLiquidaciones = computed(() => {
@@ -104,6 +105,16 @@ export class Inicio {
     const total = this.totalLiquidaciones();
     return d && total > 0 ? Math.round((d.liquidaciones.revisadas / total) * 100) : 0;
   });
+
+  protected readonly listaSalidas = computed<SalidaProyecto[]>(() => {
+    const s = this.salidasProyecto();
+    return s.estado === 'ok' ? s.datos : [];
+  });
+
+  protected textoSalida(s: SalidaProyecto): string {
+    if (s.diasRestantes === 0) return 'Sale hoy';
+    return s.diasRestantes === 1 ? 'Sale mañana' : `En ${s.diasRestantes} días`;
+  }
 
   protected readonly listaVencimientos = computed<VencimientoContrato[]>(() => {
     const v = this.vencimientos();

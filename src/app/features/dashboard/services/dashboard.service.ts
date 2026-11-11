@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { IndicadoresDashboard, Periodo, VencimientoContrato } from '../models/dashboard.models';
+import { IndicadoresDashboard, Periodo, SalidaProyecto, VencimientoContrato } from '../models/dashboard.models';
 import { diaUno } from '../../../core/backend/backend-rps.service';
 
 /** Llamadas al slice Features/Dashboard de rps-backend. */
@@ -19,7 +19,23 @@ export class DashboardService {
     return this.http.get<IndicadoresDashboard>(this.base, { params: new HttpParams().set('periodo', diaUno(periodo)) });
   }
 
-  /** GET /api/dashboard/vencimientos · por vencer en 30 días y vencidos con asignación activa (RN 13 a 15). */
+  /** GET /api/dashboard/salidas-proyecto · salidas próximas de proyectos que se pagan por proyecto. */
+  salidasProyecto(): Observable<SalidaProyecto[]> {
+    return this.http.get<BeSalidaProyecto[]>(`${this.base}/salidas-proyecto`).pipe(
+      map((lista) => lista.map((s): SalidaProyecto => ({
+        colaboradorId: s.colaboradorId,
+        tmrColaboradorId: s.tmrColaboradorId,
+        colaborador: `${s.nombres ?? ''} ${s.apellidos ?? ''}`.trim() || `ID TMR ${s.tmrColaboradorId}`,
+        contratoId: s.contratoId,
+        proyectoId: s.proyectoId,
+        proyecto: s.proyectoNombre,
+        fechaSalida: s.fechaSalida,
+        diasRestantes: s.diasRestantes,
+      }))),
+    );
+  }
+
+  /** GET /api/dashboard/vencimientos · por vencer y vencidos que siguen trabajando (RN 13 a 15), uno por contrato. */
   vencimientos(): Observable<VencimientoContrato[]> {
     return this.http.get<BeVencimientoContrato[]>(`${this.base}/vencimientos`).pipe(
       map((lista) => lista.map((v): VencimientoContrato => ({
@@ -44,9 +60,22 @@ interface BeVencimientoContrato {
   tmrColaboradorId: string;
   nombres: string | null;
   apellidos: string | null;
-  proyectoId: string;
+  proyectoId: string | null;
   proyectoNombre: string;
   fechaFinVigente: string;
   diasRestantes: number;
   asignacionActiva: boolean;
+}
+
+/** Respuesta tal como la manda SalidaProyectoResponse del backend. */
+interface BeSalidaProyecto {
+  colaboradorId: string;
+  tmrColaboradorId: string;
+  nombres: string | null;
+  apellidos: string | null;
+  contratoId: string;
+  proyectoId: string;
+  proyectoNombre: string;
+  fechaSalida: string;
+  diasRestantes: number;
 }
