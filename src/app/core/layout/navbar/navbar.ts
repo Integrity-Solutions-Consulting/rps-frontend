@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 import { SessionService } from '../../services/session.service';
 import { Icon } from '../../../shared/components/icon/icon';
 import { Campana } from '../../../features/notificaciones/components/campana/campana';
@@ -13,6 +13,8 @@ import { Campana } from '../../../features/notificaciones/components/campana/cam
 })
 export class Navbar {
   protected readonly session = inject(SessionService);
+  /** El menú lateral está oculto en escritorio: se muestra el botón para volver a abrirlo. */
+  readonly menuOculto = input(false);
   readonly toggleMenu = output<void>();
   protected readonly menuAbierto = signal(false);
 

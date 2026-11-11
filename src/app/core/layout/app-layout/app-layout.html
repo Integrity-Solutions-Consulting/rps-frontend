@@ -1,9 +1,9 @@
-<div class="shell" [class.shell--menu]="menuAbierto()">
-  <app-sidebar class="shell__sidebar" />
+<div class="shell" [class.shell--menu]="menuAbierto()" [class.shell--oculto]="menuOculto()">
+  <app-sidebar class="shell__sidebar" (ocultar)="ocultarMenu()" />
   <button class="shell__scrim" type="button" aria-label="Cerrar menú" (click)="menuAbierto.set(false)"></button>
 
   <div class="shell__main">
-    <app-navbar (toggleMenu)="menuAbierto.set(!menuAbierto())" />
+    <app-navbar [menuOculto]="menuOculto()" (toggleMenu)="alternarMenu()" />
     <main class="shell__content">
       <router-outlet />
     </main>

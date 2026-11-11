@@ -1,5 +1,5 @@
 <header class="navbar">
-  <button type="button" class="navbar__menu" aria-label="Abrir menú" (click)="toggleMenu.emit()">
+  <button type="button" class="navbar__menu" [class.navbar__menu--visible]="menuOculto()" aria-label="Mostrar menú" title="Mostrar menú" (click)="toggleMenu.emit()">
     <app-icon name="menu" [size]="22" />
   </button>
 

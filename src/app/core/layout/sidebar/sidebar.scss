@@ -7,23 +7,25 @@
   border-right: 1px solid var(--rps-border); overflow-y: auto;
 }
 
+.sidebar__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-right: 2px; }
 .sidebar__logo {
   padding: 0 8px; color: var(--rps-text); text-decoration: none;
   font-size: 22px; font-weight: 700; letter-spacing: -.02em;
 }
+.sidebar__ocultar {
+  width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--rps-muted);
+  display: grid; place-items: center; cursor: pointer;
+  &:hover { background: #f1f2f5; color: var(--rps-text); }
+}
 
-/* Tarjeta con el área de la sesión y el mes en curso */
-.sidebar__area, .sidebar__user {
+/* Tarjeta con el usuario de la sesión, su área y el mes que está viendo */
+.sidebar__area {
   display: flex; align-items: center; gap: 10px; padding: 10px 12px;
   border: 1px solid var(--rps-border); border-radius: 12px; background: var(--rps-subtle);
 }
-.sidebar__area-marca {
-  width: 32px; height: 32px; flex: none; border-radius: 8px; display: grid; place-items: center;
-  background: var(--rps-navy); color: #fff; font-size: 11px; font-weight: 700;
-}
 .sidebar__area-txt { display: flex; flex-direction: column; min-width: 0;
   strong { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  small { font-size: 12px; color: var(--rps-muted); } }
+  small { font-size: 12px; color: var(--rps-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
 
 .sidebar__menu { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 
