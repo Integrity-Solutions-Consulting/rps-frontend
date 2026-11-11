@@ -55,30 +55,43 @@
   </div>
 </section>
 
-<!-- ── 2. Honorarios por proyecto (solo lectura) ───────────────────── -->
+<!-- ── 2. Honorario (solo lectura): por contrato O por proyecto, según cómo se pague -->
 <section class="card bloque">
   <header class="bloque__head">
-    <h2>Honorarios por proyecto</h2>
-    <span class="origen"><app-icon name="info" [size]="15" /> Proyectos de TMR · importes de RPS</span>
-    <p>
-      Cada proyecto tiene su honorario mensual fijo y su modalidad. Un proyecto puede ser neto y otro más IVA en el mismo mes.
-      Se registran y se corrigen desde <a routerLink="/contratos" [queryParams]="{ colaborador: colaborador().tmrColaboradorId }">Contratos</a>.
-    </p>
+    <h2>{{ honorariosContrato().length > 0 ? 'Honorario mensual' : 'Honorarios por proyecto' }}</h2>
+    <span class="origen"><app-icon name="info" [size]="15" /> Se registran y se corrigen desde <a routerLink="/contratos" [queryParams]="{ colaborador: colaborador().tmrColaboradorId }">Contratos</a></span>
+    @if (honorariosContrato().length > 0) {
+      <p>Se paga por contrato: un solo monto fijo, sin importar cuántos proyectos tenga.</p>
+    } @else {
+      <p>Se paga por proyecto: cada proyecto tiene su honorario mensual fijo y su modalidad, y se paga mientras la persona esté en él.</p>
+    }
   </header>
 
-  @for (hc of honorariosContrato(); track hc.contratoId) {
-    @if (hc.programado ?? hc.vigente; as v) {
-      <div class="aviso aviso--info">
-        <app-icon name="info" [size]="18" />
-        <div>
-          <strong>Pago por contrato:</strong> {{ v.importe | currency: 'USD' : 'symbol' : '1.2-2' }} {{ etiquetaModalidad[v.modalidad] }} al mes
-          desde {{ nombrePeriodo(periodoDeFecha(v.vigenteDesdeMes)) }}. Es un monto fijo para todo el contrato: no depende de sus proyectos.
-        </div>
-      </div>
-    }
-  }
-
-  @if (cargandoHonorarios()) {
+  @if (honorariosContrato().length > 0) {
+    <div class="table-wrap marco">
+      <table class="tbl">
+        <thead><tr><th class="r">Monto mensual</th><th>Modalidad</th><th>Vigente desde</th><th>Cambio programado</th></tr></thead>
+        <tbody>
+          @for (hc of honorariosContrato(); track hc.contratoId) {
+            <tr>
+              @if (hc.vigente; as v) {
+                <td class="r num"><strong>{{ v.importe | currency: 'USD' : 'symbol' : '1.2-2' }}</strong></td>
+                <td>{{ etiquetaModalidad[v.modalidad] }}</td>
+                <td>{{ nombrePeriodo(periodoDeFecha(v.vigenteDesdeMes)) }}</td>
+              } @else {
+                <td colspan="3"><span class="muted">Empieza a regir con el cambio programado.</span></td>
+              }
+              <td>
+                @if (hc.programado; as p) {
+                  <app-estado-chip tono="info">{{ p.importe | currency: 'USD' : 'symbol' : '1.2-2' }} {{ etiquetaModalidad[p.modalidad] }} desde {{ nombrePeriodo(periodoDeFecha(p.vigenteDesdeMes)) }}</app-estado-chip>
+                } @else { <span class="muted">—</span> }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else if (cargandoHonorarios()) {
     <div class="skeleton" style="height: 110px"></div>
   } @else if (errorHonorarios()) {
     <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ errorHonorarios() }}</div></div>

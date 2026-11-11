@@ -43,11 +43,13 @@
 @if (registrando()) {
   <section class="card panel-form" aria-label="Registrar contrato">
     <header>
-      <h2>{{ modoFormulario() === 'editar' ? 'Editar contrato' : 'Registrar contrato' }}</h2>
+      <h2>{{ modoFormulario() === 'editar' ? 'Editar contrato' : modoFormulario() === 'adenda' ? 'Registrar adenda' : 'Registrar contrato' }}</h2>
       @if (modoFormulario() === 'editar') {
-        <p>Proyectos, fechas, honorario, datos bancarios y la configuración del colaborador. El fin del contrato no se edita aquí (RN 12): usa "Registrar adenda" desde el detalle para extenderlo.</p>
+        <p>Solo para corregir datos (referencia, observaciones, una fecha mal escrita) y, si se paga por contrato, agregar proyectos. Cualquier otro cambio del contrato se hace con "Registrar adenda" desde el detalle.</p>
+      } @else if (modoFormulario() === 'adenda') {
+        <p>Cambia lo que haga falta del contrato: fecha de fin, proyectos, forma de pago o monto. La adenda rige desde hoy hasta la nueva fecha de fin; un cambio de monto rige desde el próximo mes (RN 19).</p>
       } @else {
-        <p>Elige el colaborador y, si aplica, uno o varios proyectos de TMR. Para extender un contrato existente usa “Registrar adenda” en su detalle.</p>
+        <p>Elige el colaborador y, si aplica, uno o varios proyectos de TMR. Para cambiar un contrato existente usa “Registrar adenda” en su detalle.</p>
       }
     </header>
 
@@ -89,13 +91,20 @@
         @if (colaboradorElegidoId()) {
           <div class="field campo-ancho">
             <label>Proyectos que cubre este contrato (opcional)</label>
+            @if (modoFormulario() === 'editar') {
+              <span class="field__hint">
+                {{ modoOriginal() === 'proyecto'
+                  ? 'Se paga por proyecto: para agregar o quitar proyectos registra una adenda.'
+                  : 'Puedes agregar proyectos (no cambia el pago). Para quitar uno, registra una adenda.' }}
+              </span>
+            }
             @if (asignacionesDelColaborador().length === 0) {
               <p class="field__hint">Sin asignaciones disponibles en TMR: este contrato queda sin proyecto (ej. personal de RR. HH.).</p>
             } @else {
               <div class="lista-checks">
                 @for (a of asignacionesDelColaborador(); track a.tmrProyectoId) {
-                  <label class="check" [class.is-disabled]="a.tieneContratoVigente">
-                    <input type="checkbox" [checked]="proyectosElegidos().has(a.tmrProyectoId)" [disabled]="a.tieneContratoVigente"
+                  <label class="check" [class.is-disabled]="proyectoBloqueado(a)">
+                    <input type="checkbox" [checked]="proyectosElegidos().has(a.tmrProyectoId)" [disabled]="proyectoBloqueado(a)"
                            (change)="alternarProyecto(a)" />
                     <span>
                       {{ a.proyecto }}
@@ -112,6 +121,7 @@
           </div>
         }
 
+        @if (modoFormulario() !== 'adenda') {
         <!-- Paso 3: configuración del colaborador (precargada con lo que ya tiene; obligatoria al registrar) -->
         <div class="field">
           <label for="clasificacion">Tipo de servicio</label>
@@ -145,41 +155,79 @@
             <span class="field__hint">Rige desde este mismo mes.</span>
           }
         </div>
+        }
 
         <!-- Paso 4: fechas, referencia, observaciones -->
-        <div class="field">
-          <label for="inicio">Inicio</label>
-          <input id="inicio" name="inicio" type="date" class="input" min="2000-01-01" max="9999-12-31" [class.is-invalid]="erroresContrato()['fechaInicio']"
-                 [ngModel]="inicioForm()" (ngModelChange)="inicioForm.set($event)" />
-          @if (erroresContrato()['fechaInicio']; as e) { <span class="field__error">{{ e }}</span> }
-        </div>
-        <div class="field">
-          <label for="fin">Fin</label>
-          @if (modoFormulario() === 'editar') {
-            <input class="input" [value]="indefinidoForm() ? 'Indefinido' : finForm()" [attr.type]="indefinidoForm() ? 'text' : 'date'" disabled />
-            <span class="field__hint">No se edita aquí (RN 12): usa "Registrar adenda" en el detalle para extenderlo.</span>
-          } @else {
-            <input id="fin" name="fin" type="date" class="input" max="9999-12-31" [class.is-invalid]="erroresContrato()['fechaFin']"
-                   [disabled]="indefinidoForm()" [min]="inicioForm() || '2000-01-01'" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
-            <label class="check check--inline">
-              <input type="checkbox" name="indefinido" [ngModel]="indefinidoForm()" (ngModelChange)="indefinidoForm.set($event)" />
-              <span>Indefinido (sin fecha de fin)</span>
-            </label>
-          }
-          @if (erroresContrato()['fechaFin']; as e) { <span class="field__error">{{ e }}</span> }
-        </div>
-        <div class="field">
-          <label for="referencia">Referencia (opcional)</label>
-          <input id="referencia" name="referencia" class="input" maxlength="100" placeholder="Ej. CT-2026-031"
-                 [ngModel]="referenciaForm()" (ngModelChange)="referenciaForm.set($event)" />
-          <span class="field__hint">El número o código con el que Contabilidad archiva este documento.</span>
-        </div>
-        <div class="field campo-ancho">
-          <label for="observaciones">Observaciones (opcional)</label>
-          <input id="observaciones" name="observaciones" class="input" maxlength="500"
-                 [ngModel]="observacionesForm()" (ngModelChange)="observacionesForm.set($event)" />
-        </div>
+        @if (modoFormulario() === 'adenda') {
+          <div class="field">
+            <label>Desde (fecha de la adenda)</label>
+            <input class="input" type="text" value="Hoy" disabled />
+            <span class="field__hint">La adenda rige desde el día en que se registra.</span>
+          </div>
+          <div class="field">
+            <label for="fin">Hasta (nueva fecha de fin del contrato)</label>
+            @if (indefinidoForm()) {
+              <input class="input" type="text" value="Indefinido" disabled />
+              <span class="field__hint">El contrato es indefinido: no tiene fecha de fin.</span>
+            } @else {
+              <input id="fin" name="fin" type="date" class="input" max="9999-12-31" [class.is-invalid]="erroresContrato()['fechaFin']"
+                     [min]="finForm() || '2000-01-01'" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
+              @if (!erroresContrato()['fechaFin']) { <span class="field__hint">Igual o posterior al fin vigente; déjala igual si no cambia.</span> }
+            }
+            @if (erroresContrato()['fechaFin']; as e) { <span class="field__error">{{ e }}</span> }
+          </div>
+          <div class="field campo-ancho">
+            <label for="obs-adenda-form">Observaciones de la adenda (opcional)</label>
+            <input id="obs-adenda-form" name="obsAdendaForm" class="input" maxlength="500"
+                   [ngModel]="observacionesAdendaForm()" (ngModelChange)="observacionesAdendaForm.set($event)" />
+          </div>
+        } @else {
+          <div class="field">
+            <label for="inicio">Inicio</label>
+            <input id="inicio" name="inicio" type="date" class="input" min="2000-01-01" max="9999-12-31" [class.is-invalid]="erroresContrato()['fechaInicio']"
+                   [ngModel]="inicioForm()" (ngModelChange)="inicioForm.set($event)" />
+            @if (erroresContrato()['fechaInicio']; as e) { <span class="field__error">{{ e }}</span> }
+          </div>
+          <div class="field">
+            <label for="fin">Fin</label>
+            @if (modoFormulario() === 'editar') {
+              <input class="input" [value]="indefinidoForm() ? 'Indefinido' : finForm()" [attr.type]="indefinidoForm() ? 'text' : 'date'" disabled />
+              <span class="field__hint">No se edita aquí (RN 12): para cambiarlo, registra una adenda desde el detalle.</span>
+            } @else {
+              <input id="fin" name="fin" type="date" class="input" max="9999-12-31" [class.is-invalid]="erroresContrato()['fechaFin']"
+                     [disabled]="indefinidoForm()" [min]="inicioForm() || '2000-01-01'" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
+              <label class="check check--inline">
+                <input type="checkbox" name="indefinido" [ngModel]="indefinidoForm()" (ngModelChange)="indefinidoForm.set($event)" />
+                <span>Indefinido (sin fecha de fin)</span>
+              </label>
+            }
+            @if (erroresContrato()['fechaFin']; as e) { <span class="field__error">{{ e }}</span> }
+          </div>
+          <div class="field">
+            <label for="referencia">Referencia (opcional)</label>
+            <input id="referencia" name="referencia" class="input" maxlength="100" placeholder="Ej. CT-2026-031"
+                   [ngModel]="referenciaForm()" (ngModelChange)="referenciaForm.set($event)" />
+            <span class="field__hint">El número o código con el que Contabilidad archiva este documento.</span>
+          </div>
+          <div class="field campo-ancho">
+            <label for="observaciones">Observaciones (opcional)</label>
+            <input id="observaciones" name="observaciones" class="input" maxlength="500"
+                   [ngModel]="observacionesForm()" (ngModelChange)="observacionesForm.set($event)" />
+          </div>
+        }
 
+        @if (modoFormulario() === 'editar' && modoOriginal()) {
+          <div class="field campo-ancho">
+            <label>Pago del contrato</label>
+            @if (modoOriginal() === 'contrato') {
+              <p class="valor-fijo">Por contrato: {{ honorarioContratoOriginal()?.importe | currency: 'USD' : 'symbol' : '1.2-2' }}
+                {{ honorarioContratoOriginal()?.modalidad === 'Neto' ? 'neto' : 'más IVA' }} al mes.</p>
+            } @else {
+              <p class="valor-fijo">Por proyecto (un monto por cada proyecto).</p>
+            }
+            <span class="field__hint">El monto o la forma de pago se cambian con una adenda.</span>
+          </div>
+        } @else {
         <!-- Paso 4: cómo se paga el contrato y cuánto -->
         <div class="field campo-ancho">
           <label>¿Cómo se paga este contrato?</label>
@@ -193,7 +241,7 @@
               Por proyecto
             </label>
           </div>
-          @if (modoFormulario() === 'editar') {
+          @if (modoFormulario() === 'adenda') {
             <span class="field__hint">Si cambias el monto o la forma de pago, rige desde el próximo mes y lo actual se mantiene para los meses anteriores (RN 19).</span>
           }
 
@@ -253,7 +301,9 @@
             <span class="field__hint">Cada proyecto se paga desde que la persona entra hasta el día que sale de él (y dentro de las fechas del contrato). Si sale de un proyecto, ese monto deja de pagarse; el dashboard avisa antes.</span>
           }
         </div>
+        }
 
+        @if (modoFormulario() !== 'adenda') {
         <!-- Paso 5: datos bancarios -->
         <div class="field campo-ancho">
           <label>Datos bancarios</label>
@@ -285,6 +335,7 @@
             <span class="field__hint">Registrada: {{ c }}. Déjalo vacío para mantenerla.</span>
           }
         </div>
+        }
 
         @if (errorContrato(); as e) {
           <div class="aviso aviso--danger campo-ancho"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
@@ -292,7 +343,7 @@
         <div class="form-actions campo-ancho">
           <button type="button" class="btn" (click)="registrando.set(false)" [disabled]="guardandoContrato()">Cancelar</button>
           <button type="submit" class="btn btn--primary" [disabled]="guardandoContrato()">
-            {{ guardandoContrato() ? 'Guardando…' : (modoFormulario() === 'editar' ? 'Guardar cambios' : 'Registrar contrato') }}
+            {{ guardandoContrato() ? 'Guardando…' : (modoFormulario() === 'editar' ? 'Guardar cambios' : modoFormulario() === 'adenda' ? 'Guardar adenda' : 'Registrar contrato') }}
           </button>
         </div>
       </form>
@@ -442,23 +493,23 @@
 
       <div class="adendas__head">
         <h3>Adendas</h3>
-        @if (!d.fechaFinOriginal) {
-          <span class="muted small">Contrato indefinido: no admite adendas.</span>
-        } @else if (!agregandoAdenda()) {
-          <button type="button" class="btn btn--sm btn--primary" (click)="abrirAdenda()">Registrar adenda</button>
+        @if (!agregandoAdenda()) {
+          <button type="button" class="btn btn--sm btn--primary" (click)="abrirEdicion(d, 'adenda')">Registrar adenda</button>
         }
       </div>
 
       @if (agregandoAdenda()) {
         <form class="adenda-form" (submit)="$event.preventDefault(); guardarAdenda()">
           <div class="form-grid">
+            @if (d.fechaFinOriginal) {
             <div class="field">
-              <label for="nueva-fin">{{ editandoAdendaId() ? 'Nueva fecha de fin (corrección)' : 'Nueva fecha de fin' }}</label>
+              <label for="nueva-fin">Fecha hasta (corrección)</label>
               <input id="nueva-fin" name="nuevaFin" type="date" class="input" min="2000-01-01" max="9999-12-31" [class.is-invalid]="errorAdendaCampo()"
                      [ngModel]="nuevaFinForm()" (ngModelChange)="nuevaFinForm.set($event)" />
               @if (errorAdendaCampo(); as e) { <span class="field__error">{{ e }}</span> }
               @else { <span class="field__hint">Fin vigente actual: {{ d.fechaFinVigente | date: 'dd MMM yyyy' }}.</span> }
             </div>
+            }
           </div>
           <div class="field">
             <label for="obs-adenda">Observaciones (opcional)</label>
@@ -469,7 +520,7 @@
           <div class="form-actions">
             <button type="button" class="btn btn--sm" (click)="cancelarAdenda()" [disabled]="guardandoAdenda()">Cancelar</button>
             <button type="submit" class="btn btn--sm btn--primary" [disabled]="guardandoAdenda()">
-              {{ guardandoAdenda() ? 'Guardando…' : (editandoAdendaId() ? 'Guardar corrección' : 'Guardar adenda') }}
+              {{ guardandoAdenda() ? 'Guardando…' : 'Guardar corrección' }}
             </button>
           </div>
         </form>
@@ -480,16 +531,17 @@
       } @else {
         <div class="table-wrap adendas">
           <table class="tbl">
-            <thead><tr><th>#</th><th>Nuevo fin</th><th>Observaciones</th><th>Registrada</th><th><span class="sr-only">Editar</span></th></tr></thead>
+            <thead><tr><th>#</th><th>Desde</th><th>Hasta</th><th>Cambios</th><th>Observaciones</th><th><span class="sr-only">Corregir</span></th></tr></thead>
             <tbody>
               @for (a of d.adendas; track a.id) {
                 <tr>
                   <td class="num">{{ a.numero }}</td>
-                  <td class="num">{{ a.nuevaFechaFin | date: 'dd MMM yyyy' }}</td>
+                  <td class="num">{{ a.fechaRegistro | date: 'dd MMM yyyy' : 'UTC' }}</td>
+                  <td class="num">{{ a.nuevaFechaFin ? (a.nuevaFechaFin | date: 'dd MMM yyyy' : 'UTC') : 'Indefinido' }}</td>
+                  <td>{{ a.cambios ?? '—' }}</td>
                   <td>{{ a.observaciones ?? '—' }}</td>
-                  <td class="num muted">{{ a.fechaRegistro | date: 'dd MMM yyyy' }}</td>
                   <td class="r">
-                    <button type="button" class="btn btn--sm btn--ghost" (click)="abrirEditarAdenda(a)">Editar</button>
+                    <button type="button" class="btn btn--sm btn--ghost" (click)="abrirEditarAdenda(a)">Corregir</button>
                   </td>
                 </tr>
               }

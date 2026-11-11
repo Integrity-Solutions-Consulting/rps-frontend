@@ -12,10 +12,13 @@ export type EstadoContrato = 'Vigente' | 'ProximoAVencer' | 'Vencido' | 'NoVigen
 export interface Adenda {
   id: string;
   numero: number;
-  /** Nueva fecha de fin que establece la adenda. */
-  nuevaFechaFin: string;
+  /** Fin del contrato desde esta adenda (null en contratos indefinidos). */
+  nuevaFechaFin: string | null;
   observaciones: string | null;
+  /** Desde cuándo rige la adenda: el día en que se registró. */
   fechaRegistro: string;
+  /** Resumen de lo que cambió (proyectos, forma de pago, monto, fecha de fin). */
+  cambios: string | null;
 }
 
 /** Un proyecto cubierto por el contrato, con su propio estado de vencimiento (RN 13-16: el
@@ -105,7 +108,7 @@ export interface RegistrarContratoRequest extends ConfiguracionColaboradorForm {
   fechaInicio: string;
   /** Ignorada por el backend si indefinido es true. */
   fechaFin: string;
-  /** true: contrato sin fecha de fin (nunca vence, sin adendas). */
+  /** true: contrato sin fecha de fin (nunca vence; sus adendas no llevan fecha de fin). */
   indefinido: boolean;
   referencia: string | null;
   observaciones: string | null;
@@ -121,8 +124,18 @@ export interface EditarContratoRequest extends ConfiguracionColaboradorForm {
 }
 
 export interface RegistrarAdendaRequest {
-  nuevaFechaFin: string;
+  /** Vacío/null en contratos indefinidos. */
+  nuevaFechaFin: string | null;
   observaciones: string | null;
+}
+
+/** Adenda con cualquier cambio del contrato: rige desde hoy hasta la nueva fecha de fin. */
+export interface RegistrarAdendaCompletaRequest extends RegistrarAdendaRequest {
+  /** null: los proyectos no cambian. Con valor: la lista completa nueva. */
+  tmrProyectoIds: string[] | null;
+  cambios: string;
+  /** Honorarios nuevos o cambiados (rigen desde el mes que trae cada uno). */
+  honorarios: HonorarioDeRegistro[];
 }
 
 export const ETIQUETA_ESTADO_CONTRATO: Record<EstadoContrato, string> = {

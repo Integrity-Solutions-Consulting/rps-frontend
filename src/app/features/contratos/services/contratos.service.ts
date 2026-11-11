@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, concat, forkJoin, map, of, shareReplay, switchMap, tap, toArray } from 'rxjs';
 import {
   Adenda, AsignacionDisponible, ConfiguracionColaboradorForm, ContratoDetalle, ContratoResumen, EditarContratoRequest,
-  EstadoContrato, ProyectoDeContrato, RegistrarAdendaRequest, RegistrarContratoRequest, ResumenContratos,
+  EstadoContrato, ProyectoDeContrato, RegistrarAdendaCompletaRequest, RegistrarAdendaRequest, RegistrarContratoRequest, ResumenContratos,
 } from '../models/contrato.models';
 import { BackendRps, diaUno } from '../../../core/backend/backend-rps.service';
 import { BeAdenda, BeAsignacion, BeColaborador, BeContrato, BeProyecto, BeProyectoDeContrato } from '../../../core/backend/backend-rps.models';
@@ -153,11 +153,21 @@ export class ContratosService {
     return this.be.idRps(tmrColaboradorId).pipe(switchMap((id) => this.colaboradoresApi.obtener(id)));
   }
 
-  /** POST .../contratos/{id}/adendas. El backend exige que la nueva fecha sea posterior al fin vigente. */
-  registrarAdenda(id: string, request: RegistrarAdendaRequest): Observable<ContratoDetalle> {
+  /**
+   * POST .../contratos/{id}/adendas con cualquier cambio del contrato (fin, proyectos, resumen) y,
+   * en orden, los honorarios nuevos o cambiados (POST .../condiciones-economicas). La adenda rige
+   * desde hoy; el backend exige que la nueva fecha de fin no sea anterior a la vigente.
+   */
+  registrarAdenda(id: string, request: RegistrarAdendaCompletaRequest): Observable<ContratoDetalle> {
     return this.colaboradorDe(id).pipe(
-      switchMap((colaboradorId) => this.http.post<BeAdenda>(`${this.be.api}/colaboradores/${colaboradorId}/contratos/${id}/adendas`,
-        { nuevaFechaFin: request.nuevaFechaFin || null, observaciones: request.observaciones })),
+      switchMap((colaboradorId) => this.http.post<BeAdenda>(`${this.be.api}/colaboradores/${colaboradorId}/contratos/${id}/adendas`, {
+        nuevaFechaFin: request.nuevaFechaFin || null, observaciones: request.observaciones,
+        proyectoIds: request.tmrProyectoIds, cambios: request.cambios,
+      }).pipe(
+        switchMap(() => this.ejecutarEnOrden(this.pasosConfiguracion(colaboradorId, id, primerDia(periodoActual()), {
+          honorarios: request.honorarios, cuentaBancaria: null, clasificacion: null, frecuencia: null,
+        }))),
+      )),
       tap(() => (this.cache = null)),
       switchMap(() => this.obtener(id)),
     );
@@ -299,7 +309,10 @@ export class ContratosService {
     // Numeradas en el orden en que se registraron.
     const adendas: Adenda[] = [...d.adendas]
       .sort((x, y) => x.fechaRegistro.localeCompare(y.fechaRegistro))
-      .map((a, i) => ({ id: a.id, numero: i + 1, nuevaFechaFin: a.nuevaFechaFin, observaciones: a.observaciones, fechaRegistro: a.fechaRegistro }));
+      .map((a, i) => ({
+        id: a.id, numero: i + 1, nuevaFechaFin: a.nuevaFechaFin, observaciones: a.observaciones, fechaRegistro: a.fechaRegistro,
+        cambios: a.cambios,
+      }));
     return { ...r, observaciones: d.contrato.observaciones, adendas };
   }
 }

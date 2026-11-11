@@ -62,13 +62,18 @@ export class HonorariosService {
     );
   }
 
-  /** Honorarios de los contratos que se pagan POR CONTRATO (un solo importe, sin proyecto). */
+  /** Contratos que HOY se pagan POR CONTRATO (un solo importe, sin proyecto). Misma regla que el
+   * backend: si después del último honorario por contrato se registraron honorarios por proyecto
+   * en ese contrato, ya se paga por proyecto y no aparece aquí. */
   porContrato(tmrColaboradorId: string): Observable<HonorarioContrato[]> {
     return this.be.idRps(tmrColaboradorId).pipe(
       switchMap((id) => this.http.get<BeCondicion[]>(`${this.be.api}/colaboradores/${id}/condiciones-economicas`)),
       map((condiciones) => {
         const mes = `${periodoActual()}-01`;
-        const contratoIds = [...new Set(condiciones.filter((c) => !c.proyectoId).map((c) => c.contratoId))];
+        const contratoIds = [...new Set(condiciones.filter((c) => !c.proyectoId).map((c) => c.contratoId))].filter((contratoId) => {
+          const ultimoPorContrato = condiciones.find((c) => !c.proyectoId && c.contratoId === contratoId)!;
+          return !condiciones.some((c) => c.proyectoId && c.contratoId === contratoId && c.mesInicioVigencia > ultimoPorContrato.mesInicioVigencia);
+        });
         return contratoIds.map((contratoId): HonorarioContrato => {
           // El backend ya los devuelve del más reciente al más antiguo.
           const delContrato = condiciones.filter((c) => !c.proyectoId && c.contratoId === contratoId).map((c) => this.aVigencia(c));
