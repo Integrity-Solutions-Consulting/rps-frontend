@@ -80,6 +80,9 @@ export interface HonorarioDeRegistro {
   tmrProyectoId: string;
   importeMensual: number | null;
   modalidad: 'Neto' | 'MasIva';
+  /** "yyyy-MM-01". Sin valor: el mes de inicio del contrato (configuración inicial). Con valor: es
+   * un cambio de honorario (RN 19, desde el mes siguiente) y reemplaza el que ya empiece ese mes. */
+  mesInicioVigencia?: string;
 }
 
 /** Lo que el formulario del contrato también deja configurar del colaborador (RN 05, RN 36):

@@ -3,7 +3,7 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { BehaviorSubject, Observable, catchError, combineLatest, forkJoin, map, of, startWith, switchMap } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, catchError, combineLatest, forkJoin, map, of, startWith, switchMap } from 'rxjs';
 
 import { ContratosService } from '../../services/contratos.service';
 import {
@@ -14,13 +14,13 @@ import { Modalidad } from '../../../honorarios/models/honorario.models';
 import { HonorariosService } from '../../../honorarios/services/honorarios.service';
 import { ColaboradoresService } from '../../../colaboradores/services/colaboradores.service';
 import {
-  Clasificacion, ETIQUETA_CLASIFICACION, ETIQUETA_FRECUENCIA, Frecuencia,
+  Clasificacion, ColaboradorDetalle, ETIQUETA_CLASIFICACION, ETIQUETA_FRECUENCIA, Frecuencia,
 } from '../../../colaboradores/models/colaborador.models';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
-import { periodoActual, primerDia } from '../../../../shared/utils/periodo';
+import { periodoActual, periodoSiguiente, primerDia } from '../../../../shared/utils/periodo';
 
 type FrecuenciaElegida = { frecuencia: Frecuencia; vigenteDesdeMes: string };
 
@@ -217,6 +217,12 @@ export class Contratos {
   protected readonly bancoForm = signal('');
   protected readonly tipoCuentaForm = signal('');
   protected readonly numeroCuentaForm = signal('');
+  /** Número de la cuenta activa, enmascarado (el backend nunca devuelve el número completo). */
+  protected readonly cuentaEnmascarada = signal<string | null>(null);
+  /** Banco/tipo tal como se precargaron: si no cambian y no se escribe número, no se reenvía la cuenta. */
+  private readonly cuentaOriginal = signal<{ banco: string; tipoCuenta: string } | null>(null);
+  /** Honorarios tal como se precargaron al editar: solo se reenvían los que cambien. */
+  private readonly honorariosOriginales = signal<Record<string, { importe: string; modalidad: Modalidad }>>({});
 
   protected readonly guardandoContrato = signal(false);
   protected readonly erroresContrato = signal<Record<string, string>>({});
@@ -243,6 +249,11 @@ export class Contratos {
     this.bancoForm.set('');
     this.tipoCuentaForm.set('');
     this.numeroCuentaForm.set('');
+    this.cuentaEnmascarada.set(null);
+    this.cuentaOriginal.set(null);
+    this.honorariosOriginales.set({});
+    this.cargaConfiguracion?.unsubscribe();
+    this.cargandoConfiguracion.set(false);
     this.erroresContrato.set({});
     this.errorContrato.set(null);
   }
@@ -294,16 +305,34 @@ export class Contratos {
           honorariosForm[p.tmrProyectoId] = { importe: vigente ? String(vigente.importe) : '', modalidad: vigente?.modalidad ?? 'Neto' };
         }
         this.honorariosForm.set(honorariosForm);
-        this.bancoForm.set(colaborador.cuentaBancaria?.banco ?? '');
-        this.tipoCuentaForm.set(colaborador.cuentaBancaria?.tipoCuenta ?? '');
-        this.clasificacionActual.set(colaborador.clasificacion);
-        this.frecuenciaActual.set(colaborador.frecuenciaVigente
-          ? { frecuencia: colaborador.frecuenciaVigente.frecuencia, vigenteDesdeMes: colaborador.frecuenciaVigente.vigenteDesdeMes }
-          : null);
+        this.honorariosOriginales.set(structuredClone(honorariosForm));
+        // Si todos los proyectos tienen el mismo honorario, se muestra como honorario grupal.
+        const valores = Object.values(honorariosForm);
+        if (valores.length > 1 && valores.every((v) => v.importe && v.importe === valores[0].importe && v.modalidad === valores[0].modalidad)) {
+          this.honorarioGrupal.set(true);
+          this.honorarioGrupalForm.set({ ...valores[0] });
+        }
+        this.precargarConfiguracion(colaborador);
         this.cargandoFormulario.set(false);
       },
       error: (e: unknown) => { this.cargandoFormulario.set(false); this.errorContrato.set(leerErrorApi(e).mensaje); },
     });
+  }
+
+  /** Lo que el colaborador ya tiene configurado (tipo de servicio, frecuencia, cuenta), para no
+   * tener que volver a escribirlo ni borrarlo sin querer, tanto al registrar como al editar. */
+  private precargarConfiguracion(colaborador: ColaboradorDetalle | null): void {
+    const cuenta = colaborador?.cuentaBancaria ?? null;
+    this.bancoForm.set(cuenta?.banco ?? '');
+    this.tipoCuentaForm.set(cuenta?.tipoCuenta ?? '');
+    this.numeroCuentaForm.set('');
+    this.cuentaEnmascarada.set(cuenta?.numeroCuentaEnmascarado ?? null);
+    this.cuentaOriginal.set(cuenta ? { banco: cuenta.banco ?? '', tipoCuenta: cuenta.tipoCuenta ?? '' } : null);
+    this.clasificacionActual.set(colaborador?.clasificacion ?? null);
+    this.clasificacionForm.set(colaborador?.clasificacion ?? '');
+    const vigente = colaborador?.frecuenciaVigente ?? null;
+    this.frecuenciaActual.set(vigente ? { frecuencia: vigente.frecuencia, vigenteDesdeMes: vigente.vigenteDesdeMes } : null);
+    this.frecuenciaForm.set(vigente?.frecuencia ?? '');
   }
 
   /** El cuadro es a la vez buscador y selector: escribir filtra, y limpia la elección anterior. */
@@ -332,7 +361,23 @@ export class Contratos {
     this.honorariosForm.set({});
     this.honorarioGrupal.set(false);
     this.honorarioGrupalForm.set({ importe: '', modalidad: 'Neto' });
+
+    // Al registrar: trae lo que la persona ya tiene configurado (de otro contrato, por ejemplo).
+    this.cargaConfiguracion?.unsubscribe();
+    this.precargarConfiguracion(null);
+    if (!tmrColaboradorId || this.modoFormulario() !== 'crear') {
+      this.cargandoConfiguracion.set(false);
+      return;
+    }
+    this.cargandoConfiguracion.set(true);
+    this.cargaConfiguracion = this.api.configuracionActual(tmrColaboradorId).subscribe({
+      next: (colaborador) => { this.precargarConfiguracion(colaborador); this.cargandoConfiguracion.set(false); },
+      error: (e: unknown) => { this.cargandoConfiguracion.set(false); this.errorContrato.set(leerErrorApi(e).mensaje); },
+    });
   }
+
+  private cargaConfiguracion?: Subscription;
+  protected readonly cargandoConfiguracion = signal(false);
 
   protected alternarProyecto(a: AsignacionDisponible): void {
     const actual = new Set(this.proyectosElegidos());
@@ -414,13 +459,60 @@ export class Contratos {
       }
     }
 
+    // Al editar, el formulario viene precargado: solo se reenvía lo que de verdad cambió (reenviar
+    // lo mismo choca con los duplicados del backend). Un proyecto que aún no tenía honorario es
+    // configuración inicial (rige desde el inicio del contrato); uno que cambia, rige desde el mes
+    // siguiente (RN 19) o desde el inicio del contrato si este empieza más adelante.
+    if (esEdicion) {
+      const originales = this.honorariosOriginales();
+      const mesSiguiente = primerDia(periodoSiguiente());
+      const mesInicioContrato = primerDia(this.inicioForm().slice(0, 7));
+      const mesDelCambio = mesInicioContrato > mesSiguiente ? mesInicioContrato : mesSiguiente;
+      honorarios = honorarios
+        .filter((h) => {
+          const o = originales[h.tmrProyectoId];
+          return !o || !o.importe || Number(o.importe) !== h.importeMensual || o.modalidad !== h.modalidad;
+        })
+        .map((h) => (originales[h.tmrProyectoId]?.importe ? { ...h, mesInicioVigencia: mesDelCambio } : h));
+    }
+
+    // Al registrar, tipo de servicio, frecuencia y cuenta son obligatorios (salvo que la persona ya
+    // los tenga y vengan precargados): sin ellos el colaborador queda Pendiente y fuera del cálculo.
+    if (!esEdicion) {
+      if (this.cargandoConfiguracion()) { this.errorContrato.set('Espera a que cargue la configuración del colaborador.'); return; }
+      const faltan: Record<string, string> = {};
+      if (!this.clasificacionForm()) faltan['clasificacion'] = 'Es obligatorio.';
+      if (!this.frecuenciaForm()) faltan['frecuencia'] = 'Es obligatoria.';
+      if (!this.numeroCuentaForm().trim() && !this.cuentaEnmascarada()) faltan['numeroCuenta'] = 'Es obligatorio.';
+      if (Object.keys(faltan).length) {
+        this.erroresContrato.set(faltan);
+        this.errorContrato.set('Completa tipo de servicio, frecuencia de pago y número de cuenta: sin ellos el colaborador queda Pendiente.');
+        return;
+      }
+    }
+
     const numero = this.numeroCuentaForm().trim();
+    const banco = this.bancoForm().trim();
+    const cuentaOriginal = this.cuentaOriginal();
+    const cambioBancoOTipo = !!cuentaOriginal && (banco !== cuentaOriginal.banco || this.tipoCuentaForm() !== cuentaOriginal.tipoCuenta);
+    if (!numero && cambioBancoOTipo) {
+      // El backend reemplaza la cuenta completa y no devuelve el número (solo enmascarado).
+      this.errorContrato.set('Para cambiar el banco o el tipo de cuenta, vuelve a escribir el número de cuenta.');
+      return;
+    }
     const cuentaBancaria = numero
-      ? { banco: this.bancoForm().trim() || null, tipoCuenta: this.tipoCuentaForm() || null, numeroCuenta: numero }
+      ? { banco: banco || null, tipoCuenta: this.tipoCuentaForm() || null, numeroCuenta: numero }
       : null;
-    const clasificacion = this.clasificacionForm() || null;
-    const frecuencia: FrecuenciaElegida | null = this.frecuenciaForm()
-      ? { frecuencia: this.frecuenciaForm() as Frecuencia, vigenteDesdeMes: primerDia(periodoActual()) }
+    const clasificacionElegida = this.clasificacionForm() || null;
+    const clasificacion = clasificacionElegida !== this.clasificacionActual() ? clasificacionElegida : null;
+    const frecuenciaElegida = this.frecuenciaForm() || null;
+    // Sin frecuencia vigente es la configuración inicial: rige desde este mes. Si ya tiene una, el
+    // cambio rige desde el mes siguiente (RN 20).
+    const frecuencia: FrecuenciaElegida | null = frecuenciaElegida && frecuenciaElegida !== this.frecuenciaActual()?.frecuencia
+      ? {
+          frecuencia: frecuenciaElegida as Frecuencia,
+          vigenteDesdeMes: primerDia(this.frecuenciaActual() ? periodoSiguiente() : periodoActual()),
+        }
       : null;
 
     this.guardandoContrato.set(true);

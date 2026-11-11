@@ -112,31 +112,36 @@
           </div>
         }
 
-        <!-- Paso 3: configuración del colaborador (opcional; vacío = no cambiar) -->
+        <!-- Paso 3: configuración del colaborador (precargada con lo que ya tiene; obligatoria al registrar) -->
         <div class="field">
           <label for="clasificacion">Tipo de servicio</label>
-          <select id="clasificacion" name="clasificacion" class="select"
+          <select id="clasificacion" name="clasificacion" class="select" [class.is-invalid]="erroresContrato()['clasificacion']"
+                  [disabled]="cargandoConfiguracion()"
                   [ngModel]="clasificacionForm()" (ngModelChange)="clasificacionForm.set($event)">
-            <option value="">No cambiar</option>
+            <option value="">Sin definir</option>
             <option value="Profesional">Servicios profesionales</option>
             <option value="Junior">Servicios junior</option>
           </select>
-          @if (modoFormulario() === 'editar') {
-            <span class="field__hint">Actualmente: {{ clasificacionActual() ? etiquetaClasificacion[clasificacionActual()!] : 'sin definir' }}.</span>
-          }
+          @if (erroresContrato()['clasificacion']; as e) { <span class="field__error">{{ e }}</span> }
+          @else { <span class="field__hint">Obligatorio para que el colaborador quede Configurado.</span> }
         </div>
         <div class="field">
           <label for="frecuencia">Frecuencia de pago</label>
-          <select id="frecuencia" name="frecuencia" class="select"
+          <select id="frecuencia" name="frecuencia" class="select" [class.is-invalid]="erroresContrato()['frecuencia']"
+                  [disabled]="cargandoConfiguracion()"
                   [ngModel]="frecuenciaForm()" (ngModelChange)="frecuenciaForm.set($event)">
-            <option value="">No cambiar</option>
+            <option value="">Sin definir</option>
             <option value="DosPagos">Quincena y fin de mes</option>
             <option value="FinDeMes">Solo fin de mes</option>
           </select>
-          @if (modoFormulario() === 'editar') {
-            <span class="field__hint">Actualmente: {{ frecuenciaActual() ? etiquetaFrecuencia[frecuenciaActual()!.frecuencia] : 'sin definir' }}.</span>
+          @if (erroresContrato()['frecuencia']; as e) {
+            <span class="field__error">{{ e }}</span>
+          } @else if (frecuenciaActual() && frecuenciaForm() === frecuenciaActual()!.frecuencia) {
+            <span class="field__hint">Vigente desde {{ frecuenciaActual()!.vigenteDesdeMes | date: 'MM/yyyy' : 'UTC' }}.</span>
+          } @else if (frecuenciaActual()) {
+            <span class="field__hint">El cambio rige desde el próximo mes; este mes se mantiene la actual.</span>
           } @else {
-            <span class="field__hint">Se registra desde este mismo mes.</span>
+            <span class="field__hint">Rige desde este mismo mes.</span>
           }
         </div>
 
@@ -178,6 +183,9 @@
         @if (proyectosElegidos().size > 0) {
           <div class="field campo-ancho">
             <label>Honorario mensual (obligatorio para cada proyecto elegido)</label>
+            @if (modoFormulario() === 'editar') {
+              <span class="field__hint">Si cambias un honorario, el nuevo rige desde el próximo mes y el actual se mantiene para los meses anteriores (RN 19).</span>
+            }
 
             @if (proyectosElegidos().size > 1) {
               <div class="selector" role="radiogroup" aria-label="Cómo se registra el honorario">
@@ -249,7 +257,7 @@
 
         <!-- Paso 5: datos bancarios -->
         <div class="field campo-ancho">
-          <label>Datos bancarios (opcional; se puede completar después)</label>
+          <label>Datos bancarios</label>
         </div>
         <div class="field">
           <label for="banco">Banco</label>
@@ -265,8 +273,15 @@
         </div>
         <div class="field">
           <label for="numero-cuenta">Número de cuenta</label>
-          <input id="numero-cuenta" name="numeroCuenta" class="input num" maxlength="30" placeholder="Solo dígitos"
+          <input id="numero-cuenta" name="numeroCuenta" class="input num" maxlength="30"
+                 [class.is-invalid]="erroresContrato()['numeroCuenta']" [disabled]="cargandoConfiguracion()"
+                 [placeholder]="cuentaEnmascarada() ?? 'Solo dígitos'"
                  [ngModel]="numeroCuentaForm()" (ngModelChange)="numeroCuentaForm.set($event)" />
+          @if (erroresContrato()['numeroCuenta']; as e) {
+            <span class="field__error">{{ e }}</span>
+          } @else if (cuentaEnmascarada(); as c) {
+            <span class="field__hint">Registrada: {{ c }}. Déjalo vacío para mantenerla.</span>
+          }
         </div>
 
         @if (errorContrato(); as e) {
