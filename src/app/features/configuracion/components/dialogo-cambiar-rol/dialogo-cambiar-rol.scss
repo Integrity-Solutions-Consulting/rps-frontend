@@ -15,7 +15,7 @@
   border-radius: 12px; background: var(--rps-surface); color: var(--rps-text); font: inherit; text-align: left; cursor: pointer;
   transition: border-color .15s, background .15s;
   &:hover { border-color: #9fb0c0; }
-  &.is-on { border-color: var(--rps-teal); background: #f4fafa; box-shadow: 0 0 0 1px var(--rps-teal); } }
+  &.is-on { border-color: var(--rps-teal); background: #f7f8fa; box-shadow: 0 0 0 1px var(--rps-teal); } }
 .opcion__radio { width: 18px; height: 18px; flex: none; border-radius: 50%; border: 1.5px solid #b9c5d0; display: grid; place-items: center;
   .is-on & { border: 2px solid var(--rps-teal); }
   .is-on &::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--rps-teal); } }

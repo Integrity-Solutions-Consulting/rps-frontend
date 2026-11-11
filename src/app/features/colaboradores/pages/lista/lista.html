@@ -1,53 +1,108 @@
 <header class="head">
   <div>
     <h1>Colaboradores</h1>
-    <p>Personas de TMR configuradas en RPS para el cálculo de honorarios.</p>
+    @if (carga().estado === 'ok') {
+      <p class="num">{{ conteo().total }} {{ conteo().total === 1 ? 'colaborador' : 'colaboradores' }} · {{ conteo().configurados }} configurados · {{ conteo().pendientes }} pendientes de configuración</p>
+    } @else {
+      <p>Personas de TMR configuradas en RPS para el cálculo de honorarios.</p>
+    }
   </div>
-  <button type="button" class="btn btn--primary" (click)="sincronizar()" [disabled]="sincronizando()">
-    <app-icon name="sync" [size]="18" [class.spin]="sincronizando()" />
-    {{ sincronizando() ? 'Sincronizando…' : 'Sincronizar con TMR' }}
-  </button>
+  <div class="head__acciones">
+    @if (ultimaSincronizacion(); as s) {
+      <span class="sync" [class.sync--alerta]="s.desactualizada" [title]="s.fecha ? (s.fecha | date: 'dd MMM yyyy, HH:mm') : ''"><i aria-hidden="true"></i>{{ s.texto }}</span>
+    }
+    <div class="buscar">
+      <app-icon name="search" [size]="16" />
+      <label for="buscar" class="sr-only">Buscar</label>
+      <input id="buscar" type="search" placeholder="Buscar por nombre, apellido o identificación" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+    </div>
+    <button type="button" class="btn btn--primary" (click)="sincronizar()" [disabled]="sincronizando()">
+      <app-icon name="sync" [size]="16" [class.spin]="sincronizando()" />
+      {{ sincronizando() ? 'Sincronizando…' : 'Sincronizar con TMR' }}
+    </button>
+  </div>
 </header>
 
+@if (carga().estado === 'ok' && conteo().total > 0) {
+  <div class="resumen-fila">
+    <!-- Estado de configuración: solo cuenta lo que devolvió el backend con los filtros actuales -->
+    <section class="card estado" aria-labelledby="estado-titulo">
+      <div>
+        <h2 id="estado-titulo">Estado de configuración</h2>
+        <p>Colaboradores en la lista · listos para el cálculo de honorarios</p>
+      </div>
+      <div class="estado__kpis">
+        <div class="kpi"><span>En la lista</span><strong class="num">{{ conteo().total }}</strong></div>
+        <div class="kpi kpi--ok"><span>Configurados</span><strong class="num">{{ conteo().configurados }}</strong></div>
+        <div class="kpi kpi--warn"><span>Pendientes</span><strong class="num">{{ conteo().pendientes }}</strong></div>
+      </div>
+      <div class="tipos">
+        <div class="tipos__head"><span>Tipo de servicio</span><span class="num">{{ porTipo().porcentajeConfigurado }} % configurado</span></div>
+        <div class="tipos__barra" role="img"
+             [attr.aria-label]="'Profesional ' + porTipo().profesional + ', Junior ' + porTipo().junior + ', sin definir ' + porTipo().sinDefinir">
+          @if (porTipo().profesional) { <span class="t-prof" [style.flex-grow]="porTipo().profesional"></span> }
+          @if (porTipo().junior) { <span class="t-jun" [style.flex-grow]="porTipo().junior"></span> }
+          @if (porTipo().sinDefinir) { <span class="t-sin" [style.flex-grow]="porTipo().sinDefinir"></span> }
+        </div>
+        <div class="tipos__leyenda">
+          <span><i class="t-prof" aria-hidden="true"></i>Profesional <strong class="num">{{ porTipo().profesional }}</strong></span>
+          <span><i class="t-jun" aria-hidden="true"></i>Junior <strong class="num">{{ porTipo().junior }}</strong></span>
+          <span><i class="t-sin" aria-hidden="true"></i>Sin definir <strong class="num">{{ porTipo().sinDefinir }}</strong></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Requieren atención: cada aviso es un dato que ya manda el backend (estado, eliminado o inactivo en TMR) -->
+    <section class="card atencion" aria-labelledby="atencion-titulo">
+      <h2 id="atencion-titulo">Requieren atención</h2>
+      <p>Según los datos de la última sincronización con TMR</p>
+      @if (atencion().length === 0) {
+        <p class="atencion__vacio">Nada pendiente en esta lista.</p>
+      } @else {
+        <ul>
+          @for (a of atencion(); track a.id) {
+            <li>
+              <a [routerLink]="['/colaboradores', a.id]">
+                <span class="atencion__ini" [class]="'atencion__ini atencion__ini--' + a.tono" aria-hidden="true">{{ iniciales(a.nombre) }}</span>
+                <span class="atencion__txt"><strong>{{ a.nombre }}</strong><small>{{ a.motivo }}</small></span>
+              </a>
+            </li>
+          }
+        </ul>
+      }
+      @if (conteo().pendientes > 0 && filtroEstado() !== 'Pendiente') {
+        <button type="button" class="atencion__mas" (click)="filtroEstado.set('Pendiente')">Ver todos los pendientes</button>
+      }
+    </section>
+  </div>
+}
+
 <section class="card panel">
-  <div class="filtros">
-    <div class="field filtros__buscar">
-      <label for="buscar">Buscar</label>
-      <input id="buscar" class="input" type="search" placeholder="Nombre, apellido o identificación" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+  <div class="panel__head">
+    <div>
+      <h2>Listado</h2>
+      <p>6 por página</p>
     </div>
-    <div class="field">
-      <label for="f-estado">Configuración</label>
-      <select id="f-estado" class="select" [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)">
-        <option value="">Todas</option>
-        <option value="Pendiente">Pendiente</option>
-        <option value="Configurado">Configurado</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="f-activo">Mostrar</label>
-      <select id="f-activo" class="select" [ngModel]="filtroActivo()" (ngModelChange)="filtroActivo.set($event)">
-        <option value="activos">Activos</option>
-        <option value="inactivos">Desactivados</option>
-        <option value="todos">Todos</option>
-      </select>
-    </div>
-    <div class="filtros__acciones">
-      <button type="button" class="btn" (click)="limpiarFiltros()">Limpiar</button>
-      <button type="button" class="btn" (click)="actualizar()" aria-label="Actualizar lista">
-        <app-icon name="refresh" [size]="17" />
+    <div class="filtros">
+      <div class="filtro">
+        <label for="f-estado">Configuración</label>
+        <select id="f-estado" class="select" [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)">
+          <option value="">Todas</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="Configurado">Configurado</option>
+        </select>
+      </div>
+      <div class="segmentos" role="group" aria-label="Mostrar">
+        <button type="button" [class.is-on]="filtroActivo() === 'activos'" [attr.aria-pressed]="filtroActivo() === 'activos'" (click)="filtroActivo.set('activos')">Activos</button>
+        <button type="button" [class.is-on]="filtroActivo() === 'inactivos'" [attr.aria-pressed]="filtroActivo() === 'inactivos'" (click)="filtroActivo.set('inactivos')">Desactivados</button>
+        <button type="button" [class.is-on]="filtroActivo() === 'todos'" [attr.aria-pressed]="filtroActivo() === 'todos'" (click)="filtroActivo.set('todos')">Todos</button>
+      </div>
+      <button type="button" class="btn btn--sm" (click)="limpiarFiltros()">Limpiar</button>
+      <button type="button" class="btn btn--sm btn--icono" (click)="actualizar()" aria-label="Actualizar lista">
+        <app-icon name="refresh" [size]="16" />
       </button>
     </div>
   </div>
-
-  @if (carga().estado === 'ok') {
-    <div class="resumen">
-      <span><strong class="num">{{ conteo().total }}</strong> en la lista</span>
-      <span class="sep" aria-hidden="true"></span>
-      <span><strong class="num t-warn">{{ conteo().pendientes }}</strong> pendientes de configuración</span>
-      <span class="sep" aria-hidden="true"></span>
-      <span><strong class="num t-ok">{{ conteo().configurados }}</strong> configurados</span>
-    </div>
-  }
 
   @switch (carga().estado) {
     @case ('cargando') {
@@ -104,8 +159,8 @@
                   <td>
                     <app-estado-chip [tono]="c.activo ? 'info' : 'neutral'">{{ c.activo ? 'Activo' : 'Desactivado' }}</app-estado-chip>
                   </td>
-                  <td class="num muted">{{ c.actualizadoEn | date: 'dd MMM yyyy, HH:mm' }}</td>
-                  <td class="r"><app-icon name="chevronRight" [size]="18" /></td>
+                  <td class="num fecha">{{ c.actualizadoEn | date: 'dd MMM yyyy' }} <small>{{ c.actualizadoEn | date: 'HH:mm' }}</small></td>
+                  <td class="r flecha"><app-icon name="chevronRight" [size]="18" /></td>
                 </tr>
               }
             </tbody>

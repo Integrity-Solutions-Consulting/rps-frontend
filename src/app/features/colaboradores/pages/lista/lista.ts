@@ -85,6 +85,59 @@ export class ColaboradoresLista {
     };
   });
 
+  // ── Tarjetas del encabezado (diseño nov 2026) ──────────────────────
+  // Solo presentan lo que el backend ya devolvió con los filtros actuales; no hay reglas de negocio nuevas.
+
+  /** Tipo de servicio de la lista, para la barra de "Estado de configuración". */
+  protected readonly porTipo = computed(() => {
+    const lista = this.filas();
+    const total = lista.length;
+    const configurados = lista.filter((c) => c.estadoConfiguracion === 'Configurado').length;
+    return {
+      profesional: lista.filter((c) => c.clasificacion === 'Profesional').length,
+      junior: lista.filter((c) => c.clasificacion === 'Junior').length,
+      sinDefinir: lista.filter((c) => !c.clasificacion).length,
+      porcentajeConfigurado: total ? Math.round((configurados / total) * 100) : 0,
+    };
+  });
+
+  /**
+   * "Requieren atención": muestra tal cual los datos que manda el backend
+   * (eliminadoEnOrigen, activoEnTmr, estadoConfiguracion, clasificacion). Máximo 4.
+   */
+  protected readonly atencion = computed(() => {
+    const avisos: { id: string; nombre: string; motivo: string; tono: 'risk' | 'neutral' | 'warn' | 'info' }[] = [];
+    for (const c of this.filas()) {
+      if (c.eliminadoEnOrigen) avisos.push({ id: c.id, nombre: c.nombre, motivo: 'Eliminado en TMR · revisar si se desactiva', tono: 'risk' });
+      else if (c.activoEnTmr === false && c.activo) avisos.push({ id: c.id, nombre: c.nombre, motivo: 'Inactivo en TMR, sigue activo en RPS', tono: 'neutral' });
+      else if (c.estadoConfiguracion === 'Pendiente') avisos.push({ id: c.id, nombre: c.nombre, motivo: 'Pendiente de configuración', tono: 'warn' });
+      else if (!c.clasificacion) avisos.push({ id: c.id, nombre: c.nombre, motivo: 'Sin tipo de servicio definido', tono: 'info' });
+      if (avisos.length === 4) break;
+    }
+    return avisos;
+  });
+
+  /**
+   * Última sincronización con TMR: la da el backend (GET /api/integracion-tmr/estado, igual que Inicio).
+   * Se vuelve a pedir cada vez que se recarga la lista (por ejemplo, después de "Sincronizar con TMR").
+   */
+  private readonly estadoTmr = toSignal(
+    this.recargar$.pipe(switchMap(() => this.tmrApi.estado().pipe(catchError(() => of(null))))),
+    { initialValue: null },
+  );
+  protected readonly ultimaSincronizacion = computed(() => {
+    const e = this.estadoTmr();
+    if (!e) return null;
+    if (!e.ultimaSincronizacion) return { fecha: null, texto: 'Sin sincronizar con TMR', desactualizada: true };
+    const fecha = new Date(e.ultimaSincronizacion);
+    const minutos = Math.max(0, Math.round((Date.now() - fecha.getTime()) / 60000));
+    const hace = minutos < 1 ? 'hace un momento'
+      : minutos < 60 ? `hace ${minutos} min`
+      : minutos < 60 * 24 ? `hace ${Math.round(minutos / 60)} h`
+      : `hace ${Math.round(minutos / (60 * 24))} d`;
+    return { fecha, texto: `TMR sincronizado ${hace}`, desactualizada: e.desactualizada };
+  });
+
   // ── Paginación: 6 por página ──────────────────────────────────────────
   private readonly porPagina = 6;
   protected readonly pagina = signal(1);

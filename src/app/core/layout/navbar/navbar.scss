@@ -10,11 +10,11 @@
 
 
 .navbar__right { margin-left: auto; display: flex; align-items: center; gap: 14px; color: var(--rps-muted); }
-.navbar__area { color: var(--rps-text); font-weight: 500; }
-.navbar__sep { width: 1px; height: 28px; background: var(--rps-border); }
+.navbar__area { color: #4b5160; font-size: 13px; font-weight: 500; }
+.navbar__sep { width: 1px; height: 22px; background: var(--rps-border); }
 .navbar__avatar {
-  width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--rps-navy-700); color: #fff; font-weight: 600; font-size: 13px;
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--rps-navy); color: #fff; font-weight: 600; font-size: 12px;
 }
 
 .usuario { position: relative; }
@@ -22,13 +22,13 @@
   color: var(--rps-muted); cursor: pointer; }
 .usuario__menu { position: absolute; right: 0; top: calc(100% + 8px); min-width: 220px; padding: 6px; z-index: 20;
   background: var(--rps-surface); border: 1px solid var(--rps-border); border-radius: var(--rps-radius);
-  box-shadow: 0 10px 30px rgba(19, 38, 61, .14); display: grid; gap: 2px; }
+  box-shadow: 0 10px 30px rgba(16, 18, 24, .12); display: grid; gap: 2px; }
 .usuario__datos { display: grid; gap: 2px; padding: 8px 10px 10px; border-bottom: 1px solid var(--rps-border); margin-bottom: 4px;
   strong { color: var(--rps-text); font-size: 13.5px; }
   span { font-size: 12.5px; color: var(--rps-muted); overflow-wrap: anywhere; } }
 .usuario__item { text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 6px; font-size: 13.5px;
   color: var(--rps-text); cursor: pointer;
-  &:hover { background: #f6f8fa; } }
+  &:hover { background: var(--rps-subtle); } }
 
 @media (max-width: 960px) {
   .navbar { padding: 0 16px; }

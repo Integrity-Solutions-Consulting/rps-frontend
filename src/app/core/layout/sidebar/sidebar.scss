@@ -1,23 +1,43 @@
 :host { display: block; }
 
+/* Menú lateral claro (diseño nov 2026). */
 .sidebar {
-  height: 100%; display: flex; flex-direction: column; gap: 22px;
-  padding: 22px 12px 20px; background: var(--rps-navy); color: var(--rps-navy-text);
-  overflow-y: auto;
+  height: 100%; display: flex; flex-direction: column; gap: 18px;
+  padding: 20px 14px; background: var(--rps-surface); color: var(--rps-text);
+  border-right: 1px solid var(--rps-border); overflow-y: auto;
 }
 
 .sidebar__logo {
-  padding: 0 12px; color: #fff; text-decoration: none;
-  font-size: 30px; font-weight: 700; letter-spacing: .02em;
+  padding: 0 8px; color: var(--rps-text); text-decoration: none;
+  font-size: 22px; font-weight: 700; letter-spacing: -.02em;
 }
 
-.sidebar__menu { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+/* Tarjeta con el área de la sesión y el mes en curso */
+.sidebar__area, .sidebar__user {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--rps-border); border-radius: 12px; background: var(--rps-subtle);
+}
+.sidebar__area-marca {
+  width: 32px; height: 32px; flex: none; border-radius: 8px; display: grid; place-items: center;
+  background: var(--rps-navy); color: #fff; font-size: 11px; font-weight: 700;
+}
+.sidebar__area-txt { display: flex; flex-direction: column; min-width: 0;
+  strong { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  small { font-size: 12px; color: var(--rps-muted); } }
+
+.sidebar__menu { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 
 .sidebar__item {
-  display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px;
-  border-radius: 8px; color: var(--rps-navy-text); text-decoration: none; font-weight: 500;
-  &:hover { background: var(--rps-navy-700); color: #fff; }
-  &.is-active { background: var(--rps-teal); color: #fff; }
+  display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px;
+  border-radius: 10px; color: #4b5160; text-decoration: none; font-size: 14px; font-weight: 500;
+  &:hover { background: #f1f2f5; color: var(--rps-text); }
+  &.is-active { background: #eef0f3; color: var(--rps-text); font-weight: 600; }
+}
+
+/* Cantidad de colaboradores pendientes de configuración */
+.sidebar__badge {
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; display: grid; place-items: center;
+  background: #f3a54f; color: #3d2105; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
 
 /* El texto nunca empuja el ítem fuera del menú: si no cabe, se corta con "…". */
@@ -25,6 +45,10 @@ nav { min-width: 0; }
 .sidebar__text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sidebar__foot {
-  margin-top: auto; padding: 0 12px; display: grid; gap: 2px; font-size: 12px; color: #9fb3c6;
-  strong { color: #fff; font-size: 16px; }
+  margin-top: auto; padding-top: 12px; border-top: 1px solid #eceef2; display: grid; gap: 12px;
+  p { margin: 0; padding: 0 6px; font-size: 11px; line-height: 1.4; color: var(--rps-muted); }
+}
+.sidebar__avatar {
+  width: 32px; height: 32px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  background: var(--rps-info-50); color: var(--rps-info); font-size: 12px; font-weight: 700;
 }

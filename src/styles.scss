@@ -1,29 +1,39 @@
-/* Tokens visuales de RPS, tomados de los mockups (sidebar navy, acento teal). */
+/* Tokens visuales de RPS (rediseño nov 2026: fondo gris claro, tarjetas blancas, acción principal negra). */
 :root {
-  --rps-navy: #13263d;
-  --rps-navy-700: #1b3352;
-  --rps-navy-text: #c9d6e3;
-  --rps-teal: #0f7c86;
-  --rps-teal-700: #0b6169;
-  --rps-teal-50: #e4f3f4;
+  /* Los nombres "navy" y "teal" se conservan para no tocar cada pantalla; ahora son negro y gris. */
+  --rps-navy: #16181d;
+  --rps-navy-700: #2a2d35;
+  --rps-navy-text: #b9bdc6;
+  --rps-teal: #16181d;
+  --rps-teal-700: #000000;
+  --rps-teal-50: #eef0f3;
 
-  --rps-bg: #f3f6f8;
+  --rps-accent: #4c8df6;
+  --rps-subtle: #f7f8fa;
+  --rps-neutral-50: #f1f2f4;
+
+  --rps-bg: #f4f5f7;
   --rps-surface: #ffffff;
-  --rps-border: #dde4ea;
-  --rps-text: #15253a;
-  --rps-muted: #5d6e80;
+  --rps-border: #e7e9ee;
+  --rps-text: #15171c;
+  --rps-muted: #6b7280;
 
-  --rps-ok: #1f8a4c;
-  --rps-ok-50: #e3f4ea;
-  --rps-warn: #b86e00;
-  --rps-warn-50: #fff3df;
-  --rps-danger: #c0392b;
-  --rps-danger-50: #fde9e7;
-  --rps-info: #2563a8;
-  --rps-info-50: #e7f0fa;
+  --rps-ok: #1c7a4a;
+  --rps-ok-50: #e7f5ec;
+  --rps-ok-dot: #3fa96d;
+  --rps-warn: #9a520e;
+  --rps-warn-50: #fdf1e2;
+  --rps-warn-dot: #ee9b45;
+  --rps-danger: #b42318;
+  --rps-danger-50: #fdecec;
+  --rps-danger-dot: #e26d6d;
+  --rps-info: #1d5fc9;
+  --rps-info-50: #e9f1fe;
+  --rps-info-dot: #4c8df6;
 
-  --rps-radius: 10px;
-  --rps-shadow: 0 1px 2px rgba(19, 38, 61, 0.06), 0 1px 1px rgba(19, 38, 61, 0.04);
+  --rps-radius: 12px;
+  --rps-radius-card: 16px;
+  --rps-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   --rps-font: 'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
 }
 
@@ -45,39 +55,39 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 
 button { font: inherit; }
 
-:focus-visible { outline: 2px solid var(--rps-teal); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--rps-accent); outline-offset: 2px; }
 
 .num { font-variant-numeric: tabular-nums; }
 
 /* Botones compartidos */
 .btn {
   display: inline-flex; align-items: center; gap: 8px;
-  height: 38px; padding: 0 16px; border-radius: 8px;
-  border: 1px solid var(--rps-border); background: var(--rps-surface); color: var(--rps-text);
+  height: 40px; padding: 0 16px; border-radius: 10px;
+  border: 1px solid #e3e5ea; background: var(--rps-surface); color: var(--rps-text);
   font-weight: 500; cursor: pointer; white-space: nowrap;
-  &:hover:not(:disabled) { border-color: var(--rps-teal); color: var(--rps-teal); }
+  &:hover:not(:disabled) { background: var(--rps-subtle); border-color: #cdd1d9; }
   &:disabled { opacity: .6; cursor: default; }
 }
 .btn--primary {
-  background: var(--rps-teal); border-color: var(--rps-teal); color: #fff;
-  &:hover:not(:disabled) { background: var(--rps-teal-700); color: #fff; }
+  background: var(--rps-navy); border-color: var(--rps-navy); color: #fff; font-weight: 600;
+  &:hover:not(:disabled) { background: #000; border-color: #000; color: #fff; }
 }
 
 /* Tarjeta base */
 .card {
   background: var(--rps-surface);
   border: 1px solid var(--rps-border);
-  border-radius: var(--rps-radius);
+  border-radius: var(--rps-radius-card);
   box-shadow: var(--rps-shadow);
 }
 
 /* Tablas */
 .table-wrap { overflow-x: auto; }
 table.tbl {
-  width: 100%; border-collapse: collapse; font-size: 13.5px;
-  th { text-align: left; font-weight: 600; color: var(--rps-muted); font-size: 12.5px;
-       background: #f6f8fa; padding: 10px 14px; border-bottom: 1px solid var(--rps-border); white-space: nowrap; }
-  td { padding: 11px 14px; border-bottom: 1px solid var(--rps-border); vertical-align: middle; }
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  th { text-align: left; font-weight: 500; color: var(--rps-muted); font-size: 12px;
+       background: transparent; padding: 12px 16px; border-bottom: 1px solid #eceef2; white-space: nowrap; }
+  td { padding: 14px 16px; border-bottom: 1px solid #f0f1f4; vertical-align: middle; }
   tr:last-child td { border-bottom: 0; }
   .r { text-align: right; }
 }
@@ -85,7 +95,7 @@ table.tbl {
 /* Esqueleto de carga */
 .skeleton {
   border-radius: 6px;
-  background: linear-gradient(90deg, #edf1f4 25%, #f6f8fa 50%, #edf1f4 75%);
+  background: linear-gradient(90deg, #eef0f3 25%, #f7f8fa 50%, #eef0f3 75%);
   background-size: 200% 100%;
   animation: rps-shimmer 1.2s infinite;
 }
