@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, forkJoin, map, of, shareReplay, switchMap, tap } from 'rxjs';
+import { Observable, concat, forkJoin, map, of, shareReplay, switchMap, tap, toArray } from 'rxjs';
 import {
   Adenda, AsignacionDisponible, ConfiguracionColaboradorForm, ContratoDetalle, ContratoResumen, EditarContratoRequest,
   EstadoContrato, ProyectoDeContrato, RegistrarAdendaRequest, RegistrarContratoRequest, ResumenContratos,
@@ -11,6 +11,8 @@ import { TmrColaborador } from '../../integracion-tmr/models/tmr.models';
 import { DashboardService } from '../../dashboard/services/dashboard.service';
 import { VencimientoContrato } from '../../dashboard/models/dashboard.models';
 import { ColaboradoresService } from '../../colaboradores/services/colaboradores.service';
+import { ColaboradorDetalle } from '../../colaboradores/models/colaborador.models';
+import { periodoActual, primerDia } from '../../../shared/utils/periodo';
 
 /**
  * Contratos y adendas de rps-backend: /api/colaboradores/{id}/contratos y /adendas.
@@ -69,7 +71,7 @@ export class ContratosService {
         fechaFin: request.indefinido ? null : (request.fechaFin || null),
         indefinido: request.indefinido, referencia: request.referencia, observaciones: request.observaciones,
       }).pipe(
-        switchMap((contrato) => forkJoin(this.pasosConfiguracion(colaboradorId, contrato.id, request.fechaInicio, request))
+        switchMap((contrato) => this.ejecutarEnOrden(this.pasosConfiguracion(colaboradorId, contrato.id, request.fechaInicio, request))
           .pipe(map(() => contrato))),
       )),
       tap(() => (this.cache = null)),
@@ -88,12 +90,22 @@ export class ContratosService {
         proyectoIds: request.tmrProyectoIds, fechaInicio: request.fechaInicio || null,
         referencia: request.referencia, observaciones: request.observaciones,
       }).pipe(
-        switchMap((contrato) => forkJoin(this.pasosConfiguracion(colaboradorId, contrato.id, request.fechaInicio, request))
+        switchMap((contrato) => this.ejecutarEnOrden(this.pasosConfiguracion(colaboradorId, contrato.id, request.fechaInicio, request))
           .pipe(map(() => contrato))),
       )),
       tap(() => (this.cache = null)),
       switchMap(() => this.obtener(id)),
     );
+  }
+
+  /**
+   * Uno detrás de otro, nunca en paralelo: cada paso (cuenta, clasificación, frecuencia) recalcula en
+   * el backend el estado Configurado/Pendiente leyendo lo que ya está guardado. En paralelo, cada
+   * uno veía los datos de los otros todavía sin guardar y el último en terminar dejaba "Pendiente"
+   * aunque el colaborador tuviera todo. En orden, el último paso ve todo lo anterior.
+   */
+  private ejecutarEnOrden(pasos: Observable<unknown>[]): Observable<unknown[]> {
+    return concat(...pasos).pipe(toArray());
   }
 
   /** Los mismos pasos opcionales que acompañan tanto a Registrar como a Editar un contrato. */
@@ -106,7 +118,8 @@ export class ContratosService {
       if (h.importeMensual === null) continue;
       pasos.push(this.http.post(`${this.be.api}/colaboradores/${colaboradorId}/condiciones-economicas`, {
         proyectoId: h.tmrProyectoId, contratoId, importeMensual: h.importeMensual, modalidad: h.modalidad,
-        mesInicioVigencia: diaUno(fechaInicio), observaciones: null,
+        mesInicioVigencia: h.mesInicioVigencia ?? diaUno(fechaInicio), observaciones: null,
+        reemplazar: !!h.mesInicioVigencia,
       }));
     }
 
@@ -119,10 +132,25 @@ export class ContratosService {
     }
 
     if (config.frecuencia) {
-      pasos.push(this.colaboradoresApi.registrarFrecuencia(colaboradorId, config.frecuencia));
+      const nueva = config.frecuencia;
+      // Si ya hay una frecuencia programada para ese mes (aún no empieza), se corrige esa en vez de
+      // registrar otra: el backend no admite dos frecuencias desde el mismo mes.
+      pasos.push(this.colaboradoresApi.listarFrecuencias(colaboradorId).pipe(
+        switchMap((frecuencias) => {
+          const programada = frecuencias.find((f) => f.vigenteDesdeMes === nueva.vigenteDesdeMes);
+          return programada && programada.vigenteDesdeMes > primerDia(periodoActual())
+            ? this.colaboradoresApi.editarFrecuencia(colaboradorId, programada.id, nueva)
+            : this.colaboradoresApi.registrarFrecuencia(colaboradorId, nueva);
+        }),
+      ));
     }
 
     return pasos;
+  }
+
+  /** Clasificación, frecuencia vigente y cuenta activa del colaborador, para precargar el formulario. */
+  configuracionActual(tmrColaboradorId: string): Observable<ColaboradorDetalle> {
+    return this.be.idRps(tmrColaboradorId).pipe(switchMap((id) => this.colaboradoresApi.obtener(id)));
   }
 
   /** POST .../contratos/{id}/adendas. El backend exige que la nueva fecha sea posterior al fin vigente. */
