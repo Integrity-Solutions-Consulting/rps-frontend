@@ -16,6 +16,8 @@ export const ETIQUETA_CAMBIO: Record<TipoCambioTmr, string> = {
   EstadoColaborador: 'Cambio de estado en TMR',
   ColaboradorEliminado: 'Ya no está en TMR',
   ColaboradorRestaurado: 'Volvió a TMR',
+  DesactivacionRetenida: 'Inactivo en TMR con anticipo pendiente',
+  TipoContrato: 'Cambio de tipo de contrato en TMR',
 };
 
 /** "Ana Pérez" o "ID ..." si el colaborador no tiene nombre copiado de TMR. */

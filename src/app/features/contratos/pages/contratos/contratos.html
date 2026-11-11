@@ -116,14 +116,15 @@
         <div class="field">
           <label for="clasificacion">Tipo de servicio</label>
           <select id="clasificacion" name="clasificacion" class="select" [class.is-invalid]="erroresContrato()['clasificacion']"
-                  [disabled]="cargandoConfiguracion()"
+                  [disabled]="cargandoConfiguracion() || clasificacionDesdeTmr()"
                   [ngModel]="clasificacionForm()" (ngModelChange)="clasificacionForm.set($event)">
             <option value="">Sin definir</option>
             <option value="Profesional">Servicios profesionales</option>
             <option value="Junior">Servicios junior</option>
           </select>
           @if (erroresContrato()['clasificacion']; as e) { <span class="field__error">{{ e }}</span> }
-          @else { <span class="field__hint">Obligatorio para que el colaborador quede Configurado.</span> }
+          @else if (clasificacionDesdeTmr()) { <span class="field__hint">Viene de su tipo de contrato en TMR; se cambia allí.</span> }
+          @else { <span class="field__hint">Medio tiempo o consultor externo en TMR: elige si factura como profesional o junior.</span> }
         </div>
         <div class="field">
           <label for="frecuencia">Frecuencia de pago</label>

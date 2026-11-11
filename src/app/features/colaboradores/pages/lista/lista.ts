@@ -44,7 +44,7 @@ export class ColaboradoresLista {
 
   // ── Filtros: los resuelve el backend ──
   protected readonly filtroEstado = signal<EstadoConfiguracion | ''>('');
-  protected readonly filtroActivo = signal<FiltroActivo>('activos');
+  protected readonly filtroActivo = signal<FiltroActivo>('todos');
   protected readonly busqueda = signal('');
 
   private readonly filtros = computed(() => ({
@@ -213,7 +213,7 @@ export class ColaboradoresLista {
 
   protected limpiarFiltros(): void {
     this.filtroEstado.set('');
-    this.filtroActivo.set('activos');
+    this.filtroActivo.set('todos');
     this.busqueda.set('');
   }
 

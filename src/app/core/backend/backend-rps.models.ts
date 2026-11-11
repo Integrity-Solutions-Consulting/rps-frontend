@@ -63,7 +63,7 @@ export interface BeEstadoTmr {
 /** GET /api/integracion-tmr/cambios · aviso de un cambio detectado en TMR (RN 50). */
 export type TipoCambioTmr =
   | 'AsignacionNueva' | 'AsignacionEliminada' | 'AsignacionRestaurada' | 'FechaSalida'
-  | 'EstadoColaborador' | 'ColaboradorEliminado' | 'ColaboradorRestaurado';
+  | 'EstadoColaborador' | 'ColaboradorEliminado' | 'ColaboradorRestaurado' | 'DesactivacionRetenida' | 'TipoContrato';
 
 export interface BeCambioTmr {
   id: string; colaboradorId: string; nombres: string | null; apellidos: string | null;

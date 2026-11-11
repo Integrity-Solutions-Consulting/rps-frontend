@@ -93,9 +93,9 @@
         </select>
       </div>
       <div class="segmentos" role="group" aria-label="Mostrar">
-        <button type="button" [class.is-on]="filtroActivo() === 'activos'" [attr.aria-pressed]="filtroActivo() === 'activos'" (click)="filtroActivo.set('activos')">Activos</button>
-        <button type="button" [class.is-on]="filtroActivo() === 'inactivos'" [attr.aria-pressed]="filtroActivo() === 'inactivos'" (click)="filtroActivo.set('inactivos')">Desactivados</button>
         <button type="button" [class.is-on]="filtroActivo() === 'todos'" [attr.aria-pressed]="filtroActivo() === 'todos'" (click)="filtroActivo.set('todos')">Todos</button>
+        <button type="button" [class.is-on]="filtroActivo() === 'activos'" [attr.aria-pressed]="filtroActivo() === 'activos'" (click)="filtroActivo.set('activos')">Activos</button>
+        <button type="button" [class.is-on]="filtroActivo() === 'inactivos'" [attr.aria-pressed]="filtroActivo() === 'inactivos'" (click)="filtroActivo.set('inactivos')">Inactivos</button>
       </div>
       <button type="button" class="btn btn--sm" (click)="limpiarFiltros()">Limpiar</button>
       <button type="button" class="btn btn--sm btn--icono" (click)="actualizar()" aria-label="Actualizar lista">
@@ -157,7 +157,7 @@
                     </app-estado-chip>
                   </td>
                   <td>
-                    <app-estado-chip [tono]="c.activo ? 'info' : 'neutral'">{{ c.activo ? 'Activo' : 'Desactivado' }}</app-estado-chip>
+                    <app-estado-chip [tono]="c.activo ? 'info' : 'neutral'">{{ c.activo ? 'Activo' : 'Inactivo' }}</app-estado-chip>
                   </td>
                   <td class="num fecha">{{ c.actualizadoEn | date: 'dd MMM yyyy' }} <small>{{ c.actualizadoEn | date: 'HH:mm' }}</small></td>
                   <td class="r flecha"><app-icon name="chevronRight" [size]="18" /></td>

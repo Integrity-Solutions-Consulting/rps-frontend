@@ -24,7 +24,20 @@ export interface ColaboradorResumen {
   activo: boolean;
   creadoEn: string;
   actualizadoEn: string;
+  /** Código del tipo de contrato en TMR: CON, PAS, MT, COS (FJ = afiliado, no factura). */
+  tipoContratoTmr: string | null;
+  /** true (CON/PAS): el tipo de servicio sale de TMR y no se elige en RPS. */
+  clasificacionDesdeTmr: boolean;
 }
+
+/** Nombre del tipo de contrato de TMR, por código. */
+export const ETIQUETA_TIPO_CONTRATO_TMR: Record<string, string> = {
+  CON: 'Servicios profesionales',
+  PAS: 'Servicios juniors',
+  MT: 'Medio tiempo',
+  COS: 'Consultor externo',
+  FJ: 'Afiliado',
+};
 
 export interface FrecuenciaVigencia {
   id: string;
