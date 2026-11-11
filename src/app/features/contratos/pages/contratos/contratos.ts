@@ -199,9 +199,11 @@ export class Contratos {
   protected readonly referenciaForm = signal('');
   protected readonly observacionesForm = signal('');
   protected readonly honorariosForm = signal<Record<string, { importe: string; modalidad: Modalidad }>>({});
-  /** Cuando el contrato cubre más de un proyecto: un solo honorario para todos, o uno por proyecto. */
-  protected readonly honorarioGrupal = signal(false);
-  protected readonly honorarioGrupalForm = signal<{ importe: string; modalidad: Modalidad }>({ importe: '', modalidad: 'Neto' });
+  /** Cómo se paga el contrato. true: un solo monto fijo para todo el contrato, sin importar
+   * cuántos proyectos tenga (o ninguno). false: un monto por cada proyecto, que se paga solo
+   * mientras la persona esté en ese proyecto. */
+  protected readonly pagoPorContrato = signal(true);
+  protected readonly honorarioContratoForm = signal<{ importe: string; modalidad: Modalidad }>({ importe: '', modalidad: 'Neto' });
 
   // Configuración del colaborador (RN 05, RN 36): opcional, vacío = no cambiar lo que ya tiene.
   // La ficha del colaborador ya solo la muestra; se registra o corrige desde aquí.
@@ -225,6 +227,9 @@ export class Contratos {
   private readonly cuentaOriginal = signal<{ banco: string; tipoCuenta: string } | null>(null);
   /** Honorarios tal como se precargaron al editar: solo se reenvían los que cambien. */
   private readonly honorariosOriginales = signal<Record<string, { importe: string; modalidad: Modalidad }>>({});
+  /** Al editar: cómo se pagaba el contrato y, si era por contrato, con qué monto. */
+  private readonly modoOriginal = signal<'contrato' | 'proyecto' | null>(null);
+  private readonly honorarioContratoOriginal = signal<{ importe: string; modalidad: Modalidad } | null>(null);
 
   protected readonly guardandoContrato = signal(false);
   protected readonly erroresContrato = signal<Record<string, string>>({});
@@ -242,8 +247,8 @@ export class Contratos {
     this.referenciaForm.set('');
     this.observacionesForm.set('');
     this.honorariosForm.set({});
-    this.honorarioGrupal.set(false);
-    this.honorarioGrupalForm.set({ importe: '', modalidad: 'Neto' });
+    this.pagoPorContrato.set(true);
+    this.honorarioContratoForm.set({ importe: '', modalidad: 'Neto' });
     this.clasificacionForm.set('');
     this.frecuenciaForm.set('');
     this.clasificacionActual.set(null);
@@ -254,6 +259,8 @@ export class Contratos {
     this.cuentaEnmascarada.set(null);
     this.cuentaOriginal.set(null);
     this.honorariosOriginales.set({});
+    this.modoOriginal.set(null);
+    this.honorarioContratoOriginal.set(null);
     this.cargaConfiguracion?.unsubscribe();
     this.cargandoConfiguracion.set(false);
     this.erroresContrato.set({});
@@ -296,23 +303,36 @@ export class Contratos {
 
     forkJoin({
       asignaciones: this.api.asignacionesDisponibles(d.id),
-      honorarios: d.proyectos.length > 0 ? this.honorariosApi.porColaborador(d.tmrColaboradorId) : of([]),
+      condiciones: this.honorariosApi.condiciones(d.tmrColaboradorId),
       colaborador: this.colaboradoresApi.obtener(d.colaboradorId),
     }).subscribe({
-      next: ({ asignaciones, honorarios, colaborador }) => {
+      next: ({ asignaciones, condiciones, colaborador }) => {
         this.asignaciones.set(asignaciones);
+
+        // Lo último registrado para ESTE contrato (incluido un cambio ya programado para el mes
+        // siguiente: es el que se acaba de guardar). Misma regla que el backend: si después del
+        // último honorario por contrato hay honorarios por proyecto, se paga por proyecto.
+        const delContrato = condiciones.filter((c) => c.contratoId === d.id); // más reciente primero
+        const porContrato = delContrato.find((c) => !c.proyectoId) ?? null;
+        const porProyecto = delContrato.filter((c) => c.proyectoId && (!porContrato || c.mesInicioVigencia > porContrato.mesInicioVigencia));
+
         const honorariosForm: Record<string, { importe: string; modalidad: Modalidad }> = {};
         for (const p of d.proyectos) {
-          const vigente = honorarios.find((h) => h.tmrProyectoId === p.tmrProyectoId)?.vigente;
-          honorariosForm[p.tmrProyectoId] = { importe: vigente ? String(vigente.importe) : '', modalidad: vigente?.modalidad ?? 'Neto' };
+          const ultimo = porProyecto.find((c) => c.proyectoId === p.tmrProyectoId) ?? null;
+          honorariosForm[p.tmrProyectoId] = { importe: ultimo ? String(ultimo.importeMensual) : '', modalidad: ultimo?.modalidad ?? 'Neto' };
         }
         this.honorariosForm.set(honorariosForm);
         this.honorariosOriginales.set(structuredClone(honorariosForm));
-        // Si todos los proyectos tienen el mismo honorario, se muestra como honorario grupal.
-        const valores = Object.values(honorariosForm);
-        if (valores.length > 1 && valores.every((v) => v.importe && v.importe === valores[0].importe && v.modalidad === valores[0].modalidad)) {
-          this.honorarioGrupal.set(true);
-          this.honorarioGrupalForm.set({ ...valores[0] });
+
+        if (porProyecto.length > 0) {
+          this.modoOriginal.set('proyecto');
+          this.pagoPorContrato.set(false);
+        } else if (porContrato) {
+          const original = { importe: String(porContrato.importeMensual), modalidad: porContrato.modalidad };
+          this.modoOriginal.set('contrato');
+          this.honorarioContratoOriginal.set(original);
+          this.honorarioContratoForm.set({ ...original });
+          this.pagoPorContrato.set(true);
         }
         this.precargarConfiguracion(colaborador);
         this.cargandoFormulario.set(false);
@@ -362,8 +382,8 @@ export class Contratos {
     this.colaboradorElegidoId.set(tmrColaboradorId);
     this.proyectosElegidos.set(new Set());
     this.honorariosForm.set({});
-    this.honorarioGrupal.set(false);
-    this.honorarioGrupalForm.set({ importe: '', modalidad: 'Neto' });
+    this.pagoPorContrato.set(true);
+    this.honorarioContratoForm.set({ importe: '', modalidad: 'Neto' });
 
     // Al registrar: trae lo que la persona ya tiene configurado (de otro contrato, por ejemplo).
     this.cargaConfiguracion?.unsubscribe();
@@ -395,8 +415,6 @@ export class Contratos {
       if (actual.size === 1 && a.fechaAsignacion && !this.inicioForm()) this.inicioForm.set(a.fechaAsignacion);
       this.honorariosForm.update((h) => ({ ...h, [a.tmrProyectoId]: h[a.tmrProyectoId] ?? { importe: '', modalidad: 'Neto' } }));
     }
-    // El honorario grupal solo tiene sentido con más de un proyecto elegido.
-    if (actual.size <= 1) this.honorarioGrupal.set(false);
     this.proyectosElegidos.set(actual);
   }
 
@@ -412,12 +430,12 @@ export class Contratos {
     this.honorariosForm.update((h) => ({ ...h, [tmrProyectoId]: { ...this.honorarioDe(tmrProyectoId), modalidad } }));
   }
 
-  protected actualizarHonorarioGrupalImporte(importe: string): void {
-    this.honorarioGrupalForm.update((h) => ({ ...h, importe }));
+  protected actualizarHonorarioContratoImporte(importe: string): void {
+    this.honorarioContratoForm.update((h) => ({ ...h, importe }));
   }
 
-  protected actualizarHonorarioGrupalModalidad(modalidad: Modalidad): void {
-    this.honorarioGrupalForm.update((h) => ({ ...h, modalidad }));
+  protected actualizarHonorarioContratoModalidad(modalidad: Modalidad): void {
+    this.honorarioContratoForm.update((h) => ({ ...h, modalidad }));
   }
 
   /** Las fechas y demás campos los valida también el backend; aquí se exige elegir a quién, poner
@@ -437,46 +455,60 @@ export class Contratos {
       return;
     }
 
-    const esGrupal = this.honorarioGrupal() && this.proyectosElegidos().size > 1;
+    const porContrato = this.pagoPorContrato();
     let honorarios: HonorarioDeRegistro[] = [];
 
-    if (this.proyectosElegidos().size > 0) {
-      if (esGrupal) {
-        const g = this.honorarioGrupalForm();
-        const importeMensual = g.importe.trim() ? Number(g.importe.replace(',', '.')) : null;
+    if (porContrato) {
+      // Pago por contrato: un solo monto fijo, sin proyecto. Vale con 0, 1 o muchos proyectos.
+      const g = this.honorarioContratoForm();
+      const importeMensual = g.importe.trim() ? Number(g.importe.replace(',', '.')) : null;
+      if (importeMensual === null || importeMensual <= 0) {
+        this.errorContrato.set('Pon el monto mensual del contrato.');
+        return;
+      }
+      honorarios = [{ tmrProyectoId: null, importeMensual, modalidad: g.modalidad }];
+    } else {
+      // Pago por proyecto: un monto por cada proyecto, que se paga solo mientras esté en él.
+      if (this.proyectosElegidos().size === 0) {
+        this.errorContrato.set('Para pagar por proyecto, elige al menos un proyecto (o cambia a "Por contrato").');
+        return;
+      }
+      for (const tmrProyectoId of this.proyectosElegidos()) {
+        const h = this.honorarioDe(tmrProyectoId);
+        const importeMensual = h.importe.trim() ? Number(h.importe.replace(',', '.')) : null;
         if (importeMensual === null || importeMensual <= 0) {
-          this.errorContrato.set('Pon el importe del honorario.');
+          this.errorContrato.set('Pon el honorario de todos los proyectos elegidos.');
           return;
         }
-        honorarios = [...this.proyectosElegidos()].map((tmrProyectoId) => ({ tmrProyectoId, importeMensual, modalidad: g.modalidad }));
-      } else {
-        for (const tmrProyectoId of this.proyectosElegidos()) {
-          const h = this.honorarioDe(tmrProyectoId);
-          const importeMensual = h.importe.trim() ? Number(h.importe.replace(',', '.')) : null;
-          if (importeMensual === null || importeMensual <= 0) {
-            this.errorContrato.set('Pon el honorario de todos los proyectos elegidos.');
-            return;
-          }
-          honorarios.push({ tmrProyectoId, importeMensual, modalidad: h.modalidad });
-        }
+        honorarios.push({ tmrProyectoId, importeMensual, modalidad: h.modalidad });
       }
     }
 
     // Al editar, el formulario viene precargado: solo se reenvía lo que de verdad cambió (reenviar
-    // lo mismo choca con los duplicados del backend). Un proyecto que aún no tenía honorario es
-    // configuración inicial (rige desde el inicio del contrato); uno que cambia, rige desde el mes
-    // siguiente (RN 19) o desde el inicio del contrato si este empieza más adelante.
+    // lo mismo choca con los duplicados del backend). Lo que se configura por primera vez rige
+    // desde el inicio del contrato; un cambio rige desde el mes siguiente (RN 19), o desde el
+    // inicio del contrato si este empieza más adelante. Cambiar la forma de pago también es un cambio.
     if (esEdicion) {
       const originales = this.honorariosOriginales();
       const mesSiguiente = primerDia(periodoSiguiente());
       const mesInicioContrato = primerDia(this.inicioForm().slice(0, 7));
       const mesDelCambio = mesInicioContrato > mesSiguiente ? mesInicioContrato : mesSiguiente;
-      honorarios = honorarios
-        .filter((h) => {
-          const o = originales[h.tmrProyectoId];
-          return !o || !o.importe || Number(o.importe) !== h.importeMensual || o.modalidad !== h.modalidad;
-        })
-        .map((h) => (originales[h.tmrProyectoId]?.importe ? { ...h, mesInicioVigencia: mesDelCambio } : h));
+      const modoOriginal = this.modoOriginal();
+
+      if (porContrato) {
+        const o = this.honorarioContratoOriginal();
+        const h = honorarios[0];
+        const sinCambios = modoOriginal === 'contrato' && !!o && Number(o.importe) === h.importeMensual && o.modalidad === h.modalidad;
+        honorarios = sinCambios ? [] : [modoOriginal ? { ...h, mesInicioVigencia: mesDelCambio } : h];
+      } else {
+        const cambiaDeModo = modoOriginal === 'contrato';
+        honorarios = honorarios
+          .filter((h) => {
+            const o = originales[h.tmrProyectoId!];
+            return cambiaDeModo || !o || !o.importe || Number(o.importe) !== h.importeMensual || o.modalidad !== h.modalidad;
+          })
+          .map((h) => (cambiaDeModo || originales[h.tmrProyectoId!]?.importe ? { ...h, mesInicioVigencia: mesDelCambio } : h));
+      }
     }
 
     // Al registrar, tipo de servicio, frecuencia y cuenta son obligatorios (salvo que la persona ya

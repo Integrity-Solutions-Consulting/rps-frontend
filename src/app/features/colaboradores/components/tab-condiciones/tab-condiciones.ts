@@ -6,7 +6,7 @@ import { HonorariosService } from '../../../honorarios/services/honorarios.servi
 import {
   ColaboradorDetalle, DETALLE_CLASIFICACION, ETIQUETA_CLASIFICACION, ETIQUETA_FRECUENCIA, FrecuenciaVigencia,
 } from '../../models/colaborador.models';
-import { ETIQUETA_MODALIDAD, HonorarioProyecto } from '../../../honorarios/models/honorario.models';
+import { ETIQUETA_MODALIDAD, HonorarioContrato, HonorarioProyecto } from '../../../honorarios/models/honorario.models';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
@@ -71,6 +71,8 @@ export class TabCondiciones {
 
   // ── 2. Honorarios por proyecto (solo lectura; se editan desde Contratos) ──
   protected readonly honorarios = signal<HonorarioProyecto[]>([]);
+  /** Contratos que se pagan por contrato (un solo monto, sin proyecto). */
+  protected readonly honorariosContrato = signal<HonorarioContrato[]>([]);
   protected readonly cargandoHonorarios = signal(true);
   protected readonly errorHonorarios = signal<string | null>(null);
   protected readonly historialAbierto = signal<string | null>(null);
@@ -78,6 +80,7 @@ export class TabCondiciones {
   private cargarHonorarios(tmrColaboradorId: string): void {
     this.cargandoHonorarios.set(true);
     this.errorHonorarios.set(null);
+    this.honorariosApi.porContrato(tmrColaboradorId).subscribe({ next: (lista) => this.honorariosContrato.set(lista) });
     this.honorariosApi.porColaborador(tmrColaboradorId).subscribe({
       next: (lista) => { this.honorarios.set(lista); this.cargandoHonorarios.set(false); },
       error: (e: unknown) => { this.cargandoHonorarios.set(false); this.errorHonorarios.set(leerErrorApi(e).mensaje); },
