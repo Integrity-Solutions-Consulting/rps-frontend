@@ -143,9 +143,36 @@ export class Anticipos {
     this.errorPlan.set(null);
   }
 
+  /** Una cuota por corte: se propone el corte que todavía no tiene cuota. */
   protected agregarCuota(): void {
-    const corte = this.resumen()?.cortesPermitidos[0] ?? 'FinDeMes';
+    const permitidos = this.resumen()?.cortesPermitidos ?? ['FinDeMes'];
+    const usados = new Set(this.cuotas().map((c) => c.corte));
+    const corte = permitidos.find((k) => !usados.has(k));
+    if (!corte) return;
     this.cuotas.update((l) => [...l, { clave: this.siguienteClave++, corte, importe: '' }]);
+  }
+
+  /** Ya hay una cuota en cada corte que se le paga: no se puede agregar otra. */
+  protected readonly cortesCompletos = computed(() => {
+    const permitidos = this.resumen()?.cortesPermitidos ?? ['FinDeMes'];
+    const usados = new Set(this.cuotas().map((c) => c.corte));
+    return permitidos.every((k) => usados.has(k));
+  });
+
+  /** El mismo aviso que da el backend, antes de enviar. */
+  private errorDeCortes(): string | null {
+    const permitidos = this.resumen()?.cortesPermitidos ?? ['FinDeMes'];
+    if (this.cuotas().some((c) => !permitidos.includes(c.corte))) {
+      return 'Este colaborador cobra solo a fin de mes: no se le puede descontar en la quincena porque ese día no se le paga. Pon la cuota en Fin de mes.';
+    }
+    const vistos = new Set<TipoCorte>();
+    for (const c of this.cuotas()) {
+      if (vistos.has(c.corte)) {
+        return `Estás poniendo dos cuotas en el mismo corte (${ETIQUETA_CORTE[c.corte]}). Deja una sola cuota por corte con el importe total.`;
+      }
+      vistos.add(c.corte);
+    }
+    return null;
   }
 
   protected cambiarCuota(clave: number, cambio: Partial<CuotaForm>): void {
@@ -161,6 +188,8 @@ export class Anticipos {
     const id = this.planDe();
     if (!id) return;
     const periodo = primerDia(this.periodo());
+    const errorCortes = this.errorDeCortes();
+    if (errorCortes) { this.errorPlan.set(errorCortes); return; }
     this.guardandoPlan.set(true);
     this.errorPlan.set(null);
     this.api.registrarPlan(this.colaboradorId(), id,

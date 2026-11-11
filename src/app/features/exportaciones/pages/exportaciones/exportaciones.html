@@ -2,7 +2,7 @@
   <header class="pagina__head">
     <div>
       <h1>Exportaciones</h1>
-      <p>Excel de pago por corte, con historial de versiones. Más abajo, reportes de solo lectura.</p>
+      <p>Reportes en Excel y PDF de liquidaciones, honorarios y colaboradores.</p>
     </div>
     <div class="pagina__acciones">
       <div class="field">
@@ -13,90 +13,7 @@
     </div>
   </header>
 
-  <!-- ── Excel de pago (RN 52-57) ──────────────────────────────────── -->
-  <section class="card pago">
-    <header class="pago__head">
-      <h2>Excel de pago — {{ nombreMes() }}</h2>
-      <div class="pago__cortes">
-        @for (c of cortes; track c) {
-          <button type="button" class="chip-toggle" [class.is-activo]="corte() === c" (click)="cambiarCorte(c)">
-            {{ etiquetaCorte[c] }}
-          </button>
-        }
-      </div>
-    </header>
-
-    @if (cargandoPreview()) {
-      <p class="muted">Calculando…</p>
-    } @else if (errorPreview()) {
-      <p class="error">{{ errorPreview() }}</p>
-    } @else if (!preview() || preview()!.items.length === 0) {
-      <p class="vacio">No hay liquidaciones con corte de {{ etiquetaCorte[corte()] }} para este período.</p>
-    } @else {
-      <div class="table-wrap">
-        <table class="tbl">
-          <thead>
-            <tr>
-              <th><input type="checkbox" [checked]="todosSeleccionados()" (change)="alternarTodos()" /></th>
-              <th>Colaborador</th>
-              <th class="r">Importe</th>
-              <th>Advertencias</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (i of preview()!.items; track i.colaboradorId) {
-              <tr>
-                <td><input type="checkbox" [checked]="seleccionados().has(i.colaboradorId)" (change)="alternarSeleccion(i.colaboradorId)" /></td>
-                <td>{{ i.colaborador }}</td>
-                <td class="r num">{{ i.importe | dinero }}</td>
-                <td>
-                  @if (i.advertencias.length === 0) {
-                    <span class="muted">—</span>
-                  } @else {
-                    <ul class="advertencias">
-                      @for (a of i.advertencias; track a) { <li>{{ a }}</li> }
-                    </ul>
-                  }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-
-      <footer class="pago__total">
-        <span>{{ seleccionados().size }} de {{ preview()!.items.length }} colaboradores seleccionados</span>
-        <strong>Total seleccionado: {{ totalSeleccionado() | dinero }}</strong>
-        <button type="button" class="btn btn--primary" [disabled]="seleccionados().size === 0 || generando()" (click)="generar()">
-          <app-icon name="download" [size]="17" />
-          {{ generando() ? 'Generando…' : 'Generar Excel (versión ' + preview()!.versionSiguiente + ')' }}
-        </button>
-      </footer>
-    }
-
-    <!-- Historial de versiones (RN 55): descargar lee el archivo, no lo vuelve a generar. -->
-    @if (historial().length > 0) {
-      <h3 class="subtitulo">Versiones generadas</h3>
-      <div class="table-wrap">
-        <table class="tbl">
-          <thead><tr><th>Versión</th><th>Generado</th><th class="r">Colaboradores</th><th class="r">Total</th><th>Acción</th></tr></thead>
-          <tbody>
-            @for (e of historial(); track e.id) {
-              <tr>
-                <td>v{{ e.version }}</td>
-                <td>{{ e.generadoEn | date: 'dd MMM yyyy, HH:mm' }}@if (e.generadoPorMi) { <span class="muted">· por ti</span> }</td>
-                <td class="r num">{{ e.colaboradores }}</td>
-                <td class="r num">{{ e.total | dinero }}</td>
-                <td><button type="button" class="btn btn--sm" (click)="descargarVersion(e)"><app-icon name="download" [size]="15" /> Descargar</button></td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-  </section>
-
-  <!-- ── Reportes de solo lectura ──────────────────────────────────── -->
+  <!-- ── Reportes (Excel y PDF) ────────────────────────────────────── -->
   <h2 class="subtitulo subtitulo--seccion">Reportes</h2>
   <label class="todos">
     <input type="checkbox" [checked]="todosLosMeses()" (change)="todosLosMeses.set($any($event.target).checked)" />
@@ -112,13 +29,11 @@
           <small class="muted">{{ o.porMes ? (todosLosMeses() ? 'Todos los meses' : nombreMes()) : 'Sin filtro de mes' }}</small>
         </div>
         <div class="opcion__botones">
-          @if (o.pdf) {
-            <button type="button" class="btn" (click)="descargar(o, 'pdf')" [disabled]="descargando() !== null">
-              <app-icon name="file" [size]="17" /> {{ descargando() === o.tipo + '-pdf' ? 'Generando…' : 'Descargar PDF' }}
-            </button>
-          }
-          <button type="button" class="btn btn--primary" (click)="descargar(o)" [disabled]="descargando() !== null">
-            <app-icon name="download" [size]="17" /> {{ descargando() === o.tipo + '-csv' ? 'Descargando…' : 'Descargar CSV' }}
+          <button type="button" class="btn" (click)="descargar(o, 'pdf')" [disabled]="descargando() !== null">
+            <app-icon name="file" [size]="17" /> {{ descargando() === o.tipo + '-pdf' ? 'Generando…' : 'Descargar PDF' }}
+          </button>
+          <button type="button" class="btn btn--primary" (click)="descargar(o, 'xlsx')" [disabled]="descargando() !== null">
+            <app-icon name="download" [size]="17" /> {{ descargando() === o.tipo + '-xlsx' ? 'Generando…' : 'Descargar Excel' }}
           </button>
         </div>
       </article>

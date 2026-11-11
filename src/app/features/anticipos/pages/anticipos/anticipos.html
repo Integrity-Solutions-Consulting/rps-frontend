@@ -131,9 +131,13 @@
               </tbody>
             </table>
           </div>
-          <button type="button" class="btn btn--sm agregar" (click)="agregarCuota()">
+          <button type="button" class="btn btn--sm agregar" (click)="agregarCuota()" [disabled]="cortesCompletos()"
+                  [attr.title]="cortesCompletos() ? 'Ya hay una cuota en cada corte; cambia el importe de la que ya está.' : null">
             <app-icon name="plus" [size]="15" /> Agregar cuota
           </button>
+          @if (r.cortesPermitidos.length === 1) {
+            <p class="muted small">Cobra solo a fin de mes: la cuota se descuenta en el pago de fin de mes.</p>
+          }
           @if (errorPlan(); as e) {
             <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
           }
