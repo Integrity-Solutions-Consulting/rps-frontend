@@ -31,18 +31,19 @@
 
         <h3 class="sub"><app-icon name="file" [size]="18" /> Adendas</h3>
         @if (d.adendas.length === 0) {
-          <p class="muted small">Sin adendas: el fin vigente es el original.</p>
+          <p class="muted small">Sin adendas: el contrato no ha cambiado.</p>
         } @else {
           <div class="table-wrap marco">
             <table class="tbl">
-              <thead><tr><th>N.º</th><th>Nuevo fin</th><th>Observaciones</th><th>Registrada</th></tr></thead>
+              <thead><tr><th>N.º</th><th>Desde</th><th>Hasta</th><th>Cambios</th><th>Observaciones</th></tr></thead>
               <tbody>
                 @for (a of d.adendas; track a.id) {
                   <tr>
                     <td class="num">{{ a.numero }}</td>
-                    <td class="num">{{ a.nuevaFechaFin | date: 'dd MMM yyyy' }}</td>
+                    <td class="num">{{ a.fechaRegistro | date: 'dd MMM yyyy' : 'UTC' }}</td>
+                    <td class="num">{{ a.nuevaFechaFin ? (a.nuevaFechaFin | date: 'dd MMM yyyy' : 'UTC') : 'Indefinido' }}</td>
+                    <td>{{ a.cambios ?? '—' }}</td>
                     <td>{{ a.observaciones ?? '—' }}</td>
-                    <td class="num muted">{{ a.fechaRegistro | date: 'dd MMM yyyy' }}</td>
                   </tr>
                 }
               </tbody>
@@ -50,9 +51,6 @@
           </div>
         }
 
-        <div><button type="button" class="btn btn--primary" (click)="gestionar(d.id, null)">
-          <app-icon name="file" [size]="17" /> Registrar adenda
-        </button></div>
       </section>
     }
 

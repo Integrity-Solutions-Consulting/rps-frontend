@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
@@ -20,13 +20,18 @@ import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
-import { periodoActual, periodoSiguiente, primerDia } from '../../../../shared/utils/periodo';
+import { nombrePeriodo, periodoActual, periodoDeFecha, periodoSiguiente, primerDia } from '../../../../shared/utils/periodo';
 
 type FrecuenciaElegida = { frecuencia: Frecuencia; vigenteDesdeMes: string };
 
 const MENSAJE_FECHA_FUERA_DE_RANGO = 'La fecha debe ser desde el año 2000 y el año de 4 dígitos.';
 
 /** "yyyy-MM-dd" con año de 4 dígitos y desde 2000 (el date del navegador deja escribir años de 5-6 dígitos). */
+/** "2026-11-30" → "30/11/2026" */
+function fechaCorta(fecha: string): string {
+  return fecha.slice(0, 10).split('-').reverse().join('/');
+}
+
 function fechaEnRango(fecha: string): boolean {
   const m = /^(\d{4})-\d{2}-\d{2}$/.exec(fecha);
   return !!m && Number(m[1]) >= 2000;
@@ -45,7 +50,7 @@ function cargaDe<T>(obs: Observable<T>): Observable<Carga<T>> {
 @Component({
   selector: 'app-contratos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, Icon, EstadoChip],
+  imports: [CurrencyPipe, DatePipe, FormsModule, Icon, EstadoChip],
   templateUrl: './contratos.html',
   styleUrl: './contratos.scss',
 })
@@ -174,7 +179,10 @@ export class Contratos {
   // ── Registrar / editar contrato (misma pantalla para los dos) ────────
   protected readonly registrando = signal(false);
   protected readonly cargandoFormulario = signal(false);
-  protected readonly modoFormulario = signal<'crear' | 'editar'>('crear');
+  /** crear: contrato nuevo. editar: solo correcciones. adenda: cualquier cambio del contrato (rige desde hoy). */
+  protected readonly modoFormulario = signal<'crear' | 'editar' | 'adenda'>('crear');
+  /** El contrato tal como estaba al abrir la adenda (para comparar y armar el resumen de cambios). */
+  private readonly contratoEnAdenda = signal<ContratoDetalle | null>(null);
   protected readonly contratoEditandoId = signal<string | null>(null);
   /** Solo en modo editar: el colaborador no se puede cambiar, se muestra fijo. */
   protected readonly colaboradorNombreFijo = signal('');
@@ -240,10 +248,10 @@ export class Contratos {
   /** Banco/tipo tal como se precargaron: si no cambian y no se escribe número, no se reenvía la cuenta. */
   private readonly cuentaOriginal = signal<{ banco: string; tipoCuenta: string } | null>(null);
   /** Honorarios tal como se precargaron al editar: solo se reenvían los que cambien. */
-  private readonly honorariosOriginales = signal<Record<string, { importe: string; modalidad: Modalidad }>>({});
+  protected readonly honorariosOriginales = signal<Record<string, { importe: string; modalidad: Modalidad }>>({});
   /** Al editar: cómo se pagaba el contrato y, si era por contrato, con qué monto. */
-  private readonly modoOriginal = signal<'contrato' | 'proyecto' | null>(null);
-  private readonly honorarioContratoOriginal = signal<{ importe: string; modalidad: Modalidad } | null>(null);
+  protected readonly modoOriginal = signal<'contrato' | 'proyecto' | null>(null);
+  protected readonly honorarioContratoOriginal = signal<{ importe: string; modalidad: Modalidad } | null>(null);
 
   protected readonly guardandoContrato = signal(false);
   protected readonly erroresContrato = signal<Record<string, string>>({});
@@ -275,6 +283,8 @@ export class Contratos {
     this.honorariosOriginales.set({});
     this.modoOriginal.set(null);
     this.honorarioContratoOriginal.set(null);
+    this.contratoEnAdenda.set(null);
+    this.observacionesAdendaForm.set('');
     this.cargaConfiguracion?.unsubscribe();
     this.cargandoConfiguracion.set(false);
     this.erroresContrato.set({});
@@ -300,9 +310,9 @@ export class Contratos {
   /** Mismo formulario que Registrar, ya con todo lo del contrato elegido: proyectos, fechas,
    * honorario y datos bancarios se pueden corregir. FechaFin/Indefinido no se tocan (RN 12): para
    * extender la vigencia se usa "Registrar adenda" desde este mismo detalle. */
-  protected abrirEdicion(d: ContratoDetalle): void {
+  protected abrirEdicion(d: ContratoDetalle, modo: 'editar' | 'adenda' = 'editar'): void {
     this.limpiarFormulario();
-    this.modoFormulario.set('editar');
+    this.modoFormulario.set(modo);
     this.contratoEditandoId.set(d.id);
     this.colaboradorNombreFijo.set(d.colaborador);
     this.colaboradorElegidoId.set(d.tmrColaboradorId);
@@ -312,6 +322,11 @@ export class Contratos {
     this.indefinidoForm.set(d.fechaFinOriginal === null);
     this.referenciaForm.set(d.referencia ?? '');
     this.observacionesForm.set(d.observaciones ?? '');
+    if (modo === 'adenda') {
+      // La adenda rige desde hoy hasta la nueva fecha de fin: se propone el fin vigente actual.
+      this.contratoEnAdenda.set(d);
+      this.finForm.set(d.fechaFinVigente ?? '');
+    }
     this.registrando.set(true);
     this.cargandoFormulario.set(true);
 
@@ -455,6 +470,10 @@ export class Contratos {
   /** Las fechas y demás campos los valida también el backend; aquí se exige elegir a quién, poner
    * inicio y fin (o "Indefinido") al crear, y un honorario para cada proyecto elegido. */
   protected guardarContrato(): void {
+    if (this.modoFormulario() === 'adenda') {
+      this.guardarAdendaCompleta();
+      return;
+    }
     const esEdicion = this.modoFormulario() === 'editar';
     const tmrColaboradorId = this.colaboradorElegidoId();
     if (!tmrColaboradorId) { this.erroresContrato.set({ colaborador: 'Elige el colaborador.' }); return; }
@@ -477,60 +496,13 @@ export class Contratos {
       return;
     }
 
-    const porContrato = this.pagoPorContrato();
+    // Editar solo corrige: el pago (forma, monto) se cambia con una adenda. Solo si el contrato
+    // todavía no tiene honorario se configura aquí, y rige desde el inicio del contrato.
     let honorarios: HonorarioDeRegistro[] = [];
-
-    if (porContrato) {
-      // Pago por contrato: un solo monto fijo, sin proyecto. Vale con 0, 1 o muchos proyectos.
-      const g = this.honorarioContratoForm();
-      const importeMensual = g.importe.trim() ? Number(g.importe.replace(',', '.')) : null;
-      if (importeMensual === null || importeMensual <= 0) {
-        this.errorContrato.set('Pon el monto mensual del contrato.');
-        return;
-      }
-      honorarios = [{ tmrProyectoId: null, importeMensual, modalidad: g.modalidad }];
-    } else {
-      // Pago por proyecto: un monto por cada proyecto, que se paga solo mientras esté en él.
-      if (this.proyectosElegidos().size === 0) {
-        this.errorContrato.set('Para pagar por proyecto, elige al menos un proyecto (o cambia a "Por contrato").');
-        return;
-      }
-      for (const tmrProyectoId of this.proyectosElegidos()) {
-        const h = this.honorarioDe(tmrProyectoId);
-        const importeMensual = h.importe.trim() ? Number(h.importe.replace(',', '.')) : null;
-        if (importeMensual === null || importeMensual <= 0) {
-          this.errorContrato.set('Pon el honorario de todos los proyectos elegidos.');
-          return;
-        }
-        honorarios.push({ tmrProyectoId, importeMensual, modalidad: h.modalidad });
-      }
-    }
-
-    // Al editar, el formulario viene precargado: solo se reenvía lo que de verdad cambió (reenviar
-    // lo mismo choca con los duplicados del backend). Lo que se configura por primera vez rige
-    // desde el inicio del contrato; un cambio rige desde el mes siguiente (RN 19), o desde el
-    // inicio del contrato si este empieza más adelante. Cambiar la forma de pago también es un cambio.
-    if (esEdicion) {
-      const originales = this.honorariosOriginales();
-      const mesSiguiente = primerDia(periodoSiguiente());
-      const mesInicioContrato = primerDia(this.inicioForm().slice(0, 7));
-      const mesDelCambio = mesInicioContrato > mesSiguiente ? mesInicioContrato : mesSiguiente;
-      const modoOriginal = this.modoOriginal();
-
-      if (porContrato) {
-        const o = this.honorarioContratoOriginal();
-        const h = honorarios[0];
-        const sinCambios = modoOriginal === 'contrato' && !!o && Number(o.importe) === h.importeMensual && o.modalidad === h.modalidad;
-        honorarios = sinCambios ? [] : [modoOriginal ? { ...h, mesInicioVigencia: mesDelCambio } : h];
-      } else {
-        const cambiaDeModo = modoOriginal === 'contrato';
-        honorarios = honorarios
-          .filter((h) => {
-            const o = originales[h.tmrProyectoId!];
-            return cambiaDeModo || !o || !o.importe || Number(o.importe) !== h.importeMensual || o.modalidad !== h.modalidad;
-          })
-          .map((h) => (cambiaDeModo || originales[h.tmrProyectoId!]?.importe ? { ...h, mesInicioVigencia: mesDelCambio } : h));
-      }
+    if (!esEdicion || this.modoOriginal() === null) {
+      const leidos = this.leerHonorarios();
+      if (!leidos) return;
+      honorarios = leidos;
     }
 
     // Al registrar, tipo de servicio, frecuencia y cuenta son obligatorios (salvo que la persona ya
@@ -614,7 +586,166 @@ export class Contratos {
     });
   }
 
-  // ── Registrar / editar adenda (mismo formulario para las dos) ────────
+  /** Honorarios del formulario según la forma de pago; null (y el error en pantalla) si falta algo. */
+  private leerHonorarios(): HonorarioDeRegistro[] | null {
+    if (this.pagoPorContrato()) {
+      // Pago por contrato: un solo monto fijo, sin proyecto. Vale con 0, 1 o muchos proyectos.
+      const g = this.honorarioContratoForm();
+      const importeMensual = g.importe.trim() ? Number(g.importe.replace(',', '.')) : null;
+      if (importeMensual === null || importeMensual <= 0) {
+        this.errorContrato.set('Pon el monto mensual del contrato.');
+        return null;
+      }
+      return [{ tmrProyectoId: null, importeMensual, modalidad: g.modalidad }];
+    }
+
+    // Pago por proyecto: un monto por cada proyecto, que se paga solo mientras esté en él.
+    if (this.proyectosElegidos().size === 0) {
+      this.errorContrato.set('Para pagar por proyecto, elige al menos un proyecto (o cambia a "Por contrato").');
+      return null;
+    }
+    const honorarios: HonorarioDeRegistro[] = [];
+    for (const tmrProyectoId of this.proyectosElegidos()) {
+      const h = this.honorarioDe(tmrProyectoId);
+      const importeMensual = h.importe.trim() ? Number(h.importe.replace(',', '.')) : null;
+      if (importeMensual === null || importeMensual <= 0) {
+        this.errorContrato.set('Pon el honorario de todos los proyectos elegidos.');
+        return null;
+      }
+      honorarios.push({ tmrProyectoId, importeMensual, modalidad: h.modalidad });
+    }
+    return honorarios;
+  }
+
+  /**
+   * De los honorarios del formulario, solo los que cambian respecto de lo precargado (reenviar lo
+   * mismo choca con los duplicados del backend). Un cambio de monto o de forma de pago rige desde
+   * mesDelCambio (RN 19); un proyecto que no tenía honorario, desde mesNuevos.
+   */
+  private soloCambiosDeHonorario(honorarios: HonorarioDeRegistro[], mesDelCambio: string, mesNuevos: string): HonorarioDeRegistro[] {
+    const originales = this.honorariosOriginales();
+    const modoOriginal = this.modoOriginal();
+
+    if (this.pagoPorContrato()) {
+      const o = this.honorarioContratoOriginal();
+      const h = honorarios[0];
+      const sinCambios = modoOriginal === 'contrato' && !!o && Number(o.importe) === h.importeMensual && o.modalidad === h.modalidad;
+      return sinCambios ? [] : [{ ...h, mesInicioVigencia: modoOriginal ? mesDelCambio : mesNuevos }];
+    }
+
+    const cambiaDeModo = modoOriginal === 'contrato';
+    return honorarios
+      .filter((h) => {
+        const o = originales[h.tmrProyectoId!];
+        return cambiaDeModo || !o || !o.importe || Number(o.importe) !== h.importeMensual || o.modalidad !== h.modalidad;
+      })
+      .map((h) => ({ ...h, mesInicioVigencia: cambiaDeModo || originales[h.tmrProyectoId!]?.importe ? mesDelCambio : mesNuevos }));
+  }
+
+  /** Editar: un proyecto del contrato no se puede quitar, y solo se agregan si se paga por contrato. */
+  protected proyectoBloqueado(a: AsignacionDisponible): boolean {
+    if (a.tieneContratoVigente) return true;
+    if (this.modoFormulario() !== 'editar') return false;
+    if (this.proyectosOriginales().has(a.tmrProyectoId)) return true;
+    return this.modoOriginal() === 'proyecto';
+  }
+
+  /** Proyectos que tenía el contrato al abrir editar o la adenda. */
+  private readonly proyectosOriginales = computed(() => {
+    const d = this.contratoEnAdenda() ?? this.detalle();
+    return new Set(this.modoFormulario() === 'crear' || !d ? [] : d.proyectos.map((p) => p.tmrProyectoId));
+  });
+
+  private nombreProyecto(tmrProyectoId: string): string {
+    return this.asignaciones().find((a) => a.tmrProyectoId === tmrProyectoId)?.proyecto
+      ?? this.contratoEnAdenda()?.proyectos.find((p) => p.tmrProyectoId === tmrProyectoId)?.proyecto
+      ?? 'Proyecto';
+  }
+
+  /**
+   * Adenda: cualquier cambio del contrato, desde hoy hasta la nueva fecha de fin. Guarda la adenda
+   * (fin, proyectos y un resumen de lo que cambió) y después los honorarios nuevos o cambiados.
+   */
+  private guardarAdendaCompleta(): void {
+    const d = this.contratoEnAdenda();
+    if (!d) return;
+    this.erroresContrato.set({});
+    this.errorContrato.set(null);
+
+    // Fecha hasta: el nuevo fin del contrato (los indefinidos no tienen).
+    let nuevaFechaFin: string | null = null;
+    if (!this.indefinidoForm()) {
+      const fin = this.finForm();
+      if (!fin) { this.erroresContrato.set({ fechaFin: 'Es obligatoria.' }); return; }
+      if (!fechaEnRango(fin)) { this.erroresContrato.set({ fechaFin: MENSAJE_FECHA_FUERA_DE_RANGO }); return; }
+      if (d.fechaFinVigente && fin < d.fechaFinVigente) {
+        this.erroresContrato.set({ fechaFin: `No puede ser anterior al fin vigente (${fechaCorta(d.fechaFinVigente)}).` });
+        return;
+      }
+      nuevaFechaFin = fin;
+    }
+
+    const leidos = this.leerHonorarios();
+    if (!leidos) return;
+    const mesSiguiente = primerDia(periodoSiguiente());
+    const mesInicioContrato = primerDia(this.inicioForm().slice(0, 7));
+    const mesDelCambio = mesInicioContrato > mesSiguiente ? mesInicioContrato : mesSiguiente;
+    // Un proyecto nuevo (pago por proyecto) se paga desde que entra: rige desde este mes y el
+    // cálculo cuenta solo los días de su asignación.
+    const honorarios = this.soloCambiosDeHonorario(leidos, mesDelCambio, primerDia(periodoActual()));
+
+    const antes = this.proyectosOriginales();
+    const ahora = this.proyectosElegidos();
+    const agregados = [...ahora].filter((x) => !antes.has(x));
+    const quitados = [...antes].filter((x) => !ahora.has(x));
+
+    const partes: string[] = [];
+    if (nuevaFechaFin && nuevaFechaFin !== d.fechaFinVigente) {
+      partes.push(`Fin: ${d.fechaFinVigente ? fechaCorta(d.fechaFinVigente) : '—'} → ${fechaCorta(nuevaFechaFin)}`);
+    }
+    if (agregados.length) partes.push(`Proyectos agregados: ${agregados.map((x) => this.nombreProyecto(x)).join(', ')}`);
+    if (quitados.length) partes.push(`Proyectos quitados: ${quitados.map((x) => this.nombreProyecto(x)).join(', ')}`);
+    const modoAntes = this.modoOriginal();
+    const modoAhora = this.pagoPorContrato() ? 'contrato' : 'proyecto';
+    if (modoAntes && modoAntes !== modoAhora) {
+      partes.push(`Forma de pago: ${modoAntes === 'contrato' ? 'por contrato' : 'por proyecto'} → ${modoAhora === 'contrato' ? 'por contrato' : 'por proyecto'}`);
+    }
+    for (const h of honorarios) {
+      const desde = nombrePeriodo(periodoDeFecha(h.mesInicioVigencia!));
+      const monto = `$${h.importeMensual!.toFixed(2)} ${h.modalidad === 'Neto' ? 'neto' : 'más IVA'} desde ${desde}`;
+      partes.push(h.tmrProyectoId ? `Honorario ${this.nombreProyecto(h.tmrProyectoId)}: ${monto}` : `Monto del contrato: ${monto}`);
+    }
+
+    const observaciones = this.observacionesAdendaForm().trim() || null;
+    if (partes.length === 0 && !observaciones) {
+      this.errorContrato.set('La adenda no cambia nada del contrato: cambia la fecha de fin, los proyectos o el honorario.');
+      return;
+    }
+
+    this.guardandoContrato.set(true);
+    this.api.registrarAdenda(d.id, {
+      nuevaFechaFin, observaciones, tmrProyectoIds: agregados.length || quitados.length ? [...ahora] : null,
+      cambios: partes.join(' · '), honorarios,
+    }).subscribe({
+      next: (actualizado) => {
+        this.guardandoContrato.set(false);
+        this.registrando.set(false);
+        this.detalle.set(actualizado);
+        this.avisos.ok(`Adenda ${actualizado.numeroAdendas} registrada para ${actualizado.colaborador}.`);
+        this.seleccionadoId.set(actualizado.id);
+        this.recargar$.next();
+      },
+      error: (e: unknown) => {
+        this.guardandoContrato.set(false);
+        const err = leerErrorApi(e);
+        if (err.campos['nuevaFechaFin']) this.erroresContrato.set({ fechaFin: err.campos['nuevaFechaFin'] });
+        else if (Object.keys(err.campos).length) this.erroresContrato.set(err.campos);
+        else this.errorContrato.set(err.mensaje);
+      },
+    });
+  }
+
+  // ── Corregir una adenda ya registrada (fecha de fin u observaciones) ────────
   protected readonly agregandoAdenda = signal(false);
   /** null: se está creando una adenda nueva. Con valor: se está corrigiendo esa adenda existente. */
   protected readonly editandoAdendaId = signal<string | null>(null);
@@ -624,19 +755,10 @@ export class Contratos {
   protected readonly errorAdendaCampo = signal<string | null>(null);
   protected readonly errorAdenda = signal<string | null>(null);
 
-  protected abrirAdenda(): void {
-    this.editandoAdendaId.set(null);
-    this.nuevaFinForm.set('');
-    this.observacionesAdendaForm.set('');
-    this.errorAdendaCampo.set(null);
-    this.errorAdenda.set(null);
-    this.agregandoAdenda.set(true);
-  }
-
   /** Corrige una adenda ya registrada (ej. se escribió mal la fecha). */
   protected abrirEditarAdenda(a: Adenda): void {
     this.editandoAdendaId.set(a.id);
-    this.nuevaFinForm.set(a.nuevaFechaFin);
+    this.nuevaFinForm.set(a.nuevaFechaFin ?? '');
     this.observacionesAdendaForm.set(a.observaciones ?? '');
     this.errorAdendaCampo.set(null);
     this.errorAdenda.set(null);
@@ -654,20 +776,19 @@ export class Contratos {
       this.errorAdendaCampo.set(MENSAJE_FECHA_FUERA_DE_RANGO);
       return;
     }
-    const request = { nuevaFechaFin: this.nuevaFinForm(), observaciones: this.observacionesAdendaForm().trim() || null };
+    const request = { nuevaFechaFin: this.nuevaFinForm() || null, observaciones: this.observacionesAdendaForm().trim() || null };
     const adendaId = this.editandoAdendaId();
+    if (!adendaId) return;
 
     this.guardandoAdenda.set(true);
     this.errorAdendaCampo.set(null);
     this.errorAdenda.set(null);
-    (adendaId ? this.api.editarAdenda(d.id, adendaId, request) : this.api.registrarAdenda(d.id, request)).subscribe({
+    this.api.editarAdenda(d.id, adendaId, request).subscribe({
       next: (actualizado) => {
         this.guardandoAdenda.set(false);
         this.agregandoAdenda.set(false);
         this.detalle.set(actualizado);
-        this.avisos.ok(adendaId
-          ? `Adenda corregida. Fin vigente: ${actualizado.fechaFinVigente}.`
-          : `Adenda ${actualizado.numeroAdendas} registrada. Fin vigente: ${actualizado.fechaFinVigente}.`);
+        this.avisos.ok(`Adenda corregida.${actualizado.fechaFinVigente ? ' Fin vigente: ' + fechaCorta(actualizado.fechaFinVigente) + '.' : ''}`);
         this.recargar$.next();
       },
       error: (e: unknown) => {

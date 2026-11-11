@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import { ColaboradoresService } from '../../services/colaboradores.service';
 import { ColaboradorDetalle, FrecuenciaVigencia } from '../../models/colaborador.models';
@@ -10,7 +10,6 @@ import {
 import { ContratosService } from '../../../contratos/services/contratos.service';
 import { ContratoResumen } from '../../../contratos/models/contrato.models';
 import { leerErrorApi } from '../../../../core/http/error-api';
-import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
 
@@ -41,15 +40,11 @@ export type PestanaFicha = 'generales' | 'proyectos' | 'condiciones' | 'bancario
   ],
   templateUrl: './ficha.html',
   styleUrl: './ficha.scss',
-  host: { '(document:click)': 'cerrarMenuSiEsAfuera($event)' },
 })
 export class ColaboradorFicha {
   private readonly colaboradores = inject(ColaboradoresService);
   private readonly tmr = inject(IntegracionTmrService);
   private readonly contratosApi = inject(ContratosService);
-  private readonly avisos = inject(NotificationService);
-  private readonly router = inject(Router);
-  private readonly elemento = inject(ElementRef<HTMLElement>);
 
   /** :id de la ruta (withComponentInputBinding). */
   readonly id = input.required<string>();
@@ -151,38 +146,5 @@ export class ColaboradorFicha {
     const c = this.colaborador();
     if (c) this.cargarContratos(c.tmrColaboradorId);
     this.version.update((v) => v + 1);
-  }
-
-  // ── Menú Acciones ────────────────────────────────────────────────────
-  protected readonly menuAbierto = signal(false);
-  protected readonly confirmarDesactivar = signal(false);
-  protected readonly cambiandoActivo = signal(false);
-
-  protected cerrarMenuSiEsAfuera(evento: MouseEvent): void {
-    const menu = (this.elemento.nativeElement as HTMLElement).querySelector('.acciones');
-    if (this.menuAbierto() && menu && !menu.contains(evento.target as Node)) this.menuAbierto.set(false);
-  }
-
-  protected cambiarActivo(activo: boolean): void {
-    this.cambiandoActivo.set(true);
-    this.colaboradores.cambiarActivo(this.id(), activo).subscribe({
-      next: (c) => {
-        this.colaborador.set(c);
-        this.cambiandoActivo.set(false);
-        this.confirmarDesactivar.set(false);
-        this.menuAbierto.set(false);
-        this.version.update((v) => v + 1);
-        this.avisos.ok(activo ? 'Colaborador activado.' : 'Colaborador desactivado. Su historial se conserva.');
-      },
-      error: (e: unknown) => {
-        this.cambiandoActivo.set(false);
-        this.avisos.error(leerErrorApi(e).mensaje);
-      },
-    });
-  }
-
-  protected verEnContratos(): void {
-    this.menuAbierto.set(false);
-    void this.router.navigate(['/contratos'], { queryParams: { colaborador: this.colaborador()?.tmrColaboradorId } });
   }
 }

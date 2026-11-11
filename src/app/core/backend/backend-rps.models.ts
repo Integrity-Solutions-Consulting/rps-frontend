@@ -95,7 +95,10 @@ export interface BeContrato {
   referencia: string | null; observaciones: string | null; vigente: boolean;
 }
 
-export interface BeAdenda { id: string; contratoId: string; nuevaFechaFin: string; fechaRegistro: string; observaciones: string | null }
+export interface BeAdenda {
+  id: string; contratoId: string; nuevaFechaFin: string | null; fechaRegistro: string; observaciones: string | null;
+  cambios: string | null;
+}
 
 /** GET /api/colaboradores/{id}/condiciones-economicas (de la más reciente a la más antigua). */
 export interface BeCondicion {
