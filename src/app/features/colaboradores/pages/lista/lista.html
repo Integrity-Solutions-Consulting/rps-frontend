@@ -74,17 +74,17 @@
 
 <section class="card panel">
   <div class="panel__head">
-    <div>
-      <h2>Listado</h2>
-      <p>6 por página</p>
+    <h2>Listado</h2>
+  </div>
+  <!-- Barra: buscador a la izquierda (alineado con la tabla), filtros a la derecha -->
+  <div class="panel__barra">
+    <!-- Buscar: nombre, apellido o identificación (lo resuelve el backend) -->
+    <div class="buscar">
+      <app-icon name="search" [size]="16" />
+      <label for="buscar" class="sr-only">Buscar</label>
+      <input id="buscar" type="search" placeholder="Nombre, apellido o identificación" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
     </div>
     <div class="filtros">
-      <!-- Buscar: dentro del Listado (nombre, apellido o identificación; lo resuelve el backend) -->
-      <div class="buscar">
-        <app-icon name="search" [size]="16" />
-        <label for="buscar" class="sr-only">Buscar</label>
-        <input id="buscar" type="search" placeholder="Nombre, apellido o identificación" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
-      </div>
       <div class="filtro">
         <label for="f-estado">Configuración</label>
         <select id="f-estado" class="select" [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)">
@@ -98,10 +98,13 @@
         <button type="button" [class.is-on]="filtroActivo() === 'activos'" [attr.aria-pressed]="filtroActivo() === 'activos'" (click)="filtroActivo.set('activos')">Activos</button>
         <button type="button" [class.is-on]="filtroActivo() === 'inactivos'" [attr.aria-pressed]="filtroActivo() === 'inactivos'" (click)="filtroActivo.set('inactivos')">Inactivos</button>
       </div>
-      <button type="button" class="btn btn--sm" (click)="limpiarFiltros()">Limpiar</button>
-      <button type="button" class="btn btn--sm btn--icono" (click)="actualizar()" aria-label="Actualizar lista">
-        <app-icon name="refresh" [size]="16" />
-      </button>
+      <!-- Limpiar y Actualizar siempre juntos: si la fila no cabe, bajan los dos a la vez -->
+      <div class="filtros__acciones">
+        <button type="button" class="btn" (click)="limpiarFiltros()">Limpiar</button>
+        <button type="button" class="btn btn--icono" (click)="actualizar()" aria-label="Actualizar lista">
+          <app-icon name="refresh" [size]="16" />
+        </button>
+      </div>
     </div>
   </div>
 
