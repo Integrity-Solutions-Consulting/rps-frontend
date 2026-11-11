@@ -16,7 +16,7 @@
 .sync--alerta { border-color: #f7ddbb; background: var(--rps-warn-50); color: var(--rps-warn); i { background: var(--rps-warn-dot); } }
 
 /* Buscador dentro de la barra del Listado */
-.buscar { display: flex; align-items: center; gap: 8px; height: 36px; width: 280px; max-width: 100%; padding: 0 12px;
+.buscar { display: flex; align-items: center; gap: 8px; height: 36px; flex: 1 1 360px; min-width: 240px; max-width: 560px; padding: 0 12px;
   border: 1px solid #e3e5ea; border-radius: 10px; background: var(--rps-surface); color: var(--rps-muted);
   &:focus-within { border-color: var(--rps-accent); box-shadow: 0 0 0 3px var(--rps-info-50); }
   input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; color: var(--rps-text); } }
@@ -72,7 +72,8 @@
 .panel__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px 14px;
   h2 { font-size: 15px; font-weight: 600; }
   p { margin: 4px 0 0; font-size: 12px; color: var(--rps-muted); } }
-.filtros { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+/* La barra ocupa el espacio libre del encabezado del Listado; el buscador crece con ella */
+.filtros { flex: 1 1 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
 .filtro { display: flex; align-items: center; gap: 8px;
   label { font-size: 12px; color: var(--rps-muted); }
   .select { height: 36px; width: auto; min-width: 140px; } }
