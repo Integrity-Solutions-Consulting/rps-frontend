@@ -47,26 +47,26 @@
       </div>
     </section>
 
-    <!-- Requieren atención: cada aviso es un dato que ya manda el backend (estado, eliminado o inactivo en TMR) -->
+    <!-- Requieren atención: solo los pendientes de configuración (los filtra el backend) -->
     <section class="card atencion" aria-labelledby="atencion-titulo">
-      <h2 id="atencion-titulo">Requieren atención</h2>
-      <p>Según los datos de la última sincronización con TMR</p>
-      @if (atencion().length === 0) {
-        <p class="atencion__vacio">Nada pendiente en esta lista.</p>
+      <h2 id="atencion-titulo">Requieren atención
+        @if (totalPendientes() > 0) { <span class="atencion__total num">{{ totalPendientes() }}</span> }
+      </h2>
+      <p>Colaboradores con la configuración pendiente</p>
+      @if (pendientesTop().length === 0) {
+        <p class="atencion__vacio">No hay colaboradores pendientes de configuración.</p>
       } @else {
         <ul>
-          @for (a of atencion(); track a.id) {
+          @for (a of pendientesTop(); track a.id) {
             <li>
-              <a [routerLink]="['/colaboradores', a.id]">
-                <span class="atencion__ini" [class]="'atencion__ini atencion__ini--' + a.tono" aria-hidden="true">{{ iniciales(a.nombre) }}</span>
-                <span class="atencion__txt"><strong>{{ a.nombre }}</strong><small>{{ a.motivo }}</small></span>
+              <a [routerLink]="['/colaboradores', a.id]" [queryParams]="{ tab: 'condiciones' }">
+                <span class="atencion__ini atencion__ini--warn" aria-hidden="true">{{ iniciales(a.nombre) }}</span>
+                <span class="atencion__txt"><strong>{{ a.nombre }}</strong><small>Pendiente de configuración · {{ a.tipo }}</small></span>
               </a>
             </li>
           }
         </ul>
-      }
-      @if (conteo().pendientes > 0 && filtroEstado() !== 'Pendiente') {
-        <button type="button" class="atencion__mas" (click)="filtroEstado.set('Pendiente')">Ver todos los pendientes</button>
+        <button type="button" class="atencion__mas" (click)="verPendientes.set(true)">Ver todos los pendientes ({{ totalPendientes() }})</button>
       }
     </section>
   </div>
@@ -86,11 +86,11 @@
     </div>
     <div class="filtros">
       <div class="filtro">
-        <label for="f-estado">Configuración</label>
-        <select id="f-estado" class="select" [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)">
-          <option value="">Todas</option>
-          <option value="Pendiente">Pendiente</option>
-          <option value="Configurado">Configurado</option>
+        <label for="f-tipo">Tipo de servicio</label>
+        <select id="f-tipo" class="select" [ngModel]="filtroTipo()" (ngModelChange)="filtroTipo.set($event)">
+          <option value="">Todos</option>
+          <option value="Profesional">Profesionales</option>
+          <option value="Junior">Juniors</option>
         </select>
       </div>
       <div class="segmentos" role="group" aria-label="Mostrar">
@@ -191,3 +191,7 @@
     }
   }
 </section>
+
+@if (verPendientes()) {
+  <app-dialogo-pendientes (cerrar)="verPendientes.set(false)" />
+}

@@ -7,7 +7,8 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, catchError, combineLatest, debounceTime, map, of, startWith, switchMap } from 'rxjs';
 
 import { ColaboradoresService } from '../../services/colaboradores.service';
-import { ColaboradorResumen, ETIQUETA_CLASIFICACION, EstadoConfiguracion } from '../../models/colaborador.models';
+import { Clasificacion, ColaboradorResumen, ETIQUETA_CLASIFICACION } from '../../models/colaborador.models';
+import { DialogoPendientes } from '../../components/dialogo-pendientes/dialogo-pendientes';
 import { IntegracionTmrService } from '../../../integracion-tmr/services/integracion-tmr.service';
 import { identificacionEnmascarada } from '../../../integracion-tmr/models/tmr.models';
 import { leerErrorApi } from '../../../../core/http/error-api';
@@ -30,7 +31,7 @@ interface FilaColaborador extends ColaboradorResumen {
 @Component({
   selector: 'app-colaboradores-lista',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, RouterLink, Icon, EstadoChip],
+  imports: [DatePipe, FormsModule, RouterLink, Icon, EstadoChip, DialogoPendientes],
   templateUrl: './lista.html',
   styleUrl: './lista.scss',
 })
@@ -43,12 +44,14 @@ export class ColaboradoresLista {
   protected readonly etiquetaClasificacion = ETIQUETA_CLASIFICACION;
 
   // ── Filtros: los resuelve el backend ──
-  protected readonly filtroEstado = signal<EstadoConfiguracion | ''>('');
+  /** Tipo de servicio: Todos ('') · Profesional · Junior. */
+  protected readonly filtroTipo = signal<Clasificacion | ''>('');
   protected readonly filtroActivo = signal<FiltroActivo>('todos');
   protected readonly busqueda = signal('');
 
   private readonly filtros = computed(() => ({
-    estado: this.filtroEstado() || null,
+    estado: null,
+    clasificacion: this.filtroTipo() || null,
     activo: this.filtroActivo() === 'todos' ? null : this.filtroActivo() === 'activos',
     busqueda: this.busqueda(),
   }));
@@ -102,20 +105,21 @@ export class ColaboradoresLista {
   });
 
   /**
-   * "Requieren atención": muestra tal cual los datos que manda el backend
-   * (eliminadoEnOrigen, activoEnTmr, estadoConfiguracion, clasificacion). Máximo 4.
+   * "Requieren atención": colaboradores activos con la configuración pendiente.
+   * El backend los filtra (GET /api/colaboradores?estado=Pendiente&activo=true); aquí solo se muestran los 4 primeros.
    */
-  protected readonly atencion = computed(() => {
-    const avisos: { id: string; nombre: string; motivo: string; tono: 'risk' | 'neutral' | 'warn' | 'info' }[] = [];
-    for (const c of this.filas()) {
-      if (c.eliminadoEnOrigen) avisos.push({ id: c.id, nombre: c.nombre, motivo: 'Eliminado en TMR · revisar si se desactiva', tono: 'risk' });
-      else if (c.activoEnTmr === false && c.activo) avisos.push({ id: c.id, nombre: c.nombre, motivo: 'Inactivo en TMR, sigue activo en RPS', tono: 'neutral' });
-      else if (c.estadoConfiguracion === 'Pendiente') avisos.push({ id: c.id, nombre: c.nombre, motivo: 'Pendiente de configuración', tono: 'warn' });
-      else if (!c.clasificacion) avisos.push({ id: c.id, nombre: c.nombre, motivo: 'Sin tipo de servicio definido', tono: 'info' });
-      if (avisos.length === 4) break;
-    }
-    return avisos;
-  });
+  private readonly pendientes = toSignal(
+    this.recargar$.pipe(switchMap(() => this.api.listar({ estado: 'Pendiente', activo: true }).pipe(catchError(() => of(null))))),
+    { initialValue: null },
+  );
+  protected readonly totalPendientes = computed(() => this.pendientes()?.length ?? 0);
+  protected readonly pendientesTop = computed(() => (this.pendientes() ?? []).slice(0, 4).map((c) => ({
+    id: c.id,
+    nombre: `${c.nombres ?? ''} ${c.apellidos ?? ''}`.trim() || `ID TMR ${c.tmrColaboradorId}`,
+    tipo: c.clasificacion ? ETIQUETA_CLASIFICACION[c.clasificacion] : 'Sin tipo de servicio',
+  })));
+  /** Ventana con todos los pendientes (búsqueda, tipo de servicio y páginas de 6). */
+  protected readonly verPendientes = signal(false);
 
   /**
    * Última sincronización con TMR: la da el backend (GET /api/integracion-tmr/estado, igual que Inicio).
@@ -212,7 +216,7 @@ export class ColaboradoresLista {
   }
 
   protected limpiarFiltros(): void {
-    this.filtroEstado.set('');
+    this.filtroTipo.set('');
     this.filtroActivo.set('todos');
     this.busqueda.set('');
   }

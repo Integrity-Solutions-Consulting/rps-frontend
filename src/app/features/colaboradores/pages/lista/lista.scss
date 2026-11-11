@@ -55,6 +55,8 @@
   a { display: flex; align-items: center; gap: 12px; padding: 12px 0; text-decoration: none; color: var(--rps-text);
       &:hover strong { text-decoration: underline; } } }
 .atencion__vacio { margin: 0; padding: 12px 0; font-size: 13px; color: var(--rps-muted); }
+.atencion h2 { display: flex; align-items: center; gap: 8px; }
+.atencion__total { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 99px; background: #f3a54f; color: #3d2105; }
 .atencion__ini { width: 34px; height: 34px; flex: none; border-radius: 9px; display: grid; place-items: center; font-size: 12px; font-weight: 600; }
 .atencion__ini--warn { background: var(--rps-warn-50); color: var(--rps-warn); }
 .atencion__ini--risk { background: var(--rps-danger-50); color: var(--rps-danger); }

@@ -1,0 +1,81 @@
+<div class="velo" (click)="cerrar.emit()">
+  <section class="ventana" role="dialog" aria-modal="true" aria-labelledby="pendientes-titulo" (click)="$event.stopPropagation()">
+    <header class="ventana__head">
+      <div>
+        <h2 id="pendientes-titulo">Pendientes de configuración</h2>
+        <p>Colaboradores activos que todavía no se incluyen al calcular honorarios.</p>
+      </div>
+      <button type="button" class="ventana__cerrar" (click)="cerrar.emit()" aria-label="Cerrar">
+        <app-icon name="x" [size]="16" />
+      </button>
+    </header>
+
+    <!-- Buscar por nombre + tipo de servicio (los filtra el backend) -->
+    <div class="ventana__barra">
+      <div class="buscar">
+        <app-icon name="search" [size]="16" />
+        <label for="buscar-pendientes" class="sr-only">Buscar por nombre</label>
+        <input id="buscar-pendientes" type="search" placeholder="Buscar por nombre" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+      </div>
+      <div class="filtro">
+        <label for="tipo-pendientes">Tipo de servicio</label>
+        <select id="tipo-pendientes" class="select" [ngModel]="tipo()" (ngModelChange)="tipo.set($event)">
+          <option value="">Todos</option>
+          <option value="Profesional">Profesionales</option>
+          <option value="Junior">Juniors</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="ventana__lista">
+      @switch (carga().estado) {
+        @case ('cargando') {
+          @for (i of [1, 2, 3, 4, 5, 6]; track i) { <div class="skeleton" style="height: 44px; margin-bottom: 14px"></div> }
+        }
+        @case ('error') {
+          <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ $any(carga()).mensaje }}</div></div>
+        }
+        @case ('ok') {
+          @if (filas().length === 0) {
+            <p class="vacio">
+              @if (busqueda() || tipo()) { Ningún pendiente coincide con la búsqueda. }
+              @else { No hay colaboradores pendientes de configuración. }
+            </p>
+          } @else {
+            <ul>
+              @for (p of filasPagina(); track p.id) {
+                <li>
+                  <span class="ini" aria-hidden="true">{{ iniciales(p.nombre) }}</span>
+                  <span class="txt"><strong>{{ p.nombre }}</strong><small class="num">{{ p.identificacion }} · ID TMR {{ p.tmr }}</small></span>
+                  <span class="tipo">{{ p.tipo }}</span>
+                  <a class="btn btn--sm" [routerLink]="['/colaboradores', p.id]" [queryParams]="{ tab: 'condiciones' }"
+                     [attr.aria-label]="'Configurar a ' + p.nombre" (click)="cerrar.emit()">Configurar</a>
+                </li>
+              }
+            </ul>
+          }
+        }
+      }
+    </div>
+
+    <footer class="ventana__pie">
+      <span>
+        @if (rango().total) { Mostrando {{ rango().desde }} a {{ rango().hasta }} de {{ rango().total }} }
+      </span>
+      @if (totalPaginas() > 1) {
+        <nav class="paginas" aria-label="Páginas de pendientes">
+          <button type="button" class="btn btn--sm" [disabled]="paginaActual() === 1" (click)="pagina.set(paginaActual() - 1)" aria-label="Página anterior">‹</button>
+          @for (n of numerosPagina(); track $index) {
+            @if (n !== null) {
+              <button type="button" class="btn btn--sm" [class.is-on]="paginaActual() === n" [attr.aria-current]="paginaActual() === n ? 'page' : null"
+                      [attr.aria-label]="'Página ' + n" (click)="pagina.set(n)">{{ n }}</button>
+            } @else {
+              <span class="paginas__salto" aria-hidden="true">…</span>
+            }
+          }
+          <button type="button" class="btn btn--sm" [disabled]="paginaActual() === totalPaginas()" (click)="pagina.set(paginaActual() + 1)" aria-label="Página siguiente">›</button>
+        </nav>
+      }
+    </footer>
+  </section>
+</div>

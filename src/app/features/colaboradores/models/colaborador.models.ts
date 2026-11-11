@@ -77,6 +77,8 @@ export interface FiltrosColaboradores {
   activo: boolean | null;
   /** Nombre, apellido o identificación: la búsqueda la hace el backend. */
   busqueda?: string | null;
+  /** Tipo de servicio (Profesional o Junior): lo filtra el backend. */
+  clasificacion?: Clasificacion | null;
 }
 
 /** Movimiento del historial del colaborador (RN 48, sección 12 "Historial por colaborador"). */
