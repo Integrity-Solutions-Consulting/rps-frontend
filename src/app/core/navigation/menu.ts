@@ -22,7 +22,7 @@ export const MENU: ItemMenu[] = [
   { ruta: 'liquidaciones', titulo: 'Liquidaciones', icono: 'calculator', disponible: true,
     descripcion: 'Cálculo por período, detalle por proyecto y cortes, revisión.' },
   { ruta: 'exportaciones', titulo: 'Exportaciones', icono: 'upload', disponible: true,
-    descripcion: 'Previsualización y generación del Excel de pago por corte.' },
+    descripcion: 'Reportes en Excel y PDF de liquidaciones, honorarios y colaboradores.' },
   { ruta: 'configuracion', titulo: 'Configuración', icono: 'settings', disponible: true,
     descripcion: 'Alertas, límite de anticipos, reglas de cálculo y vigencias.' },
 ];

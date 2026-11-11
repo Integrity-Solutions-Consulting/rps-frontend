@@ -143,22 +143,6 @@ export interface BeResumenAnticipos {
   limite: number; saldoPendiente: number; disponible: number; periodo: string; cortesPermitidos: TipoCorte[];
 }
 
-// GET /api/exportaciones/pago/preview — el Excel de pago por corte (RN 52-57).
-export interface BeItemPreviewExportacionPago {
-  colaboradorId: string; colaborador: string; importe: number; tieneCuentaBancaria: boolean; advertencias: string[];
-}
-
-export interface BePreviewExportacionPago {
-  periodo: string; corte: TipoCorte; versionSiguiente: number; items: BeItemPreviewExportacionPago[]; total: number;
-}
-
-export interface BeExportacionPagoItem { colaboradorId: string; colaborador: string; importe: number }
-
-export interface BeExportacionPago {
-  id: string; periodo: string; corte: TipoCorte; version: number; generadoPor: string; generadoEn: string;
-  nombreArchivo: string; total: number; items: BeExportacionPagoItem[];
-}
-
 export interface BeConfiguracion {
   id: string; razonSocial: string; ruc: string; moneda: string;
   diaPagoFinDeMes: number; diaPagoDosPagos1: number; diaPagoDosPagos2: number;
