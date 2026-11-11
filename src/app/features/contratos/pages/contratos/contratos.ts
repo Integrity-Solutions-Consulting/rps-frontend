@@ -211,6 +211,8 @@ export class Contratos {
   protected readonly frecuenciaForm = signal<Frecuencia | ''>('');
   /** Solo para mostrar "Actualmente: …" en modo editar; no se envía. */
   protected readonly clasificacionActual = signal<Clasificacion | null>(null);
+  /** CON/PAS en TMR: el tipo de servicio viene de allí y no se elige aquí. MT/COS: se elige aquí. */
+  protected readonly clasificacionDesdeTmr = signal(false);
   protected readonly frecuenciaActual = signal<FrecuenciaElegida | null>(null);
 
   // Paso 5: datos bancarios (opcional, se puede completar después desde aquí mismo).
@@ -330,6 +332,7 @@ export class Contratos {
     this.cuentaOriginal.set(cuenta ? { banco: cuenta.banco ?? '', tipoCuenta: cuenta.tipoCuenta ?? '' } : null);
     this.clasificacionActual.set(colaborador?.clasificacion ?? null);
     this.clasificacionForm.set(colaborador?.clasificacion ?? '');
+    this.clasificacionDesdeTmr.set(colaborador?.clasificacionDesdeTmr ?? false);
     const vigente = colaborador?.frecuenciaVigente ?? null;
     this.frecuenciaActual.set(vigente ? { frecuencia: vigente.frecuencia, vigenteDesdeMes: vigente.vigenteDesdeMes } : null);
     this.frecuenciaForm.set(vigente?.frecuencia ?? '');
@@ -481,7 +484,11 @@ export class Contratos {
     if (!esEdicion) {
       if (this.cargandoConfiguracion()) { this.errorContrato.set('Espera a que cargue la configuración del colaborador.'); return; }
       const faltan: Record<string, string> = {};
-      if (!this.clasificacionForm()) faltan['clasificacion'] = 'Es obligatorio.';
+      if (!this.clasificacionForm()) {
+        faltan['clasificacion'] = this.clasificacionDesdeTmr()
+          ? 'Falta en TMR: revisa su tipo de contrato.'
+          : 'Es obligatorio.';
+      }
       if (!this.frecuenciaForm()) faltan['frecuencia'] = 'Es obligatoria.';
       if (!this.numeroCuentaForm().trim() && !this.cuentaEnmascarada()) faltan['numeroCuenta'] = 'Es obligatorio.';
       if (Object.keys(faltan).length) {

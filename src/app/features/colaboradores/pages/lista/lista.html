@@ -26,9 +26,9 @@
     <div class="field">
       <label for="f-activo">Mostrar</label>
       <select id="f-activo" class="select" [ngModel]="filtroActivo()" (ngModelChange)="filtroActivo.set($event)">
-        <option value="activos">Activos</option>
-        <option value="inactivos">Desactivados</option>
         <option value="todos">Todos</option>
+        <option value="activos">Activos</option>
+        <option value="inactivos">Inactivos</option>
       </select>
     </div>
     <div class="filtros__acciones">
@@ -102,7 +102,7 @@
                     </app-estado-chip>
                   </td>
                   <td>
-                    <app-estado-chip [tono]="c.activo ? 'info' : 'neutral'">{{ c.activo ? 'Activo' : 'Desactivado' }}</app-estado-chip>
+                    <app-estado-chip [tono]="c.activo ? 'info' : 'neutral'">{{ c.activo ? 'Activo' : 'Inactivo' }}</app-estado-chip>
                   </td>
                   <td class="num muted">{{ c.actualizadoEn | date: 'dd MMM yyyy, HH:mm' }}</td>
                   <td class="r"><app-icon name="chevronRight" [size]="18" /></td>

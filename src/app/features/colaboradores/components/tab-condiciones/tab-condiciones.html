@@ -14,6 +14,9 @@
           <div class="valor">
             <strong>{{ etiquetaClasificacion[c] }}</strong>
             <span class="muted">{{ detalleClasificacion[c] }}</span>
+            @if (colaborador().clasificacionDesdeTmr) {
+              <span class="muted">Según su tipo de contrato en TMR.</span>
+            }
           </div>
         } @else {
           <div class="aviso aviso--warn"><app-icon name="clock" [size]="18" /><div>Sin tipo de servicio definido.</div></div>
