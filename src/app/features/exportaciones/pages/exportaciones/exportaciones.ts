@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { PeriodoEnPantallaService } from '../../../../core/services/periodo-en-pantalla.service';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { ExportacionesService } from '../../services/exportaciones.service';
@@ -32,6 +33,9 @@ export class Exportaciones {
   protected readonly etiquetaCorte = ETIQUETA_CORTE;
   protected readonly cortes: TipoCorte[] = ['Quincena', 'FinDeMes'];
   protected readonly periodo = signal(this.periodoInicial());
+  /** El menú lateral muestra el mes elegido aquí (solo interfaz). */
+  private readonly periodoEnPantalla = inject(PeriodoEnPantallaService);
+  private readonly publicarPeriodo = effect(() => this.periodoEnPantalla.periodo.set(this.periodo()));
   protected readonly nombreMes = computed(() => nombrePeriodo(this.periodo()));
 
   // ── Excel de pago (RN 52-57) ──────────────────────────────────────────

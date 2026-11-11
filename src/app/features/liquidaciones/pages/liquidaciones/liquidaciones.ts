@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { PeriodoEnPantallaService } from '../../../../core/services/periodo-en-pantalla.service';
 import { DatePipe } from '@angular/common';
 import { catchError, of } from 'rxjs';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -48,6 +49,9 @@ export class Liquidaciones {
 
   // ── Estado de la pantalla ────────────────────────────────────────────
   protected readonly periodo = signal(this.periodoInicial());
+  /** El menú lateral muestra el mes elegido aquí (solo interfaz). */
+  private readonly periodoEnPantalla = inject(PeriodoEnPantallaService);
+  private readonly publicarPeriodo = effect(() => this.periodoEnPantalla.periodo.set(this.periodo()));
   protected readonly vista = signal<Vista>('resumen');
   protected readonly datos = signal<LiquidacionesPeriodo | null>(null);
   protected readonly indicadores = signal<IndicadoresDashboard | null>(null);

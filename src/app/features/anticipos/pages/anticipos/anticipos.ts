@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { PeriodoEnPantallaService } from '../../../../core/services/periodo-en-pantalla.service';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -57,6 +58,9 @@ export class Anticipos {
   protected readonly colaboradorId = signal<string>(this.ruta.snapshot.queryParamMap.get('colaborador') ?? '');
   /** Mes del resumen y del plan de cuotas ("yyyy-MM"). */
   protected readonly periodo = signal(periodoActual());
+  /** El menú lateral muestra el mes elegido aquí (solo interfaz). */
+  private readonly periodoEnPantalla = inject(PeriodoEnPantallaService);
+  private readonly publicarPeriodo = effect(() => this.periodoEnPantalla.periodo.set(this.periodo()));
   protected readonly nombreMes = computed(() => nombrePeriodo(this.periodo()));
 
   protected readonly resumen = signal<ResumenAnticipos | null>(null);

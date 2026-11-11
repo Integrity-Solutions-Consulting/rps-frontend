@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { PeriodoEnPantallaService } from '../../../../core/services/periodo-en-pantalla.service';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
@@ -65,6 +66,9 @@ export class Inicio {
   private readonly recargar$ = new BehaviorSubject<void>(undefined);
 
   protected readonly periodo = signal(periodoActual());
+  /** El menú lateral muestra el mes elegido aquí (solo interfaz). */
+  private readonly periodoEnPantalla = inject(PeriodoEnPantallaService);
+  private readonly publicarPeriodo = effect(() => this.periodoEnPantalla.periodo.set(this.periodo()));
   protected readonly nombrePeriodo = computed(() => nombrePeriodo(this.periodo()));
   protected readonly corteDe = corteDe;
 
