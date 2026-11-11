@@ -11,11 +11,6 @@
     @if (ultimaSincronizacion(); as s) {
       <span class="sync" [class.sync--alerta]="s.desactualizada" [title]="s.fecha ? (s.fecha | date: 'dd MMM yyyy, HH:mm') : ''"><i aria-hidden="true"></i>{{ s.texto }}</span>
     }
-    <div class="buscar">
-      <app-icon name="search" [size]="16" />
-      <label for="buscar" class="sr-only">Buscar</label>
-      <input id="buscar" type="search" placeholder="Buscar por nombre, apellido o identificación" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
-    </div>
     <button type="button" class="btn btn--primary" (click)="sincronizar()" [disabled]="sincronizando()">
       <app-icon name="sync" [size]="16" [class.spin]="sincronizando()" />
       {{ sincronizando() ? 'Sincronizando…' : 'Sincronizar con TMR' }}
@@ -84,6 +79,12 @@
       <p>6 por página</p>
     </div>
     <div class="filtros">
+      <!-- Buscar: dentro del Listado (nombre, apellido o identificación; lo resuelve el backend) -->
+      <div class="buscar">
+        <app-icon name="search" [size]="16" />
+        <label for="buscar" class="sr-only">Buscar</label>
+        <input id="buscar" type="search" placeholder="Nombre, apellido o identificación" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+      </div>
       <div class="filtro">
         <label for="f-estado">Configuración</label>
         <select id="f-estado" class="select" [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)">

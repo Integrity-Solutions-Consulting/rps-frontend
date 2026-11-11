@@ -6,15 +6,17 @@
   h1 { font-size: 26px; font-weight: 600; letter-spacing: -.02em; }
   p { margin: 4px 0 0; color: var(--rps-muted); font-size: 13px; }
 }
-.head__acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+/* La píldora de TMR va pegada al botón "Sincronizar con TMR" y con su misma altura */
+.head__acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
-.sync { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 999px;
+.sync { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border-radius: 999px;
   border: 1px solid #e3e5ea; background: var(--rps-surface); color: #374151; font-size: 13px; white-space: nowrap;
   i { width: 7px; height: 7px; border-radius: 50%; background: var(--rps-ok-dot); } }
 /* El backend marca la copia de TMR como desactualizada (RC 05) */
 .sync--alerta { border-color: #f7ddbb; background: var(--rps-warn-50); color: var(--rps-warn); i { background: var(--rps-warn-dot); } }
 
-.buscar { display: flex; align-items: center; gap: 8px; height: 40px; width: 300px; max-width: 100%; padding: 0 12px;
+/* Buscador dentro de la barra del Listado */
+.buscar { display: flex; align-items: center; gap: 8px; height: 36px; width: 280px; max-width: 100%; padding: 0 12px;
   border: 1px solid #e3e5ea; border-radius: 10px; background: var(--rps-surface); color: var(--rps-muted);
   &:focus-within { border-color: var(--rps-accent); box-shadow: 0 0 0 3px var(--rps-info-50); }
   input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; color: var(--rps-text); } }
