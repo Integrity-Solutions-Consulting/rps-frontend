@@ -149,7 +149,7 @@
         <!-- Paso 4: fechas, referencia, observaciones -->
         <div class="field">
           <label for="inicio">Inicio</label>
-          <input id="inicio" name="inicio" type="date" class="input" [class.is-invalid]="erroresContrato()['fechaInicio']"
+          <input id="inicio" name="inicio" type="date" class="input" min="2000-01-01" max="9999-12-31" [class.is-invalid]="erroresContrato()['fechaInicio']"
                  [ngModel]="inicioForm()" (ngModelChange)="inicioForm.set($event)" />
           @if (erroresContrato()['fechaInicio']; as e) { <span class="field__error">{{ e }}</span> }
         </div>
@@ -159,8 +159,8 @@
             <input class="input" [value]="indefinidoForm() ? 'Indefinido' : finForm()" [attr.type]="indefinidoForm() ? 'text' : 'date'" disabled />
             <span class="field__hint">No se edita aquí (RN 12): usa "Registrar adenda" en el detalle para extenderlo.</span>
           } @else {
-            <input id="fin" name="fin" type="date" class="input" [class.is-invalid]="erroresContrato()['fechaFin']"
-                   [disabled]="indefinidoForm()" [min]="inicioForm()" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
+            <input id="fin" name="fin" type="date" class="input" max="9999-12-31" [class.is-invalid]="erroresContrato()['fechaFin']"
+                   [disabled]="indefinidoForm()" [min]="inicioForm() || '2000-01-01'" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
             <label class="check check--inline">
               <input type="checkbox" name="indefinido" [ngModel]="indefinidoForm()" (ngModelChange)="indefinidoForm.set($event)" />
               <span>Indefinido (sin fecha de fin)</span>
@@ -180,81 +180,79 @@
                  [ngModel]="observacionesForm()" (ngModelChange)="observacionesForm.set($event)" />
         </div>
 
-        <!-- Paso 4: honorario por proyecto elegido -->
-        @if (proyectosElegidos().size > 0) {
-          <div class="field campo-ancho">
-            <label>Honorario mensual (obligatorio para cada proyecto elegido)</label>
-            @if (modoFormulario() === 'editar') {
-              <span class="field__hint">Si cambias un honorario, el nuevo rige desde el próximo mes y el actual se mantiene para los meses anteriores (RN 19).</span>
-            }
-
-            @if (proyectosElegidos().size > 1) {
-              <div class="selector" role="radiogroup" aria-label="Cómo se registra el honorario">
-                <label class="selector__opcion" [class.is-on]="!honorarioGrupal()">
-                  <input type="radio" name="modoHonorario" [checked]="!honorarioGrupal()" (change)="honorarioGrupal.set(false)" />
-                  Un honorario por proyecto
-                </label>
-                <label class="selector__opcion" [class.is-on]="honorarioGrupal()">
-                  <input type="radio" name="modoHonorario" [checked]="honorarioGrupal()" (change)="honorarioGrupal.set(true)" />
-                  Un solo honorario para los {{ proyectosElegidos().size }} proyectos
-                </label>
-              </div>
-            }
-
-            @if (honorarioGrupal() && proyectosElegidos().size > 1) {
-              <div class="form-grid">
-                <div class="field">
-                  <label for="importe-grupal">Importe mensual</label>
-                  <div class="dinero">
-                    <span>$</span>
-                    <input id="importe-grupal" name="importeGrupal" class="input num" placeholder="0.00"
-                           [ngModel]="honorarioGrupalForm().importe" (ngModelChange)="actualizarHonorarioGrupalImporte($event)" />
-                  </div>
-                </div>
-                <div class="field">
-                  <label for="modalidad-grupal">Modalidad</label>
-                  <select id="modalidad-grupal" name="modalidadGrupal" class="select"
-                          [ngModel]="honorarioGrupalForm().modalidad" (ngModelChange)="actualizarHonorarioGrupalModalidad($event)">
-                    <option value="Neto">Neto</option>
-                    <option value="MasIva">Más IVA</option>
-                  </select>
-                </div>
-              </div>
-              <span class="field__hint">El mismo importe y modalidad se registra para cada uno de los {{ proyectosElegidos().size }} proyectos elegidos; no se reparte entre ellos.</span>
-            } @else {
-              <div class="table-wrap marco">
-                <table class="tbl">
-                  <thead><tr><th>Proyecto</th><th class="r">Importe mensual</th><th>Modalidad</th></tr></thead>
-                  <tbody>
-                    @for (a of asignacionesDelColaborador(); track a.tmrProyectoId) {
-                      @if (proyectosElegidos().has(a.tmrProyectoId)) {
-                        <tr>
-                          <td>{{ a.proyecto }}</td>
-                          <td class="r">
-                            <div class="dinero">
-                              <span>$</span>
-                              <input [name]="'importe-' + a.tmrProyectoId" class="input num" placeholder="0.00"
-                                     [ngModel]="honorarioDe(a.tmrProyectoId).importe"
-                                     (ngModelChange)="actualizarImporte(a.tmrProyectoId, $event)" />
-                            </div>
-                          </td>
-                          <td>
-                            <select [name]="'modalidad-' + a.tmrProyectoId" class="select"
-                                    [ngModel]="honorarioDe(a.tmrProyectoId).modalidad"
-                                    (ngModelChange)="actualizarModalidad(a.tmrProyectoId, $event)">
-                              <option value="Neto">Neto</option>
-                              <option value="MasIva">Más IVA</option>
-                            </select>
-                          </td>
-                        </tr>
-                      }
-                    }
-                  </tbody>
-                </table>
-              </div>
-            }
+        <!-- Paso 4: cómo se paga el contrato y cuánto -->
+        <div class="field campo-ancho">
+          <label>¿Cómo se paga este contrato?</label>
+          <div class="selector" role="radiogroup" aria-label="Cómo se paga el contrato">
+            <label class="selector__opcion" [class.is-on]="pagoPorContrato()">
+              <input type="radio" name="modoPago" [checked]="pagoPorContrato()" (change)="pagoPorContrato.set(true)" />
+              Por contrato (monto fijo)
+            </label>
+            <label class="selector__opcion" [class.is-on]="!pagoPorContrato()">
+              <input type="radio" name="modoPago" [checked]="!pagoPorContrato()" (change)="pagoPorContrato.set(false)" />
+              Por proyecto
+            </label>
           </div>
-        }
+          @if (modoFormulario() === 'editar') {
+            <span class="field__hint">Si cambias el monto o la forma de pago, rige desde el próximo mes y lo actual se mantiene para los meses anteriores (RN 19).</span>
+          }
+
+          @if (pagoPorContrato()) {
+            <div class="form-grid">
+              <div class="field">
+                <label for="importe-contrato">Monto mensual del contrato</label>
+                <div class="dinero">
+                  <span>$</span>
+                  <input id="importe-contrato" name="importeContrato" class="input num" placeholder="0.00"
+                         [ngModel]="honorarioContratoForm().importe" (ngModelChange)="actualizarHonorarioContratoImporte($event)" />
+                </div>
+              </div>
+              <div class="field">
+                <label for="modalidad-contrato">Modalidad</label>
+                <select id="modalidad-contrato" name="modalidadContrato" class="select"
+                        [ngModel]="honorarioContratoForm().modalidad" (ngModelChange)="actualizarHonorarioContratoModalidad($event)">
+                  <option value="Neto">Neto</option>
+                  <option value="MasIva">Más IVA</option>
+                </select>
+              </div>
+            </div>
+            <span class="field__hint">Un solo monto fijo para todo el contrato, tenga los proyectos que tenga (o ninguno). Se paga mientras el contrato esté vigente: si se acaba un proyecto no cambia; si el contrato empieza o termina a mitad de mes, se paga el proporcional.</span>
+          } @else if (proyectosElegidos().size === 0) {
+            <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>Elige al menos un proyecto para pagar por proyecto.</div></div>
+          } @else {
+            <div class="table-wrap marco">
+              <table class="tbl">
+                <thead><tr><th>Proyecto</th><th class="r">Importe mensual</th><th>Modalidad</th></tr></thead>
+                <tbody>
+                  @for (a of asignacionesDelColaborador(); track a.tmrProyectoId) {
+                    @if (proyectosElegidos().has(a.tmrProyectoId)) {
+                      <tr>
+                        <td>{{ a.proyecto }}</td>
+                        <td class="r">
+                          <div class="dinero">
+                            <span>$</span>
+                            <input [name]="'importe-' + a.tmrProyectoId" class="input num" placeholder="0.00"
+                                   [ngModel]="honorarioDe(a.tmrProyectoId).importe"
+                                   (ngModelChange)="actualizarImporte(a.tmrProyectoId, $event)" />
+                          </div>
+                        </td>
+                        <td>
+                          <select [name]="'modalidad-' + a.tmrProyectoId" class="select"
+                                  [ngModel]="honorarioDe(a.tmrProyectoId).modalidad"
+                                  (ngModelChange)="actualizarModalidad(a.tmrProyectoId, $event)">
+                            <option value="Neto">Neto</option>
+                            <option value="MasIva">Más IVA</option>
+                          </select>
+                        </td>
+                      </tr>
+                    }
+                  }
+                </tbody>
+              </table>
+            </div>
+            <span class="field__hint">Cada proyecto se paga desde que la persona entra hasta el día que sale de él (y dentro de las fechas del contrato). Si sale de un proyecto, ese monto deja de pagarse; el dashboard avisa antes.</span>
+          }
+        </div>
 
         <!-- Paso 5: datos bancarios -->
         <div class="field campo-ancho">
@@ -262,7 +260,10 @@
         </div>
         <div class="field">
           <label for="banco">Banco</label>
-          <input id="banco" name="banco" class="input" maxlength="100" [ngModel]="bancoForm()" (ngModelChange)="bancoForm.set($event)" />
+          <select id="banco" name="banco" class="select" [ngModel]="bancoForm()" (ngModelChange)="bancoForm.set($event)">
+            <option value="">Elige el banco</option>
+            @for (b of bancos(); track b) { <option [value]="b">{{ b }}</option> }
+          </select>
         </div>
         <div class="field">
           <label for="tipo-cuenta">Tipo de cuenta</label>
@@ -453,7 +454,7 @@
           <div class="form-grid">
             <div class="field">
               <label for="nueva-fin">{{ editandoAdendaId() ? 'Nueva fecha de fin (corrección)' : 'Nueva fecha de fin' }}</label>
-              <input id="nueva-fin" name="nuevaFin" type="date" class="input" [class.is-invalid]="errorAdendaCampo()"
+              <input id="nueva-fin" name="nuevaFin" type="date" class="input" min="2000-01-01" max="9999-12-31" [class.is-invalid]="errorAdendaCampo()"
                      [ngModel]="nuevaFinForm()" (ngModelChange)="nuevaFinForm.set($event)" />
               @if (errorAdendaCampo(); as e) { <span class="field__error">{{ e }}</span> }
               @else { <span class="field__hint">Fin vigente actual: {{ d.fechaFinVigente | date: 'dd MMM yyyy' }}.</span> }

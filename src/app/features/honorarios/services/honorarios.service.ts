@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, map, switchMap } from 'rxjs';
-import { HonorarioProyecto, HonorarioVigencia, ProgramarHonorarioRequest } from '../models/honorario.models';
+import { HonorarioContrato, HonorarioProyecto, HonorarioVigencia, ProgramarHonorarioRequest } from '../models/honorario.models';
 import { BackendRps } from '../../../core/backend/backend-rps.service';
 import { BeAsignacion, BeCondicion, BeContrato } from '../../../core/backend/backend-rps.models';
 import { periodoActual } from '../../../shared/utils/periodo';
@@ -29,8 +29,9 @@ export class HonorariosService {
         const mes = `${periodoActual()}-01`;
         const proyectos = new Map<string, { nombre: string; enTmr: boolean }>();
         for (const a of asignaciones) proyectos.set(a.proyectoId, { nombre: a.proyectoNombre, enTmr: !a.eliminadaEnOrigen });
+        // Los de pago por contrato (sin proyecto) no van en esta lista: ver porContrato().
         for (const c of condiciones)
-          if (!proyectos.has(c.proyectoId)) proyectos.set(c.proyectoId, { nombre: c.proyectoNombre, enTmr: false });
+          if (c.proyectoId && !proyectos.has(c.proyectoId)) proyectos.set(c.proyectoId, { nombre: c.proyectoNombre ?? 'Proyecto', enTmr: false });
 
         return [...proyectos.entries()].map(([proyectoId, p]): HonorarioProyecto => {
           // El backend ya los devuelve del más reciente al más antiguo.
@@ -61,7 +62,36 @@ export class HonorariosService {
     );
   }
 
+  /** Honorarios de los contratos que se pagan POR CONTRATO (un solo importe, sin proyecto). */
+  porContrato(tmrColaboradorId: string): Observable<HonorarioContrato[]> {
+    return this.be.idRps(tmrColaboradorId).pipe(
+      switchMap((id) => this.http.get<BeCondicion[]>(`${this.be.api}/colaboradores/${id}/condiciones-economicas`)),
+      map((condiciones) => {
+        const mes = `${periodoActual()}-01`;
+        const contratoIds = [...new Set(condiciones.filter((c) => !c.proyectoId).map((c) => c.contratoId))];
+        return contratoIds.map((contratoId): HonorarioContrato => {
+          // El backend ya los devuelve del más reciente al más antiguo.
+          const delContrato = condiciones.filter((c) => !c.proyectoId && c.contratoId === contratoId).map((c) => this.aVigencia(c));
+          return {
+            contratoId,
+            vigente: delContrato.find((v) => v.vigenteDesdeMes <= mes) ?? null,
+            programado: delContrato.find((v) => v.vigenteDesdeMes > mes) ?? null,
+          };
+        });
+      }),
+    );
+  }
+
+  /** Todas las condiciones del colaborador, tal cual las guarda el backend (más reciente primero). */
+  condiciones(tmrColaboradorId: string): Observable<BeCondicion[]> {
+    return this.be.idRps(tmrColaboradorId).pipe(
+      switchMap((id) => this.http.get<BeCondicion[]>(`${this.be.api}/colaboradores/${id}/condiciones-economicas`)),
+    );
+  }
+
   private aVigencia(c: BeCondicion): HonorarioVigencia {
-    return { id: c.id, importe: c.importeMensual, modalidad: c.modalidad, vigenteDesdeMes: c.mesInicioVigencia, contratoId: c.contratoId };
+    return {
+      id: c.id, importe: c.importeMensual, modalidad: c.modalidad, vigenteDesdeMes: c.mesInicioVigencia, contratoId: c.contratoId,
+    };
   }
 }

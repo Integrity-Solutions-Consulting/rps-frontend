@@ -121,22 +121,66 @@
           <div class="table-wrap">
             <table class="tbl">
               <thead>
-                <tr><th>Colaborador</th><th>Proyecto</th><th>Fin vigente</th><th>Plazo</th><th>Acciones</th></tr>
+                <tr><th>Colaborador</th><th>Proyectos</th><th>Fin vigente</th><th>Plazo</th><th>Acciones</th></tr>
               </thead>
               <tbody>
-                @for (v of listaVencimientos(); track v.contratoId + '|' + v.proyectoId) {
+                @for (v of listaVencimientos(); track v.contratoId) {
                   <tr>
                     <td><strong>{{ v.colaborador }}</strong></td>
                     <td>{{ v.proyecto }}</td>
                     <td class="num">{{ v.fechaFinVigente | date: 'dd MMM yyyy' }}</td>
                     <td>
                       <app-estado-chip [tono]="tonoVencimiento(v)">{{ textoVencimiento(v) }}</app-estado-chip>
-                      @if (v.diasRestantes < 0 && v.asignacionActiva) { <span class="aviso-fila">Asignación activa: requiere revisión</span> }
+                      @if (v.diasRestantes < 0 && v.asignacionActiva) { <span class="aviso-fila">Sigue trabajando: requiere revisión</span> }
                     </td>
                     <td>
                       <a class="btn btn--sm" [routerLink]="['/contratos']"
                          [queryParams]="{ colaborador: v.tmrColaboradorId, contrato: v.contratoId }"
-                         [attr.aria-label]="'Ver contrato de ' + v.colaborador + ' en ' + v.proyecto">Ver contrato</a>
+                         [attr.aria-label]="'Ver contrato de ' + v.colaborador">Ver contrato</a>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+    }
+  </section>
+
+  <!-- ── Salidas de proyecto (GET /api/dashboard/salidas-proyecto) ─────────── -->
+  <section class="card panel panel--alto">
+    <header class="panel__head panel__head--accion">
+      <h2>Salidas de proyecto</h2>
+      <a class="ver-todos" routerLink="/contratos">Ver contratos <app-icon name="chevronRight" [size]="16" /></a>
+    </header>
+    <p class="pad muted">Solo contratos que se pagan por proyecto: desde el día siguiente a la salida, ese monto deja de pagarse.</p>
+
+    @switch (salidasProyecto().estado) {
+      @case ('cargando') { <div class="pad"><div class="skeleton" style="height: 100px"></div></div> }
+      @case ('error') {
+        <div class="pad error"><app-icon name="alert" [size]="18" /> {{ $any(salidasProyecto()).mensaje }}</div>
+      }
+      @case ('ok') {
+        @if (listaSalidas().length === 0) {
+          <p class="pad muted">Nadie sale de un proyecto pagado por proyecto en los próximos {{ diasPrimerAviso() }} días.</p>
+        } @else {
+          <div class="table-wrap">
+            <table class="tbl">
+              <thead>
+                <tr><th>Colaborador</th><th>Proyecto</th><th>Sale el</th><th>Plazo</th><th>Acciones</th></tr>
+              </thead>
+              <tbody>
+                @for (s of listaSalidas(); track s.contratoId + '|' + s.proyectoId) {
+                  <tr>
+                    <td><strong>{{ s.colaborador }}</strong></td>
+                    <td>{{ s.proyecto }}</td>
+                    <td class="num">{{ s.fechaSalida | date: 'dd MMM yyyy' : 'UTC' }}</td>
+                    <td><app-estado-chip [tono]="s.diasRestantes <= 7 ? 'danger' : 'warn'">{{ textoSalida(s) }}</app-estado-chip></td>
+                    <td>
+                      <a class="btn btn--sm" [routerLink]="['/contratos']"
+                         [queryParams]="{ colaborador: s.tmrColaboradorId, contrato: s.contratoId }"
+                         [attr.aria-label]="'Ver contrato de ' + s.colaborador">Ver contrato</a>
                     </td>
                   </tr>
                 }

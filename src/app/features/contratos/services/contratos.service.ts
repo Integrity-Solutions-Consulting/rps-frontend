@@ -260,7 +260,8 @@ export class ContratosService {
 
   private aProyectos(d: DatosContrato, vencimientos: VencimientoContrato[], proyectos: BeProyecto[]): ProyectoDeContrato[] {
     return d.contrato.proyectos.map((p: BeProyectoDeContrato): ProyectoDeContrato => {
-      const v = vencimientos.find((x) => x.contratoId === d.contrato.id && x.proyectoId === p.proyectoId);
+      // El aviso es del contrato (una fila por contrato): vale para todos sus proyectos.
+      const v = vencimientos.find((x) => x.contratoId === d.contrato.id);
       const asignacion = d.asignaciones.find((a) => a.proyectoId === p.proyectoId) ?? null;
       const proyectoCompleto = proyectos.find((x) => x.id === p.proyectoId) ?? null;
       return {

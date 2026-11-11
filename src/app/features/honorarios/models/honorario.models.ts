@@ -14,6 +14,13 @@ export interface HonorarioVigencia {
   contratoId: string;
 }
 
+/** Honorario de un contrato que se paga POR CONTRATO: un solo importe fijo, sin importar sus proyectos. */
+export interface HonorarioContrato {
+  contratoId: string;
+  vigente: HonorarioVigencia | null;
+  programado: HonorarioVigencia | null;
+}
+
 /** Contrato del proyecto, para elegir a cuál se asocia un honorario (el backend lo exige). */
 export interface ContratoDelProyecto {
   id: string;

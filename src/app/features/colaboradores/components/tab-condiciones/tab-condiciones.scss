@@ -19,10 +19,5 @@
   input { accent-color: var(--rps-teal); }
   &.is-on { border-color: var(--rps-teal); background: var(--rps-teal-50); color: var(--rps-teal-700); } }
 
-.dinero { display: flex; align-items: stretch; border: 1px solid var(--rps-border); border-radius: 8px; overflow: hidden; background: var(--rps-surface);
-  span { display: grid; place-items: center; padding: 0 12px; background: #f3f6f8; color: var(--rps-muted); border-right: 1px solid var(--rps-border); }
-  .input { border: 0; border-radius: 0; &:focus { box-shadow: none; } }
-  &:focus-within { border-color: var(--rps-teal); box-shadow: 0 0 0 3px var(--rps-teal-50); }
-  &.is-invalid { border-color: var(--rps-danger); } }
 .ancho { grid-column: 1 / -1; }
 

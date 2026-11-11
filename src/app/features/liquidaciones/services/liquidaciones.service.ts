@@ -64,7 +64,7 @@ export class LiquidacionesService {
         detalleProyectos: d.honorarios.map((h) => {
           const p: BeProyecto | undefined = proyectos.find((x) => x.id === h.proyectoId);
           return {
-            proyectoId: h.proyectoId, proyecto: p?.nombre ?? 'Proyecto', cliente: p?.cliente ?? null, modalidad: h.modalidad,
+            proyectoId: h.proyectoId, proyecto: h.proyectoId ? (p?.nombre ?? 'Proyecto') : 'Pago por contrato', cliente: p?.cliente ?? null, modalidad: h.modalidad,
             diasReales: h.diasReales, diasReconocidos: h.diasReconocidos, proporcionalAcordado: h.proporcionalAcordado,
             subtotal: h.subtotal, iva: h.iva, totalDocumento: h.totalDocumento, retencionFuente: h.retencionFuente,
             retencionIva: h.retencionIva, totalRetenciones: h.totalRetenciones, neto: h.neto,

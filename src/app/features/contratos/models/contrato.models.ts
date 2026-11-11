@@ -77,7 +77,8 @@ export interface AsignacionDisponible {
 
 /** Honorario a registrar para uno de los proyectos elegidos, en el mismo formulario del contrato. */
 export interface HonorarioDeRegistro {
-  tmrProyectoId: string;
+  /** Null: pago por contrato (un solo importe fijo para todo el contrato, tenga los proyectos que tenga). */
+  tmrProyectoId: string | null;
   importeMensual: number | null;
   modalidad: 'Neto' | 'MasIva';
   /** "yyyy-MM-01". Sin valor: el mes de inicio del contrato (configuración inicial). Con valor: es
