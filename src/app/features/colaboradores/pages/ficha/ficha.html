@@ -50,8 +50,10 @@
           <button type="button" role="menuitem" class="acciones__item" (click)="verEnContratos()">
             <app-icon name="file" [size]="17" /> Ver en Contratos
           </button>
-          <hr />
-          @if (c.activo) {
+          <!-- Los que vienen de TMR no se activan ni desactivan aquí: el estado lo manda TMR. -->
+          @if (c.sincronizadoEn) {
+          } @else if (c.activo) {
+            <hr />
             @if (confirmarDesactivar()) {
               <div class="acciones__confirmar">
                 <span>¿Desactivar? No se borra nada y se puede reactivar.</span>
@@ -66,6 +68,7 @@
               </button>
             }
           } @else {
+            <hr />
             <button type="button" role="menuitem" class="acciones__item" (click)="cambiarActivo(true)" [disabled]="cambiandoActivo()">
               <app-icon name="check" [size]="17" /> Activar colaborador
             </button>
@@ -78,7 +81,11 @@
   @if (!c.activo) {
     <div class="aviso aviso--warn">
       <app-icon name="alert" [size]="18" />
-      <div>Este colaborador está desactivado. Actívalo desde <strong>Acciones</strong> para modificar su configuración.</div>
+      @if (c.sincronizadoEn) {
+        <div>Este colaborador está inactivo en TMR, por eso también lo está en RPS. Si vuelve a estar activo en TMR, se reactiva aquí en la próxima sincronización.</div>
+      } @else {
+        <div>Este colaborador está desactivado. Actívalo desde <strong>Acciones</strong> para modificar su configuración.</div>
+      }
     </div>
   }
 
