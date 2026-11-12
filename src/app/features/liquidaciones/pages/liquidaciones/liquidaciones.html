@@ -18,13 +18,14 @@
     </div>
   </header>
 
-  @if (cargando()) {
+  @if (cargando() && !datos()) {
     <div class="indicadores">@for (i of [1, 2]; track i) { <div class="card skeleton" style="height: 82px"></div> }</div>
     <div class="card skeleton" style="height: 260px"></div>
   } @else if (error()) {
     <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ error() }}</div>
       <button type="button" class="btn btn--sm" (click)="reintentar()">Reintentar</button></div>
   } @else if (datos(); as d) {
+  <div [class.actualizando]="cargando()">
 
     <!-- El backend calcula solo a los colaboradores activos con configuración completa. -->
     @if (d.pendientes.length) {
@@ -278,5 +279,6 @@
         </section>
       </div>
     }
+  </div>
   }
 </div>

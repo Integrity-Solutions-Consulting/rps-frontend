@@ -1,6 +1,6 @@
 <div class="historial">
   <section class="card bloque">
-    @if (cargando()) {
+    @if (cargando() && eventos().length === 0) {
       <div class="skeleton" style="height: 240px"></div>
     } @else if (error()) {
       <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ error() }}</div></div>

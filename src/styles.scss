@@ -105,3 +105,6 @@ table.tbl {
 }
 @keyframes rps-shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* Datos en pantalla mientras llegan los del filtro nuevo: se atenuan, no se vacian. */
+.actualizando { opacity: .55; transition: opacity .15s ease-out; pointer-events: none; }

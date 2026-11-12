@@ -21,6 +21,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { nombrePeriodo, periodoActual, periodoDeFecha, periodoSiguiente, primerDia } from '../../../../shared/utils/periodo';
+import { conservarDatosAlRecargar, estaActualizando } from '../../../../shared/utils/carga';
 
 type FrecuenciaElegida = { frecuencia: Frecuencia; vigenteDesdeMes: string };
 
@@ -74,14 +75,18 @@ export class Contratos {
   protected readonly carga = toSignal(
     combineLatest([toObservable(this.filtroEstado), this.recargar$]).pipe(
       switchMap(([estado]) => cargaDe(this.api.listar(estado || null))),
+      conservarDatosAlRecargar(),
     ),
     { initialValue: { estado: 'cargando' } as Carga<ContratoResumen[]> },
   );
 
   protected readonly contadores = toSignal(
-    this.recargar$.pipe(switchMap(() => cargaDe(this.api.resumen()))),
+    this.recargar$.pipe(switchMap(() => cargaDe(this.api.resumen())), conservarDatosAlRecargar()),
     { initialValue: { estado: 'cargando' } as Carga<ResumenContratos> },
   );
+
+  /** Hay contratos en pantalla y se están trayendo los del filtro nuevo. */
+  protected readonly actualizando = computed(() => estaActualizando(this.carga()));
 
   protected readonly resumen = computed(() => {
     const c = this.contadores();
