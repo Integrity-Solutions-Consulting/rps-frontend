@@ -1,6 +1,6 @@
 <div class="grid">
   <div class="columna">
-    @if (cargando()) {
+    @if (cargando() && detalles().length === 0) {
       <div class="skeleton" style="height: 220px"></div>
     } @else if (error()) {
       <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ error() }}</div></div>

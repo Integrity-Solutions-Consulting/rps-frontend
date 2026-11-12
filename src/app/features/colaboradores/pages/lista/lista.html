@@ -130,7 +130,7 @@
           @else { No hay colaboradores con estos filtros. Usa “Sincronizar con TMR” para traer a las personas de TMR. }
         </p>
       } @else {
-        <div class="table-wrap">
+        <div class="table-wrap" [class.actualizando]="actualizando()">
           <table class="tbl">
             <thead>
               <tr>

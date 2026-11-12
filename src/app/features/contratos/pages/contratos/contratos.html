@@ -394,7 +394,7 @@
         @if (filas().length === 0) {
           <p class="vacio">No hay contratos con estos filtros.</p>
         } @else {
-          <div class="table-wrap">
+          <div class="table-wrap" [class.actualizando]="actualizando()">
             <table class="tbl">
               <thead>
                 <tr><th>Colaborador · proyectos</th><th>Inicio</th><th>Fin vigente</th><th>Estado</th><th><span class="sr-only">Ver</span></th></tr>

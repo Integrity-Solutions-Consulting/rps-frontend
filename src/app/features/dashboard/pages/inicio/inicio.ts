@@ -18,6 +18,7 @@ import { mensajeError } from '../../../../core/http/mensaje-error';
 import { Icon, IconName } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { esPeriodoValido, nombrePeriodo, periodoActual } from '../../../../shared/utils/periodo';
+import { conservarDatosAlRecargar, estaActualizando } from '../../../../shared/utils/carga';
 
 /** Estado de cada sección: se cargan por separado para que un error no oculte lo demás. */
 type Estado<T> =
@@ -93,7 +94,7 @@ export class Inicio {
 
   protected readonly cargando = computed(() =>
     [this.indicadores(), this.vencimientos(), this.salidasProyecto(), this.estadoTmr(), this.cambiosTmr(), this.pendientes(), this.preparacion()]
-      .some((s) => s.estado === 'cargando'));
+      .some((s) => s.estado === 'cargando' || estaActualizando(s)));
 
   protected readonly totalLiquidaciones = computed(() => {
     const d = this.datos();
@@ -256,6 +257,9 @@ export class Inicio {
             startWith(inicial),
           ),
         ),
+        // Al cambiar el período o pulsar Actualizar, cada sección conserva lo que mostraba
+        // hasta que llegan los datos nuevos (no vuelve al esqueleto).
+        conservarDatosAlRecargar(),
       ),
       { initialValue: inicial },
     );

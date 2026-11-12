@@ -14,6 +14,7 @@ import { identificacionEnmascarada } from '../../../integracion-tmr/models/tmr.m
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip } from '../../../../shared/components/estado-chip/estado-chip';
+import { conservarDatosAlRecargar, estaActualizando } from '../../../../shared/utils/carga';
 
 type Carga<T> = { estado: 'cargando' } | { estado: 'ok'; datos: T } | { estado: 'error'; mensaje: string };
 type FiltroActivo = 'activos' | 'inactivos' | 'todos';
@@ -65,9 +66,13 @@ export class ColaboradoresLista {
           startWith<Carga<ColaboradorResumen[]>>({ estado: 'cargando' }),
         ),
       ),
+      conservarDatosAlRecargar(),
     ),
     { initialValue: { estado: 'cargando' } as Carga<ColaboradorResumen[]> },
   );
+
+  /** Hay datos en pantalla y se están trayendo los de los filtros nuevos. */
+  protected readonly actualizando = computed(() => estaActualizando(this.carga()));
 
   protected readonly filas = computed<FilaColaborador[]>(() => {
     const c = this.carga();
