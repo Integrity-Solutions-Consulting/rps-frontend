@@ -82,7 +82,8 @@
     <div class="buscar">
       <app-icon name="search" [size]="16" />
       <label for="buscar" class="sr-only">Buscar</label>
-      <input id="buscar" type="search" placeholder="Nombre, apellido o identificación" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)" />
+      <input id="buscar" type="search" placeholder="Nombre, apellido o identificación" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
+             (beforeinput)="soloLetrasYNumeros($event)" />
     </div>
     <div class="filtros">
       <div class="filtro">

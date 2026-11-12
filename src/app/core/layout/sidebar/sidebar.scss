@@ -56,4 +56,6 @@ nav { min-width: 0; }
 .sidebar__avatar {
   width: 32px; height: 32px; flex: none; border-radius: 50%; display: grid; place-items: center;
   background: var(--rps-info-50); color: var(--rps-info); font-size: 12px; font-weight: 700;
+  /* Contorno azul fuerte, igual que los usuarios registrados en Configuración > Usuarios */
+  box-shadow: 0 0 0 2px var(--rps-info);
 }

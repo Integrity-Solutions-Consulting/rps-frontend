@@ -221,6 +221,23 @@ export class ColaboradoresLista {
     this.busqueda.set('');
   }
 
+  /**
+   * Buscador: solo letras (incluidas tildes y ñ), números y espacios (para "nombre apellido").
+   * Al escribir, otro carácter no entra; al pegar, se quitan los caracteres no permitidos.
+   */
+  protected soloLetrasYNumeros(evento: InputEvent): void {
+    if (!evento.inputType.startsWith('insert')) return;
+    const texto = evento.data ?? evento.dataTransfer?.getData('text/plain') ?? '';
+    const limpio = texto.replace(/[^\p{L}\p{M}\p{N} ]/gu, '');
+    if (limpio === texto) return;
+    evento.preventDefault();
+    if (!limpio) return;
+    const campo = evento.target as HTMLInputElement;
+    const inicio = campo.selectionStart ?? campo.value.length;
+    campo.setRangeText(limpio, inicio, campo.selectionEnd ?? inicio, 'end');
+    campo.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
   protected iniciales(nombre: string): string {
     return nombre.startsWith('ID TMR') ? '?' : nombre.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
   }

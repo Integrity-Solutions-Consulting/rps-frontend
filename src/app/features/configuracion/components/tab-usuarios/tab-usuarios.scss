@@ -31,6 +31,11 @@
 .avatar--azul { background: var(--rps-info-50); color: var(--rps-info); }
 .avatar--ambar { background: var(--rps-warn-50); color: #8a5200; }
 .avatar--lila { background: #efe9fb; color: #5b3fa0; }
+/* Usuarios registrados (activos): contorno de color fuerte del mismo tono. Los inactivos (gris) no lo llevan. */
+.avatar--teal { box-shadow: 0 0 0 2px #16181d; }
+.avatar--azul { box-shadow: 0 0 0 2px #1d5fc9; }
+.avatar--ambar { box-shadow: 0 0 0 2px #b45309; }
+.avatar--lila { box-shadow: 0 0 0 2px #5b3fa0; }
 .avatar--gris { background: #eef1f4; color: var(--rps-muted); }
 
 .rol-chip { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12.5px;
