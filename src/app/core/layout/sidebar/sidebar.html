@@ -1,6 +1,18 @@
 <aside class="sidebar">
   <div class="sidebar__top">
-    <a routerLink="/inicio" class="sidebar__logo" aria-label="RPS, ir a Inicio">RPS</a>
+    <!-- Logo de RPS Honorarios (dibujado en SVG para que se vea nítido a cualquier tamaño) -->
+    <a routerLink="/inicio" class="sidebar__logo" aria-label="RPS Honorarios, ir a Inicio">
+      <svg class="sidebar__logo-icono" viewBox="0 0 40 46" aria-hidden="true">
+        <path d="M5 0h30a5 5 0 0 1 5 5v41l-5-4-5 4-5-4-5 4-5-4-5 4-5-4-5 4V5a5 5 0 0 1 5-5z" fill="#17264a" />
+        <rect x="9" y="9" width="22" height="4" rx="2" fill="#ffffff" />
+        <rect x="9" y="18" width="16" height="4" rx="2" fill="#ffffff" />
+        <rect x="9" y="28" width="22" height="4.5" rx="2.25" fill="#5b9be6" />
+      </svg>
+      <span class="sidebar__logo-txt">
+        <strong>RPS</strong>
+        <small>Honorarios</small>
+      </span>
+    </a>
     <button type="button" class="sidebar__ocultar" (click)="ocultar.emit()" aria-label="Ocultar menú" title="Ocultar menú">
       <app-icon name="panelLeft" [size]="18" />
     </button>

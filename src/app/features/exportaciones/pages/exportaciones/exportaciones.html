@@ -29,11 +29,11 @@
           <small class="muted">{{ o.porMes ? (todosLosMeses() ? 'Todos los meses' : nombreMes()) : 'Sin filtro de mes' }}</small>
         </div>
         <div class="opcion__botones">
-          <button type="button" class="btn" (click)="descargar(o, 'pdf')" [disabled]="descargando() !== null">
-            <app-icon name="file" [size]="17" /> {{ descargando() === o.tipo + '-pdf' ? 'Generando…' : 'Descargar PDF' }}
+          <button type="button" class="btn" (click)="descargar(o, 'pdf')" [disabled]="generando(o, 'pdf')">
+            <app-icon name="file" [size]="17" /> {{ generando(o, 'pdf') ? 'Generando…' : 'Descargar PDF' }}
           </button>
-          <button type="button" class="btn btn--primary" (click)="descargar(o, 'xlsx')" [disabled]="descargando() !== null">
-            <app-icon name="download" [size]="17" /> {{ descargando() === o.tipo + '-xlsx' ? 'Generando…' : 'Descargar Excel' }}
+          <button type="button" class="btn btn--primary" (click)="descargar(o, 'xlsx')" [disabled]="generando(o, 'xlsx')">
+            <app-icon name="download" [size]="17" /> {{ generando(o, 'xlsx') ? 'Generando…' : 'Descargar Excel' }}
           </button>
         </div>
       </article>

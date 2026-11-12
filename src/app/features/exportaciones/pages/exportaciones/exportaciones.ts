@@ -38,7 +38,15 @@ export class Exportaciones {
 
   // ── Reportes (Excel y PDF) ────────────────────────────────
   protected readonly todosLosMeses = signal(false);
-  protected readonly descargando = signal<string | null>(null);
+  /**
+   * Descargas en curso, una por botón ("liquidaciones-pdf", "honorarios-xlsx"…). Cada botón solo se bloquea
+   * mientras genera su propio archivo; los demás siguen disponibles.
+   */
+  protected readonly descargando = signal<ReadonlySet<string>>(new Set());
+
+  protected generando(o: OpcionExportacion, formato: FormatoExportacion): boolean {
+    return this.descargando().has(`${o.tipo}-${formato}`);
+  }
 
   protected readonly opciones: OpcionExportacion[] = [
     { tipo: 'liquidaciones', titulo: 'Liquidaciones', detalle: 'Todo el detalle: por colaborador, sus honorarios (proporcional, IVA, retenciones, neto) y sus cortes (base, cuotas de anticipos, valor preparado).', icono: 'calculator', porMes: true },
@@ -47,10 +55,13 @@ export class Exportaciones {
   ];
 
   protected descargar(o: OpcionExportacion, formato: FormatoExportacion): void {
-    this.descargando.set(`${o.tipo}-${formato}`);
+    const clave = `${o.tipo}-${formato}`;
+    if (this.descargando().has(clave)) return;
+    this.descargando.update((s) => new Set(s).add(clave));
+    const terminar = () => this.descargando.update((s) => { const n = new Set(s); n.delete(clave); return n; });
     this.api.descargar(o.tipo, this.todosLosMeses() ? null : this.periodo(), formato).subscribe({
-      next: (archivo) => { this.descargando.set(null); descargarBlob(archivo.nombre, archivo.contenido); },
-      error: (e: unknown) => { this.descargando.set(null); this.avisos.error(leerErrorApi(e).mensaje); },
+      next: (archivo) => { terminar(); descargarBlob(archivo.nombre, archivo.contenido); },
+      error: (e: unknown) => { terminar(); this.avisos.error(leerErrorApi(e).mensaje); },
     });
   }
 

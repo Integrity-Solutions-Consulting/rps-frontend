@@ -9,9 +9,12 @@
 
 .sidebar__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-right: 2px; }
 .sidebar__logo {
-  padding: 0 8px; color: var(--rps-text); text-decoration: none;
-  font-size: 22px; font-weight: 700; letter-spacing: -.02em;
+  display: flex; align-items: center; gap: 10px; padding: 0 6px; text-decoration: none; min-width: 0;
 }
+.sidebar__logo-icono { width: 30px; height: 35px; flex: none; }
+.sidebar__logo-txt { display: flex; flex-direction: column; line-height: 1;
+  strong { font-size: 26px; font-weight: 800; letter-spacing: -.02em; color: #17264a; }
+  small { margin-top: 4px; font-size: 9px; font-weight: 600; letter-spacing: .32em; text-transform: uppercase; color: #2f64b5; } }
 .sidebar__ocultar {
   width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--rps-muted);
   display: grid; place-items: center; cursor: pointer;
