@@ -32,12 +32,71 @@
 .kpi__value { font-size: 24px; font-weight: 600; letter-spacing: -.02em; line-height: 1.2; }
 .kpi__hint { color: var(--rps-muted); font-size: 11px; }
 
-/* Formulario de registro */
-.panel-form { padding: 22px; display: grid; gap: 16px;
-  header { display: grid; gap: 4px; h2 { font-size: 16px; font-weight: 600; } p { margin: 0; color: var(--rps-muted); font-size: 13px; } } }
-.form-grid--contrato { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Formulario de registro / edición / adenda, en la misma pantalla (diseño nov 2026) */
+.panel-form { padding: 0; display: grid; gap: 0; box-shadow: 0 8px 24px rgba(16, 18, 24, .06);
+  > header { display: grid; gap: 6px; padding: 20px 24px 16px; border-bottom: 1px solid #eceef2;
+    h2 { font-size: 18px; font-weight: 600; } p { margin: 0; color: var(--rps-muted); font-size: 12px; } }
+  > .muted { padding: 20px 24px; margin: 0; } }
+
+/* Atajos a cada paso */
+.pasos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.pasos__chip { height: 30px; padding: 0 12px; border: 1px solid #e3e5ea; border-radius: 999px; background: var(--rps-surface);
+  font: inherit; font-size: 12px; font-weight: 500; color: #4b5160; cursor: pointer;
+  &:hover { border-color: var(--rps-navy); color: var(--rps-text); } }
+
+/* Formulario a la izquierda, resumen a la derecha */
+.registro { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; padding: 0 24px; align-items: start; }
+@media (max-width: 1100px) { .registro { grid-template-columns: minmax(0, 1fr); } }
+.form-grid--contrato { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; counter-reset: paso; padding-bottom: 0; }
 .campo-ancho { grid-column: 1 / -1; }
 @media (max-width: 760px) { .form-grid--contrato { grid-template-columns: minmax(0, 1fr); } }
+
+/* Título de cada paso; el número lo pone el contador (en una adenda se renumeran solos) */
+.paso { display: flex; align-items: center; gap: 10px; margin: 6px 0 0; padding-top: 18px; border-top: 1px solid #f0f1f4;
+  font-size: 14px; font-weight: 600; scroll-margin-top: 80px;
+  small { font-weight: 400; color: var(--rps-muted); } }
+.form-grid--contrato > .paso:first-child { border-top: 0; padding-top: 18px; margin-top: 0; }
+.paso__n { width: 24px; height: 24px; flex: none; border-radius: 8px; display: grid; place-items: center;
+  background: var(--rps-navy); color: #fff; font-size: 12px; font-weight: 700;
+  &::before { counter-increment: paso; content: counter(paso); } }
+
+/* Tipo de servicio que viene de TMR: dato fijo, no un selector deshabilitado */
+.valor-fijo--tmr { display: flex; align-items: center; gap: 8px; font-weight: 500;
+  small { margin-left: auto; font-size: 11px; font-weight: 400; color: var(--rps-muted); } }
+
+/* "Indefinido" como interruptor */
+.check--switch { gap: 10px; font-size: 13px;
+  input { appearance: none; width: 36px; height: 20px; margin: 0; flex: none; border-radius: 999px; background: #d4d7dd; position: relative; cursor: pointer; transition: background .15s;
+    &::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .2); transition: left .15s; }
+    &:checked { background: var(--rps-navy); }
+    &:checked::after { left: 18px; } } }
+
+/* Referencia y observaciones plegadas */
+.mas-datos { justify-self: start; display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none;
+  font: inherit; font-size: 13px; font-weight: 500; color: var(--rps-text); cursor: pointer;
+  app-icon { transition: transform .15s; }
+  &.is-open app-icon { transform: rotate(90deg); } }
+
+/* Ícono "i" con la explicación completa al pasar el mouse */
+.info { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 4px; vertical-align: -3px;
+  border: 1px solid #c5cad3; border-radius: 50%; font-size: 10px; font-style: normal; color: var(--rps-muted); cursor: help; }
+
+/* Resumen al costado (solo muestra lo elegido) */
+.resumen { position: sticky; top: 76px; margin-top: 20px; padding: 18px; border: 1px solid var(--rps-border); border-radius: 14px; background: var(--rps-subtle);
+  h3 { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+  dl { margin: 0; }
+  dt { font-size: 12px; color: var(--rps-muted); }
+  dd { margin: 2px 0 12px; font-size: 13px; font-weight: 500; overflow-wrap: anywhere; } }
+@media (max-width: 1100px) { .resumen { position: static; } }
+
+/* Cancelar / Registrar siempre visibles al final del formulario */
+.panel-form .form-actions { position: sticky; bottom: 0; z-index: 2; margin: 8px -24px 0 -24px; padding: 14px 24px;
+  background: var(--rps-surface); border-top: 1px solid #eceef2; border-radius: 0 0 16px 16px; }
+@media (min-width: 1101px) { .panel-form .form-actions { margin-right: calc(-24px - 280px - 24px); } }
+
+/* La lista queda atenuada mientras se registra */
+.grid--atenuada { opacity: .45; transition: opacity .2s; }
 
 .lista-checks { display: grid; gap: 6px; max-height: 220px; overflow-y: auto; padding: 10px; border: 1px solid var(--rps-border, #d8dde3); border-radius: 12px; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer;
@@ -57,12 +116,14 @@
 .combo__vacio { padding: 7px 10px; font-size: 13px; color: var(--rps-muted); }
 
 /* Honorario: un proyecto por fila, o uno solo para varios */
-.selector { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+/* Forma de pago como selector segmentado */
+.selector { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; margin-bottom: 10px; border-radius: 10px; background: #f1f2f5; }
 .selector__opcion {
-  display: flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--rps-border, #d8dde3);
-  border-radius: 999px; font-size: 13px; cursor: pointer;
-  &.is-on { border-color: var(--rps-navy); background: var(--rps-teal-50); font-weight: 500; }
-  input { margin: 0; }
+  display: flex; align-items: center; height: 32px; padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  color: #5b6270; cursor: pointer;
+  &.is-on { background: var(--rps-surface); color: var(--rps-text); box-shadow: 0 1px 2px rgba(16, 24, 40, .08); }
+  input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  &:focus-within { outline: 2px solid var(--rps-accent); outline-offset: 1px; }
 }
 
 .stack-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
