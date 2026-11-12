@@ -37,3 +37,6 @@ tr.is-sel td { background: #f4f7fe; }
 tr.is-sel td:first-child { box-shadow: inset 3px 0 0 var(--rps-navy); }
 
 .acciones { display: flex; gap: 6px; white-space: nowrap; }
+
+/* Tope de la cuota: cuánto se puede descontar como máximo en ese corte. */
+.tope { display: block; margin-top: 4px; }
