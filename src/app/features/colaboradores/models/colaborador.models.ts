@@ -109,7 +109,7 @@ export const ETIQUETA_FRECUENCIA: Record<Frecuencia, string> = {
 };
 
 export const DETALLE_FRECUENCIA: Record<Frecuencia, string> = {
-  DosPagos: '50 % en quincena y 50 % a fin de mes',
+  DosPagos: '50 % del subtotal en quincena; el resto (con IVA y retenciones) a fin de mes',
   FinDeMes: '100 % a fin de mes',
 };
 

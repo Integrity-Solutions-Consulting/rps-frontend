@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { ArchivoDescargado, FormatoExportacion, TipoExportacion } from '../models/exportacion.models';
+import { ArchivoDescargado, FormatoExportacion, TipoExportacion, VistaLiquidaciones } from '../models/exportacion.models';
 import { diaUno } from '../../../core/backend/backend-rps.service';
 
 /** Descarga los reportes en Excel o PDF de /api/exportaciones (rps-backend). */
@@ -12,9 +12,10 @@ export class ExportacionesService {
   private readonly base = `${environment.apiUrl}/exportaciones`;
 
   /** El nombre del archivo lo pone el backend (Content-Disposition). `periodo` = "yyyy-MM" o null para todos. */
-  descargar(tipo: TipoExportacion, periodo: string | null, formato: FormatoExportacion): Observable<ArchivoDescargado> {
+  descargar(tipo: TipoExportacion, periodo: string | null, formato: FormatoExportacion, vista?: VistaLiquidaciones): Observable<ArchivoDescargado> {
     let params = new HttpParams();
     if (periodo && tipo !== 'colaboradores') params = params.set('periodo', diaUno(periodo));
+    if (vista && tipo === 'liquidaciones') params = params.set('vista', vista);
     const ruta = formato === 'pdf' ? `${this.base}/${tipo}/pdf` : `${this.base}/${tipo}`;
     return this.http.get(ruta, { params, responseType: 'blob', observe: 'response' }).pipe(
       map((r) => ({

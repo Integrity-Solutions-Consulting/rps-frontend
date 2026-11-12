@@ -159,6 +159,25 @@ export class Anticipos {
     return permitidos.every((k) => usados.has(k));
   });
 
+  /**
+   * Máximo que esta cuota puede descontar en el corte: lo disponible según el backend más lo que
+   * este mismo anticipo ya tenía en ese mes y corte (el plan nuevo reemplaza al anterior).
+   * El backend vuelve a validar al guardar.
+   */
+  protected maximoPara(corte: TipoCorte): number | null {
+    const tope = this.resumen()?.topesPorCorte?.find((t) => t.corte === corte);
+    if (!tope) return null;
+    const periodo = primerDia(this.periodo());
+    const propio = (this.anticipoDelPlan()?.cuotas ?? [])
+      .filter((c) => c.corte === corte && c.periodo === periodo)
+      .reduce((s, c) => s + c.importe, 0);
+    return Math.round((tope.disponible + propio) * 100) / 100;
+  }
+
+  protected valorBaseDe(corte: TipoCorte): number | null {
+    return this.resumen()?.topesPorCorte?.find((t) => t.corte === corte)?.valorBase ?? null;
+  }
+
   /** El mismo aviso que da el backend, antes de enviar. */
   private errorDeCortes(): string | null {
     const permitidos = this.resumen()?.cortesPermitidos ?? ['FinDeMes'];
@@ -171,6 +190,17 @@ export class Anticipos {
         return `Estás poniendo dos cuotas en el mismo corte (${ETIQUETA_CORTE[c.corte]}). Deja una sola cuota por corte con el importe total.`;
       }
       vistos.add(c.corte);
+    }
+    for (const c of this.cuotas()) {
+      const importe = aNumero(c.importe);
+      const maximo = this.maximoPara(c.corte);
+      if (importe !== null && maximo !== null && importe > maximo) {
+        const dinero = (v: number) => v.toLocaleString('es-EC', { style: 'currency', currency: 'USD' });
+        const base = this.valorBaseDe(c.corte) ?? maximo;
+        const otros = maximo < base ? ` y otros anticipos ya tienen programados ${dinero(base - maximo)}, así que como máximo puedes poner ${dinero(maximo)}` : '';
+        const nombre = c.corte === 'Quincena' ? 'la quincena' : 'el fin de mes';
+        return `En ${nombre} de ${this.nombreMes().toLowerCase()} solo se le pagan ${dinero(base)}${otros}. No se le puede descontar más de lo que se le paga.`;
+      }
     }
     return null;
   }

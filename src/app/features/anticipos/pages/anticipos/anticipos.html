@@ -118,6 +118,11 @@
                         <input class="input num" appSoloNumeros="monto" placeholder="0,00" [attr.aria-label]="'Importe de la cuota'"
                                [ngModel]="c.importe" (ngModelChange)="cambiarCuota(c.clave, { importe: $event })" />
                       </div>
+                      @if (maximoPara(c.corte); as max) {
+                        <span class="muted small tope">Máximo {{ max | dinero }} · se le pagan {{ valorBaseDe(c.corte) | dinero }}</span>
+                      } @else if (maximoPara(c.corte) === 0) {
+                        <span class="muted small tope">Ya no hay de dónde descontar en este corte</span>
+                      }
                     </td>
                     <td class="r">
                       <button type="button" class="btn btn--ghost btn--sm" (click)="quitarCuota(c.clave)" aria-label="Quitar cuota">
