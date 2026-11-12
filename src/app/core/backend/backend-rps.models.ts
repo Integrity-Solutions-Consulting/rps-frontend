@@ -141,7 +141,12 @@ export interface BeAnticipo {
 export interface BeResumenAnticipos {
   colaboradorId: string; activo: boolean; netoMensualCompleto: number; porcentajeMaximoAnticipo: number;
   limite: number; saldoPendiente: number; disponible: number; periodo: string; cortesPermitidos: TipoCorte[];
+  /** Tope de descuento por corte del mes: lo que se le paga ahí menos lo ya programado por sus anticipos. */
+  topesPorCorte: BeTopeCorte[];
 }
+
+/** valorBase: quincena = 50 % del subtotal; fin de mes = neto − quincena (o neto completo si cobra solo a fin de mes). */
+export interface BeTopeCorte { corte: TipoCorte; valorBase: number; comprometido: number; disponible: number }
 
 export interface BeConfiguracion {
   id: string; razonSocial: string; ruc: string; moneda: string;

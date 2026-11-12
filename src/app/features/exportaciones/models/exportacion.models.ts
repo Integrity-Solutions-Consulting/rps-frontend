@@ -9,6 +9,9 @@ export type TipoExportacion = 'honorarios' | 'liquidaciones' | 'colaboradores';
 
 export type FormatoExportacion = 'xlsx' | 'pdf';
 
+/** Solo liquidaciones (&vista=): el conglomerado (una fila por colaborador) o el detalle de cada colaborador. */
+export type VistaLiquidaciones = 'consolidado' | 'porColaborador';
+
 export interface ArchivoDescargado {
   nombre: string;
   contenido: Blob;

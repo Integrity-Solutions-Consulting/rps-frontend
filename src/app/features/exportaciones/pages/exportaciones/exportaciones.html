@@ -20,7 +20,7 @@
     Todos los meses
   </label>
   <section class="opciones">
-    @for (o of opciones; track o.tipo) {
+    @for (o of opciones; track o.clave) {
       <article class="card opcion">
         <span class="opcion__icono"><app-icon [name]="o.icono" [size]="22" /></span>
         <div class="opcion__txt">
