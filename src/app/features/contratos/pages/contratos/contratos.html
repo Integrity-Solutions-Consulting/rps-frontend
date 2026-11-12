@@ -51,25 +51,13 @@
       } @else {
         <p>Elige el colaborador y, si aplica, uno o varios proyectos de TMR. Para cambiar un contrato existente usa “Registrar adenda” en su detalle.</p>
       }
-      <!-- Atajos a cada paso del formulario -->
-      <nav class="pasos" aria-label="Pasos del formulario">
-        <button type="button" class="pasos__chip" (click)="irAPaso('paso-colaborador')">Colaborador</button>
-        @if (colaboradorElegidoId()) { <button type="button" class="pasos__chip" (click)="irAPaso('paso-proyectos')">Proyectos</button> }
-        @if (modoFormulario() !== 'adenda') { <button type="button" class="pasos__chip" (click)="irAPaso('paso-configuracion')">Configuración</button> }
-        <button type="button" class="pasos__chip" (click)="irAPaso('paso-vigencia')">Vigencia</button>
-        <button type="button" class="pasos__chip" (click)="irAPaso('paso-pago')">Pago</button>
-        @if (modoFormulario() !== 'adenda') { <button type="button" class="pasos__chip" (click)="irAPaso('paso-banco')">Datos bancarios</button> }
-      </nav>
     </header>
 
     @if (cargandoFormulario()) {
       <p class="muted">Cargando…</p>
     } @else {
-      <div class="registro">
       <form class="form-grid form-grid--contrato" (submit)="$event.preventDefault(); guardarContrato()">
         <!-- Paso 1: colaborador (buscador y selector en un solo cuadro; fijo al editar) -->
-        <!-- Los números de los pasos los pone el CSS (contador): se ajustan solos cuando un paso no aplica (adenda). -->
-        <h3 class="paso campo-ancho" id="paso-colaborador"><span class="paso__n" aria-hidden="true"></span> Colaborador</h3>
         @if (modoFormulario() === 'editar') {
           <div class="field campo-ancho">
             <label>Colaborador</label>
@@ -101,7 +89,6 @@
 
         <!-- Paso 2: proyectos (0, 1 o varios) -->
         @if (colaboradorElegidoId()) {
-          <h3 class="paso campo-ancho" id="paso-proyectos"><span class="paso__n" aria-hidden="true"></span> Proyectos <small>(opcional)</small></h3>
           <div class="field campo-ancho">
             <label>Proyectos que cubre este contrato (opcional)</label>
             @if (modoFormulario() === 'editar') {
@@ -136,14 +123,9 @@
 
         @if (modoFormulario() !== 'adenda') {
         <!-- Paso 3: configuración del colaborador (precargada con lo que ya tiene; obligatoria al registrar) -->
-        <h3 class="paso campo-ancho" id="paso-configuracion"><span class="paso__n" aria-hidden="true"></span> Configuración del colaborador</h3>
         <div class="field">
           <label for="clasificacion">Tipo de servicio</label>
-          @if (clasificacionDesdeTmr()) {
-            <p class="valor-fijo valor-fijo--tmr">{{ clasificacionForm() === 'Junior' ? 'Servicios junior' : clasificacionForm() === 'Profesional' ? 'Servicios profesionales' : 'Sin definir' }}
-              <small>desde TMR</small></p>
-          }
-          <select id="clasificacion" name="clasificacion" [hidden]="clasificacionDesdeTmr()" class="select" [class.is-invalid]="erroresContrato()['clasificacion']"
+          <select id="clasificacion" name="clasificacion" class="select" [class.is-invalid]="erroresContrato()['clasificacion']"
                   [disabled]="cargandoConfiguracion() || clasificacionDesdeTmr()"
                   [ngModel]="clasificacionForm()" (ngModelChange)="clasificacionForm.set($event)">
             <option value="">Sin definir</option>
@@ -176,7 +158,6 @@
         }
 
         <!-- Paso 4: fechas, referencia, observaciones -->
-        <h3 class="paso campo-ancho" id="paso-vigencia"><span class="paso__n" aria-hidden="true"></span> {{ modoFormulario() === 'adenda' ? 'Vigencia de la adenda' : 'Vigencia' }}</h3>
         @if (modoFormulario() === 'adenda') {
           <div class="field">
             <label>Desde (fecha de la adenda)</label>
@@ -215,19 +196,13 @@
             } @else {
               <input id="fin" name="fin" type="date" class="input" max="9999-12-31" [class.is-invalid]="erroresContrato()['fechaFin']"
                      [disabled]="indefinidoForm()" [min]="inicioForm() || '2000-01-01'" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
-              <label class="check check--inline check--switch">
+              <label class="check check--inline">
                 <input type="checkbox" name="indefinido" [ngModel]="indefinidoForm()" (ngModelChange)="indefinidoForm.set($event)" />
                 <span>Indefinido (sin fecha de fin)</span>
               </label>
             }
             @if (erroresContrato()['fechaFin']; as e) { <span class="field__error">{{ e }}</span> }
           </div>
-          <!-- Datos poco usados: plegados (se abren solos si ya tienen valor, por ejemplo al editar) -->
-          <button type="button" class="mas-datos campo-ancho" [class.is-open]="masDatosAbierto()" [attr.aria-expanded]="masDatosAbierto()"
-                  (click)="masDatos.set(!masDatos())">
-            <app-icon name="chevronRight" [size]="16" /> Más datos (opcional): referencia y observaciones
-          </button>
-          @if (masDatosAbierto()) {
           <div class="field">
             <label for="referencia">Referencia (opcional)</label>
             <input id="referencia" name="referencia" class="input" maxlength="100" placeholder="Ej. CT-2026-031"
@@ -239,10 +214,8 @@
             <input id="observaciones" name="observaciones" class="input" maxlength="500"
                    [ngModel]="observacionesForm()" (ngModelChange)="observacionesForm.set($event)" />
           </div>
-          }
         }
 
-        <h3 class="paso campo-ancho" id="paso-pago"><span class="paso__n" aria-hidden="true"></span> Forma de pago y monto</h3>
         @if (modoFormulario() === 'editar' && modoOriginal()) {
           <div class="field campo-ancho">
             <label>Pago del contrato</label>
@@ -291,8 +264,7 @@
                 </select>
               </div>
             </div>
-            <span class="field__hint">Un solo monto para todo el contrato; se paga mientras esté vigente.
-              <span class="info" tabindex="0" title="Un solo monto fijo para todo el contrato, tenga los proyectos que tenga (o ninguno). Se paga mientras el contrato esté vigente: si se acaba un proyecto no cambia; si el contrato empieza o termina a mitad de mes, se paga el proporcional." aria-label="Más información">i</span></span>
+            <span class="field__hint">Un solo monto fijo para todo el contrato, tenga los proyectos que tenga (o ninguno). Se paga mientras el contrato esté vigente: si se acaba un proyecto no cambia; si el contrato empieza o termina a mitad de mes, se paga el proporcional.</span>
           } @else if (proyectosElegidos().size === 0) {
             <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>Elige al menos un proyecto para pagar por proyecto.</div></div>
           } @else {
@@ -326,15 +298,16 @@
                 </tbody>
               </table>
             </div>
-            <span class="field__hint">Cada proyecto se paga mientras la persona esté en él.
-              <span class="info" tabindex="0" title="Cada proyecto se paga desde que la persona entra hasta el día que sale de él (y dentro de las fechas del contrato). Si sale de un proyecto, ese monto deja de pagarse; el dashboard avisa antes." aria-label="Más información">i</span></span>
+            <span class="field__hint">Cada proyecto se paga desde que la persona entra hasta el día que sale de él (y dentro de las fechas del contrato). Si sale de un proyecto, ese monto deja de pagarse; el dashboard avisa antes.</span>
           }
         </div>
         }
 
         @if (modoFormulario() !== 'adenda') {
-        <!-- Paso 6: datos bancarios -->
-        <h3 class="paso campo-ancho" id="paso-banco"><span class="paso__n" aria-hidden="true"></span> Datos bancarios</h3>
+        <!-- Paso 5: datos bancarios -->
+        <div class="field campo-ancho">
+          <label>Datos bancarios</label>
+        </div>
         <div class="field">
           <label for="banco">Banco</label>
           <select id="banco" name="banco" class="select" [ngModel]="bancoForm()" (ngModelChange)="bancoForm.set($event)">
@@ -374,30 +347,6 @@
           </button>
         </div>
       </form>
-
-      <!-- Resumen: muestra lo que se va eligiendo (no calcula nada) -->
-      <aside class="resumen" aria-label="Resumen del contrato">
-        <h3>Resumen</h3>
-        <dl>
-          <dt>Colaborador</dt>
-          <dd>{{ (modoFormulario() === 'crear' ? busquedaColaborador() : colaboradorNombreFijo()) || '—' }}</dd>
-          <dt>Proyectos</dt>
-          <dd>{{ resumenProyectos() }}</dd>
-          <dt>Vigencia</dt>
-          <dd>
-            {{ modoFormulario() === 'adenda' ? 'Hoy' : (inicioForm() ? (inicioForm() | date: 'dd MMM yyyy' : 'UTC') : '—') }}
-            →
-            {{ indefinidoForm() ? 'indefinido' : (finForm() ? (finForm() | date: 'dd MMM yyyy' : 'UTC') : '—') }}
-          </dd>
-          <dt>Pago</dt>
-          <dd>{{ (modoFormulario() === 'editar' ? modoOriginal() === 'contrato' : pagoPorContrato()) ? 'Por contrato · monto fijo' : 'Por proyecto' }}</dd>
-          @if (modoFormulario() !== 'adenda') {
-            <dt>Cuenta</dt>
-            <dd>{{ bancoForm() || '—' }}{{ tipoCuentaForm() ? ' · ' + tipoCuentaForm() : '' }}</dd>
-          }
-        </dl>
-      </aside>
-      </div>
     }
   </section>
 }
@@ -409,7 +358,7 @@
   </div>
 }
 
-<div class="grid" [class.grid--atenuada]="registrando()">
+<div class="grid">
   <!-- ── Lista ──────────────────────────────────────────────────── -->
   <section class="card lista">
     <div class="filtros">

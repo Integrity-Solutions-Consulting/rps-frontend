@@ -183,20 +183,6 @@ export class Contratos {
 
   // ── Registrar / editar contrato (misma pantalla para los dos) ────────
   protected readonly registrando = signal(false);
-  /** "Más datos (opcional)": referencia y observaciones plegadas; se abren solas si ya tienen valor. */
-  protected readonly masDatos = signal(false);
-  protected readonly masDatosAbierto = computed(() =>
-    this.masDatos() || !!this.referenciaForm().trim() || !!this.observacionesForm().trim());
-  /** Nombres de los proyectos marcados, para el resumen del formulario (solo muestra lo elegido). */
-  protected readonly resumenProyectos = computed(() => {
-    const elegidos = this.asignacionesDelColaborador().filter((a) => this.proyectosElegidos().has(a.tmrProyectoId));
-    return elegidos.length ? elegidos.map((a) => a.proyecto).join(', ') : 'Sin proyecto';
-  });
-
-  /** Atajos del encabezado del formulario: lleva a la sección del paso. */
-  protected irAPaso(id: string): void {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
   protected readonly cargandoFormulario = signal(false);
   /** crear: contrato nuevo. editar: solo correcciones. adenda: cualquier cambio del contrato (rige desde hoy). */
   protected readonly modoFormulario = signal<'crear' | 'editar' | 'adenda'>('crear');
