@@ -39,8 +39,9 @@
   .shell__content { padding: 20px 16px 24px; }
   }
 
+/* Por encima de las ventanas modales (z-index 60): un error al guardar dentro de una ventana se lee sin el velo encima. */
 .toasts {
-  position: fixed; right: 20px; bottom: 20px; z-index: 50;
+  position: fixed; right: 20px; bottom: 20px; z-index: 70;
   display: grid; gap: 10px; width: min(420px, calc(100vw - 40px));
 }
 .toast {
@@ -56,7 +57,8 @@
 .toast__accion {
   border: 1px solid currentColor; background: none; color: inherit; font-weight: 600; font-size: 13px;
   height: 28px; padding: 0 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; align-self: center;
-  &:hover { background: var(--rps-ok-50); }
+  /* Tinte del color del aviso (ok, info o error), no siempre verde. */
+  &:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
 }
 /* Barra que se vacía: muestra cuánto tiempo queda para deshacer. */
 .toast__tiempo {
