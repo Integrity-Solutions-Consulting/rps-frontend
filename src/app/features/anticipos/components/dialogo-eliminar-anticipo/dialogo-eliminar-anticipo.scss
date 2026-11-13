@@ -18,6 +18,3 @@
   .num { font-variant-numeric: tabular-nums; } }
 .detalle__ancho { grid-column: 1 / -1;
   dd { font-weight: 400; } }
-
-.btn--peligro { background: var(--rps-danger); border-color: var(--rps-danger); color: #fff; font-weight: 600;
-  &:hover:not(:disabled) { background: #a33024; border-color: #a33024; color: #fff; } }

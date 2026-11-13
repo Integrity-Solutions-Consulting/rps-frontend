@@ -1,0 +1,23 @@
+// Misma confirmación que Desactivar usuario o rol y Eliminar anticipo.
+@use '../../../configuracion/components/dialogo';
+
+.dialogo { width: min(480px, 100%); grid-template-rows: minmax(0, 1fr) auto; }
+.confirmar { grid-template-columns: auto minmax(0, 1fr); gap: 16px; padding: 24px 24px 20px; }
+/* Definitiva pero no destructiva: icono de verificación sobre el tono de aviso. */
+.confirmar__icono { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px;
+  background: var(--rps-warn-50); color: var(--rps-warn); }
+.confirmar__texto { display: grid; gap: 6px; min-width: 0;
+  h2 { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+  p { margin: 0; font-size: 13.5px; color: #4a5a6b; }
+  strong { color: var(--rps-text); font-weight: 600; } }
+
+.detalle { margin: 8px 0 0; display: grid; gap: 8px; padding: 12px 14px; border: 1px solid #e6ebf0;
+  border-radius: 10px; background: #f5f7f9; font-size: 13px;
+  > div { display: flex; justify-content: space-between; gap: 12px; min-width: 0; }
+  dt { color: var(--rps-muted); flex: none; }
+  dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+  .num { font-variant-numeric: tabular-nums; } }
+.detalle__lista { flex-direction: column; gap: 4px !important;
+  dd { text-align: left; font-weight: 500; }
+  ul { margin: 0; padding-left: 18px; display: grid; gap: 2px; } }
+.confirmar__texto .nota { font-size: 12.5px; color: var(--rps-muted); }

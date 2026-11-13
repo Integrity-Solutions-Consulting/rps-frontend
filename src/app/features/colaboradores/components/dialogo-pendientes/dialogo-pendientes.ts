@@ -9,6 +9,7 @@ import { Clasificacion, ColaboradorResumen, ETIQUETA_CLASIFICACION } from '../..
 import { identificacionEnmascarada } from '../../../integracion-tmr/models/tmr.models';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { UiDialog } from '../../../../shared/components/ui-dialog/ui-dialog';
 
 type Carga<T> = { estado: 'cargando' } | { estado: 'ok'; datos: T } | { estado: 'error'; mensaje: string };
 
@@ -20,10 +21,9 @@ type Carga<T> = { estado: 'cargando' } | { estado: 'ok'; datos: T } | { estado: 
 @Component({
   selector: 'app-dialogo-pendientes',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, RouterLink, Icon],
+  imports: [FormsModule, RouterLink, Icon, UiDialog],
   templateUrl: './dialogo-pendientes.html',
   styleUrl: './dialogo-pendientes.scss',
-  host: { '(document:keydown.escape)': 'cerrar.emit()' },
 })
 export class DialogoPendientes {
   private readonly api = inject(ColaboradoresService);

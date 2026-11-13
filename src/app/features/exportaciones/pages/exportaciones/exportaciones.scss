@@ -12,10 +12,30 @@
   li { line-height: 1.5; } }
 .subtitulo--seccion { margin: 8px 0 12px; }
 
+/* Estado del mes: una línea de hechos y, si hace falta, un aviso con la acción para resolverlo. */
+.estado-mes { display: grid; gap: 10px; margin-bottom: 8px;
+  .aviso { align-items: center;
+    > div { flex: 1; }
+    .btn { flex: none; } } }
+.estado-mes__linea { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 14px;
+  strong { font-weight: 600; } }
+.estado-mes__cargando { height: 22px; max-width: 360px; border-radius: 6px; }
+/* Angosto: el texto conserva un ancho legible y el botón baja a su propia línea. */
+@media (max-width: 720px) {
+  .estado-mes .aviso { flex-wrap: wrap;
+    > div { flex: 1 1 220px; }
+    .btn { margin-left: auto; } } }
+
+/* Por qué los botones de liquidaciones están deshabilitados. */
+.opcion__bloqueo { grid-column: 1 / -1; margin: 0; display: flex; align-items: flex-start; gap: 6px; font-size: 12.5px;
+  color: var(--rps-info); background: var(--rps-info-50); border-radius: 8px; padding: 8px 10px;
+  app-icon { flex: none; margin-top: 2px; } }
+
 .todos { display: flex; align-items: center; gap: 8px; height: 38px; font-size: 13.5px; cursor: pointer; margin-bottom: 12px; }
 
 .opciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-.opcion { padding: 18px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: start;
+/* La primera fila (texto) ocupa el alto sobrante: "Última exportación" y los botones quedan al pie, alineados entre tarjetas. */
+.opcion { padding: 18px; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 1fr; gap: 14px; align-items: start;
   > .btn, .opcion__botones { grid-column: 1 / -1; justify-self: start; } }
 .opcion__botones { display: flex; flex-wrap: wrap; gap: 8px; }
 .opcion__icono { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
@@ -23,3 +43,49 @@
 .opcion__txt { display: grid; gap: 2px;
   strong { font-size: 15.5px; }
   small { font-size: 12.5px; } }
+
+/* Última exportación de la tarjeta: responde "¿ya salió este reporte?" sin ir al historial. */
+.opcion__ultima { grid-column: 1 / -1; margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12.5px;
+  color: var(--rps-text); padding-top: 10px; border-top: 1px solid var(--rps-border);
+  app-icon { flex: none; color: var(--rps-muted); }
+  b { font-weight: 600; } }
+
+/* ── Exportaciones recientes ─────────────────────────────────────── */
+.recientes { margin-top: 28px; min-width: 0; overflow: hidden; }
+.recientes__head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px;
+  padding: 18px 22px 14px;
+  h2 { font-size: 16.5px; font-weight: 600; margin: 0; }
+  p { margin: 2px 0 0; font-size: 13px; max-width: 70ch; } }
+.recientes__filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px;
+  .select { min-width: 170px; } }
+.todos--filtro { margin-bottom: 0; }
+.recientes__aviso { margin: 0 22px 18px; align-items: center;
+  > div { flex: 1; }
+  .btn { flex: none; } }
+.recientes__cargando { display: grid; gap: 10px; padding: 4px 22px 22px; }
+.recientes__vacio { padding: 6px 22px 22px; }
+.recientes__tabla {
+  th:first-child, td:first-child { padding-left: 22px; }
+  th:last-child, td:last-child { padding-right: 22px; }
+  td { vertical-align: middle; } }
+.recientes__archivo { display: block; overflow-wrap: anywhere; }
+.recientes__accion { text-align: right; white-space: nowrap; }
+.recientes__pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 22px 16px; border-top: 1px solid var(--rps-border); }
+.recientes__paginas { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+
+/* Pantallas angostas: cada exportación es un bloque con sus etiquetas, sin desplazamiento horizontal. */
+@media (max-width: 720px) {
+  .recientes__head { padding: 16px; }
+  .recientes__tabla {
+    thead { display: none; }
+    tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 12px; padding: 14px 16px;
+      border-bottom: 1px solid var(--rps-border); }
+    td { display: block; padding: 0 !important; border: 0; min-width: 0; }
+    td[data-etiqueta]::before { content: attr(data-etiqueta); display: block; font-size: 11.5px; color: var(--rps-muted); }
+    td[data-etiqueta="Reporte"] { grid-column: 1 / -1; order: -1; }
+    .recientes__accion { grid-column: 1 / -1; text-align: left;
+      .btn { width: 100%; justify-content: center; } } }
+  .recientes__pie { padding: 12px 16px; }
+  .recientes__paginas { margin-left: 0; width: 100%; justify-content: space-between; }
+}

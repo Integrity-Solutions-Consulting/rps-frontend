@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, ElementRef, WritableSignal, afterNextRender, computed, input, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, WritableSignal, computed, input, output, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { CambioConfiguracion } from '../../services/auditoria.service';
 import { CAMPOS_CONFIGURACION } from '../../models/configuracion.models';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { UiDialog } from '../../../../shared/components/ui-dialog/ui-dialog';
 
 type Atajo = '7' | '30' | 'anio' | null;
 
@@ -18,8 +19,7 @@ const POR_PAGINA = 8;
 @Component({
   selector: 'app-dialogo-historial',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, Icon],
-  host: { '(document:keydown.escape)': 'cerrar.emit()' },
+  imports: [DatePipe, FormsModule, Icon, UiDialog],
   templateUrl: './dialogo-historial.html',
   styleUrl: './dialogo-historial.scss',
 })
@@ -28,8 +28,6 @@ export class DialogoHistorial {
   /** Nombre de cada usuario por id (vacío si quien mira no puede listar usuarios). */
   readonly nombres = input<Record<string, string>>({});
   readonly cerrar = output<void>();
-
-  private readonly primerCampo = viewChild<ElementRef<HTMLInputElement>>('primerCampo');
 
   protected readonly campos = CAMPOS_CONFIGURACION;
   protected readonly desde = signal('');
@@ -77,10 +75,6 @@ export class DialogoHistorial {
   });
 
   protected readonly hayFiltros = computed(() => !!(this.desde() || this.hasta() || this.campo() || this.usuario()));
-
-  constructor() {
-    afterNextRender(() => this.primerCampo()?.nativeElement.focus());
-  }
 
   protected autor(id: string | null): string {
     if (!id) return 'Sistema';

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { PeriodoEnPantallaService } from '../../../../core/services/periodo-en-pantalla.service';
 import { DatePipe } from '@angular/common';
-import { catchError, of } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { LiquidacionesService } from '../../services/liquidaciones.service';
@@ -14,10 +14,13 @@ import { IndicadoresDashboard } from '../../../dashboard/models/dashboard.models
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { PestanaUi, UiTabPanel, UiTabs } from '../../../../shared/components/ui-tabs/ui-tabs';
 import { EstadoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { DineroPipe } from '../../../../shared/pipes/dinero.pipe';
 import { ETIQUETA_CORTE, rangoCorte } from '../../../../shared/models/corte';
 import { esPeriodoValido, nombrePeriodo, periodoActual } from '../../../../shared/utils/periodo';
+import { DialogoCalcular, ResumenAntesDeCalcular } from '../../components/dialogo-calcular/dialogo-calcular';
+import { DialogoRevisar } from '../../components/dialogo-revisar/dialogo-revisar';
 
 type Vista = 'resumen' | 'cortes';
 
@@ -31,7 +34,7 @@ type Vista = 'resumen' | 'cortes';
 @Component({
   selector: 'app-liquidaciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, RouterLink, Icon, EstadoChip, DineroPipe],
+  imports: [DatePipe, RouterLink, Icon, EstadoChip, DineroPipe, UiTabs, UiTabPanel, DialogoCalcular, DialogoRevisar],
   templateUrl: './liquidaciones.html',
   styleUrl: './liquidaciones.scss',
 })
@@ -53,6 +56,10 @@ export class Liquidaciones {
   private readonly periodoEnPantalla = inject(PeriodoEnPantallaService);
   private readonly publicarPeriodo = effect(() => this.periodoEnPantalla.periodo.set(this.periodo()));
   protected readonly vista = signal<Vista>('resumen');
+  protected readonly vistas: PestanaUi<Vista>[] = [
+    { id: 'resumen', titulo: 'Resumen mensual' },
+    { id: 'cortes', titulo: 'Por corte' },
+  ];
   protected readonly datos = signal<LiquidacionesPeriodo | null>(null);
   protected readonly indicadores = signal<IndicadoresDashboard | null>(null);
   protected readonly cargando = signal(true);
@@ -67,6 +74,23 @@ export class Liquidaciones {
 
   protected readonly nombreMes = computed(() => nombrePeriodo(this.periodo()));
   protected readonly filas = computed(() => this.datos()?.filas ?? []);
+
+  // ── Confirmaciones (Calcular y Revisar) ──────────────────────────────
+  protected readonly confirmandoCalculo = signal(false);
+  /** Liquidaciones por marcar como revisadas: hoy una (la del detalle); la revisión múltiple pasará varias. */
+  protected readonly porRevisar = signal<LiquidacionResumen[]>([]);
+
+  /** Lo que la pantalla ya tiene cargado: indicadores de Inicio y la lista del mes. Sin llamadas nuevas. */
+  protected readonly resumenCalculo = computed<ResumenAntesDeCalcular>(() => {
+    const i = this.indicadores();
+    const filas = this.filas();
+    return {
+      configurados: i?.colaboradores.configurados ?? null,
+      sinConfigurar: i?.colaboradores.pendientes ?? null,
+      yaCalculadas: filas.length,
+      revisadas: filas.filter((l) => l.revisado).length,
+    };
+  });
 
   constructor() {
     effect(() => {
@@ -87,6 +111,11 @@ export class Liquidaciones {
     void this.router.navigate([], { relativeTo: this.ruta, queryParams: { periodo: valor } });
   }
 
+  /** Botones "Calcular": primero el resumen previo; el cálculo solo sale al confirmar. */
+  protected pedirCalculo(): void {
+    this.confirmandoCalculo.set(true);
+  }
+
   /** Pide al backend generar honorarios y liquidaciones del mes y muestra lo que respondió. */
   protected calcular(): void {
     this.calculando.set(true);
@@ -94,11 +123,13 @@ export class Liquidaciones {
     this.api.calcular(this.periodo()).subscribe({
       next: (r) => {
         this.calculando.set(false);
+        this.confirmandoCalculo.set(false);
         this.avisos.ok(`${this.nombreMes()}: ${r.liquidacionesGeneradas} liquidación(es) nueva(s), `
           + `${r.honorariosGenerados} honorario(s) generado(s), ${r.honorariosOmitidos} ya existían.`);
         this.cargar(this.periodo());
         this.cargarDetalle(this.seleccionadoId());
       },
+      // La ventana queda abierta con el error en un aviso: se puede reintentar o cancelar.
       error: (e: unknown) => { this.calculando.set(false); this.avisos.error(leerErrorApi(e).mensaje); },
     });
   }
@@ -111,17 +142,40 @@ export class Liquidaciones {
     this.seleccionadoId.set(this.seleccionadoId() === l.id ? null : l.id);
   }
 
-  /** POST /api/liquidaciones/{id}/revisar. El backend no tiene cómo quitar la marca. */
-  protected marcarRevisado(l: Pick<LiquidacionResumen, 'id'>): void {
+  /** Botón "Marcar revisada para envío": abre la confirmación (la marca es definitiva). */
+  protected pedirRevision(lista: LiquidacionResumen[]): void {
+    const pendientes = lista.filter((l) => !l.revisado);
+    if (pendientes.length) this.porRevisar.set(pendientes);
+  }
+
+  protected cancelarRevision(): void {
+    if (!this.guardandoRevision()) this.porRevisar.set([]);
+  }
+
+  /**
+   * POST /api/liquidaciones/{id}/revisar por cada liquidación confirmada (hoy una). El backend no tiene cómo quitar
+   * la marca. Si falla, la ventana queda abierta con el error en un aviso.
+   */
+  protected confirmarRevision(): void {
+    const lista = this.porRevisar();
+    if (!lista.length || this.guardandoRevision()) return;
     this.guardandoRevision.set(true);
-    this.api.marcarRevisado(l.id).subscribe({
+    forkJoin(lista.map((l) => this.api.marcarRevisado(l.id))).subscribe({
       next: () => {
         this.guardandoRevision.set(false);
-        this.avisos.ok('Liquidación marcada como revisada para envío.');
+        this.porRevisar.set([]);
+        this.avisos.ok(lista.length === 1
+          ? `Liquidación de ${lista[0].colaborador} marcada como revisada para envío.`
+          : `${lista.length} liquidaciones marcadas como revisadas para envío.`);
         this.cargar(this.periodo());
         this.cargarDetalle(this.seleccionadoId());
       },
-      error: (e: unknown) => { this.guardandoRevision.set(false); this.avisos.error(leerErrorApi(e).mensaje); },
+      error: (e: unknown) => {
+        this.guardandoRevision.set(false);
+        this.avisos.error(leerErrorApi(e).mensaje);
+        // Con varias, alguna pudo quedar marcada: se recarga para no mostrar un estado viejo.
+        if (lista.length > 1) this.cargar(this.periodo());
+      },
     });
   }
 

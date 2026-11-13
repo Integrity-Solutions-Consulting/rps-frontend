@@ -8,6 +8,7 @@ import { ActualizarConfiguracionRequest, CAMPOS_CONFIGURACION, Configuracion as 
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { PestanaUi, UiTabPanel, UiTabs } from '../../../../shared/components/ui-tabs/ui-tabs';
 import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
 import { SessionService } from '../../../../core/services/session.service';
 import { RolSistema } from '../../models/accesos.models';
@@ -35,7 +36,7 @@ const AYUDA_IMPUESTO: Partial<Record<Clave, string>> = {
 @Component({
   selector: 'app-configuracion',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, Icon, SoloNumeros, TabRoles, TabUsuarios, DialogoHistorial],
+  imports: [DatePipe, FormsModule, Icon, SoloNumeros, TabRoles, TabUsuarios, DialogoHistorial, UiTabs, UiTabPanel],
   templateUrl: './configuracion.html',
   styleUrl: './configuracion.scss',
 })
@@ -55,6 +56,11 @@ export class Configuracion {
   /** Roles y Usuarios solo para quien administra cuentas (Administrador y Administrador Contable). */
   protected readonly administraCuentas = computed(() => this.rol() === 'Administrador' || this.rol() === 'Administrador Contable');
   protected readonly pestana = signal<Pestana>('general');
+  protected readonly pestanas: PestanaUi<Pestana>[] = [
+    { id: 'general', titulo: 'General' },
+    { id: 'roles', titulo: 'Roles y permisos' },
+    { id: 'usuarios', titulo: 'Usuarios' },
+  ];
 
   protected readonly campos = CAMPOS_CONFIGURACION;
   protected readonly ayudaImpuesto = AYUDA_IMPUESTO;

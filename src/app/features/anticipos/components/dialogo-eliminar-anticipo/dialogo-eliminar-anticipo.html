@@ -1,5 +1,6 @@
 <div class="fondo" (click)="cancelar.emit()"></div>
-<section class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="eliminar-anticipo-titulo" aria-describedby="eliminar-anticipo-texto">
+<section class="dialogo" ui-dialog rol="alertdialog" tituloId="eliminar-anticipo-titulo" descripcionId="eliminar-anticipo-texto"
+         (cerrar)="cancelar.emit()">
   <div class="dialogo__cuerpo confirmar">
     <span class="confirmar__icono" aria-hidden="true"><app-icon name="trash" [size]="22" /></span>
     <div class="confirmar__texto">
@@ -21,7 +22,7 @@
   </div>
   <footer class="dialogo__pie">
     <div class="dialogo__acciones">
-      <button #botonCancelar type="button" class="btn" (click)="cancelar.emit()">Cancelar</button>
+      <button data-foco-inicial type="button" class="btn" (click)="cancelar.emit()">Cancelar</button>
       <button type="button" class="btn btn--peligro" (click)="confirmar.emit()">Eliminar anticipo</button>
     </div>
   </footer>

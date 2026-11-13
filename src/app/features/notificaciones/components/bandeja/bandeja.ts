@@ -7,6 +7,7 @@ import { NotificationService } from '../../../../core/services/notification.serv
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip } from '../../../../shared/components/estado-chip/estado-chip';
+import { UiDialog } from '../../../../shared/components/ui-dialog/ui-dialog';
 import { nombrePeriodo, periodoDeFecha } from '../../../../shared/utils/periodo';
 
 const POR_PAGINA = 20;
@@ -19,10 +20,9 @@ const POR_PAGINA = 20;
 @Component({
   selector: 'app-bandeja',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, RouterLink, Icon, EstadoChip],
+  imports: [DatePipe, RouterLink, Icon, EstadoChip, UiDialog],
   templateUrl: './bandeja.html',
   styleUrl: './bandeja.scss',
-  host: { '(document:keydown.escape)': 'cerrar()' },
 })
 export class Bandeja {
   protected readonly servicio = inject(NotificacionesService);

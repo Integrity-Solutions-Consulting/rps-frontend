@@ -27,6 +27,9 @@
 .dialogo .btn { height: 40px; border-radius: 10px; }
 .btn--oscuro { background: var(--rps-navy); border-color: var(--rps-navy); color: #fff; font-weight: 600;
   &:hover:not(:disabled) { background: var(--rps-navy-700); border-color: var(--rps-navy-700); color: #fff; } }
+/* Acción que no se puede deshacer en una confirmación (Desactivar, Eliminar). */
+.btn--peligro { background: var(--rps-danger); border-color: var(--rps-danger); color: #fff; font-weight: 600;
+  &:hover:not(:disabled) { background: #a33024; border-color: #a33024; color: #fff; } }
 
 /* Etiqueta del grupo con texto auxiliar a la derecha ("Rol · Elige uno") */
 .grupo__etiqueta { display: flex; justify-content: space-between; align-items: baseline; gap: 12px;

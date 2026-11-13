@@ -6,13 +6,13 @@ import { UsuariosService } from '../../services/usuarios.service';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { iniciales, tonoAvatar } from '../avatar';
+import { UiDialog } from '../../../../shared/components/ui-dialog/ui-dialog';
 
 /** Ventana "Cambiar rol". Las reglas (rol activo, último Administrador, propia cuenta) las aplica el backend. */
 @Component({
   selector: 'app-dialogo-cambiar-rol',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon],
-  host: { '(document:keydown.escape)': 'cancelar.emit()' },
+  imports: [Icon, UiDialog],
   templateUrl: './dialogo-cambiar-rol.html',
   styleUrl: './dialogo-cambiar-rol.scss',
 })

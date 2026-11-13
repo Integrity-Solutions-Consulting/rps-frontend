@@ -1,9 +1,10 @@
 <div class="fondo" (click)="cancelar.emit()"></div>
-<form class="dialogo" role="dialog" aria-modal="true" aria-labelledby="crear-usuario-titulo" novalidate (submit)="$event.preventDefault(); crear()">
+<form class="dialogo" ui-dialog tituloId="crear-usuario-titulo" descripcionId="crear-usuario-texto"
+      [cerrarConEscape]="!guardando()" (cerrar)="cancelar.emit()" novalidate (submit)="$event.preventDefault(); crear()">
   <header class="dialogo__head">
     <div>
       <h2 id="crear-usuario-titulo">Agregar usuario</h2>
-      <p>La cuenta queda activa y puede entrar con estos datos</p>
+      <p id="crear-usuario-texto">La cuenta queda activa y puede entrar con estos datos</p>
     </div>
     <button type="button" class="dialogo__cerrar" aria-label="Cerrar" (click)="cancelar.emit()"><app-icon name="x" [size]="18" /></button>
   </header>
@@ -16,7 +17,7 @@
       </div>
       <div class="field identidad__campo">
         <label for="nu-nombre">Nombre</label>
-        <input #campoNombre id="nu-nombre" name="nombre" class="input" placeholder="Nombre y apellido" autocomplete="off"
+        <input data-foco-inicial id="nu-nombre" name="nombre" class="input" placeholder="Nombre y apellido" autocomplete="off"
                [class.is-invalid]="errores()['nombre']" [ngModel]="nombre()" (ngModelChange)="nombre.set($event); limpiar('nombre')" />
         @if (errores()['nombre']; as e) { <span class="field__error">{{ e }}</span> }
       </div>

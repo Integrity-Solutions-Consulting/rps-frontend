@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, input, output, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
 import { RolSistemaDetalle, UsuarioSistema } from '../../models/accesos.models';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { iniciales, tonoAvatar } from '../avatar';
+import { UiDialog } from '../../../../shared/components/ui-dialog/ui-dialog';
 
 /**
  * Confirmación antes de desactivar una cuenta o un rol. Se pasa uno de los dos: [usuario] o [rol].
@@ -11,8 +12,7 @@ import { iniciales, tonoAvatar } from '../avatar';
 @Component({
   selector: 'app-dialogo-confirmar-estado',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon],
-  host: { '(document:keydown.escape)': 'cancelar.emit()' },
+  imports: [Icon, UiDialog],
   templateUrl: './dialogo-confirmar-estado.html',
   styleUrl: './dialogo-confirmar-estado.scss',
 })
@@ -25,13 +25,7 @@ export class DialogoConfirmarEstado {
   readonly cancelar = output<void>();
   readonly confirmar = output<void>();
 
-  private readonly botonCancelar = viewChild<ElementRef<HTMLButtonElement>>('botonCancelar');
-
+  // El foco empieza en "Cancelar" (data-foco-inicial): la acción segura queda a mano si se presiona Enter por costumbre.
   protected readonly iniciales = iniciales;
   protected readonly tonoAvatar = tonoAvatar;
-
-  constructor() {
-    // Foco en "Cancelar": la acción segura queda a mano si se presiona Enter por costumbre.
-    afterNextRender(() => this.botonCancelar()?.nativeElement.focus());
-  }
 }
