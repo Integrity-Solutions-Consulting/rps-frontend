@@ -1,0 +1,63 @@
+<section class="card proceso" aria-labelledby="proceso-titulo">
+  <header class="proceso__head">
+    <div>
+      <h2 id="proceso-titulo">Proceso de {{ nombrePeriodo() }}</h2>
+      <p>Los cuatro pasos para preparar los honorarios del mes, en orden.</p>
+    </div>
+    @if (etapas()) {
+      <span class="proceso__resumen" aria-live="polite">{{ completadas() }} de 4 completados</span>
+    }
+  </header>
+
+  @if (etapas(); as lista) {
+    <ol class="etapas">
+      @for (e of lista; track e.clave; let n = $index) {
+        <li [class]="'etapa etapa--' + e.estado" [class.is-actual]="actual() === e.clave"
+            [attr.aria-current]="actual() === e.clave ? 'step' : null">
+          <div class="etapa__linea">
+            <span class="etapa__marca" aria-hidden="true">
+              @if (e.estado === 'completada') { <app-icon name="check" [size]="18" /> } @else { {{ n + 1 }} }
+            </span>
+            <app-estado-chip [tono]="tonoEstado[e.estado]">{{ etiquetaEstado[e.estado] }}</app-estado-chip>
+          </div>
+
+          <h3 class="etapa__titulo"><span class="sr-only">Paso {{ n + 1 }}: </span>{{ e.titulo }}</h3>
+
+          <p class="etapa__detalle">
+            @if (e.clave === 'exportar' && ultimaDelMes(); as u) {
+              Exportado el <span class="num">{{ u.generadoEn | date: 'dd MMM yyyy, HH:mm' }}</span>
+            } @else if (e.clave === 'exportar' && cargandoUltimas()) {
+              <span class="skeleton etapa__esqueleto"></span>
+            } @else {
+              {{ e.detalle }}
+            }
+          </p>
+
+          @if (e.avance; as a) {
+            <span class="barra" role="progressbar" [attr.aria-valuenow]="a.hechos" aria-valuemin="0" [attr.aria-valuemax]="a.total"
+                  [attr.aria-valuetext]="a.hechos + ' de ' + a.total" [attr.aria-label]="e.titulo">
+              <span class="barra__relleno" [style.width.%]="porcentaje(a)"></span>
+            </span>
+          }
+
+          @if (e.nota) { <p class="etapa__nota">{{ e.nota }}</p> }
+
+          <a class="etapa__accion" [class.btn]="actual() === e.clave" [class.btn--primary]="actual() === e.clave"
+             [class.btn--sm]="actual() === e.clave" [routerLink]="e.accion.ruta" [queryParams]="e.accion.query">
+            {{ e.accion.texto }} <app-icon name="chevronRight" [size]="16" />
+          </a>
+        </li>
+      }
+    </ol>
+  } @else if (estadoIndicadores() === 'error') {
+    <div class="proceso__error" role="alert">
+      <app-icon name="alert" [size]="18" />
+      <span>No se pudo cargar el avance de {{ nombrePeriodo() }}.</span>
+      <button type="button" class="btn btn--sm" (click)="reintentar.emit()">Reintentar</button>
+    </div>
+  } @else {
+    <div class="etapas" aria-busy="true" aria-label="Cargando el avance del período">
+      @for (i of [1, 2, 3, 4]; track i) { <div class="skeleton" style="height: 128px"></div> }
+    </div>
+  }
+</section>

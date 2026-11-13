@@ -82,6 +82,7 @@ export class LiquidacionesService {
       id: l.id, periodo: mesDe(l.periodo), colaboradorId: l.colaboradorId,
       tmrColaboradorId: c?.tmrColaboradorId ?? '',
       colaborador: c ? this.be.nombreDe(nombres, c.tmrColaboradorId) : 'Colaborador',
+      identificacion: c?.identificacion ?? '',
       netoConsolidado: l.netoConsolidado,
       cortes: l.cortes.map((x) => ({
         corte: x.tipo, base: x.valorBase, descuento: x.recuperacionAdicional, valor: x.valorPreparado,

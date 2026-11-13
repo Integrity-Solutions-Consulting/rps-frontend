@@ -29,6 +29,12 @@
   </div>
 }
 
+<!-- ── Proceso del mes: configurar → calcular → revisar → exportar ── -->
+<app-proceso-mensual [periodo]="periodo()" [nombrePeriodo]="nombrePeriodo()"
+                     [indicadores]="datos()" [estadoIndicadores]="indicadores().estado"
+                     [ultimas]="listaUltimas()" [cargandoUltimas]="ultimasExportaciones().estado === 'cargando'"
+                     (reintentar)="actualizar()" />
+
 <!-- ── Indicadores (GET /api/dashboard) ─────────────────────────── -->
 @switch (indicadores().estado) {
   @case ('cargando') {

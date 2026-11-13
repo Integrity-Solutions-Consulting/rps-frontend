@@ -44,6 +44,8 @@ export interface LiquidacionResumen {
   colaboradorId: string;
   tmrColaboradorId: string;
   colaborador: string;
+  /** Identificación de la copia de TMR ("" si no se conoce). Solo para buscar; en pantalla se muestra enmascarada. */
+  identificacion: string;
   netoConsolidado: number;
   cortes: CorteLiquidacion[];
   /** "Revisado para envío" (RN 49). El backend solo permite marcarlo. No confirma una transferencia. */

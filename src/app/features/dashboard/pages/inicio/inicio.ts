@@ -19,6 +19,9 @@ import { Icon, IconName } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { esPeriodoValido, nombrePeriodo, periodoActual } from '../../../../shared/utils/periodo';
 import { conservarDatosAlRecargar, estaActualizando } from '../../../../shared/utils/carga';
+import { ExportacionesService } from '../../../exportaciones/services/exportaciones.service';
+import { UltimaExportacion } from '../../../exportaciones/models/exportacion.models';
+import { ProcesoMensual } from '../../components/proceso-mensual/proceso-mensual';
 
 /** Estado de cada sección: se cargan por separado para que un error no oculte lo demás. */
 type Estado<T> =
@@ -51,11 +54,12 @@ interface GrupoAtencion {
  *     contratos vencidos con asignación activa y liquidaciones sin revisar.
  *   - Preparación del período: GET /api/liquidaciones?periodo= (misma lista que Liquidaciones).
  *   - Estado de TMR: GET /api/integracion-tmr/estado (RC 05).
+ *   - Proceso del mes: indicadores + GET /api/exportaciones/ultimas?periodo= (paso Exportar).
  */
 @Component({
   selector: 'app-inicio',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, RouterLink, Icon, EstadoChip],
+  imports: [CurrencyPipe, DatePipe, RouterLink, Icon, EstadoChip, ProcesoMensual],
   templateUrl: './inicio.html',
   styleUrl: './inicio.scss',
 })
@@ -64,6 +68,7 @@ export class Inicio {
   private readonly liquidaciones = inject(LiquidacionesService);
   private readonly tmr = inject(IntegracionTmrService);
   private readonly colaboradores = inject(ColaboradoresService);
+  private readonly exportaciones = inject(ExportacionesService);
   private readonly recargar$ = new BehaviorSubject<void>(undefined);
 
   protected readonly periodo = signal(periodoActual());
@@ -83,6 +88,8 @@ export class Inicio {
     this.colaboradores.listar({ estado: 'Pendiente', activo: null }));
   /** Preparación del período: la misma lista de la pantalla Liquidaciones. */
   protected readonly preparacion = this.cargar((p) => this.liquidaciones.listar(p));
+  /** Paso Exportar del proceso del mes: la misma llamada que usa la pantalla Exportaciones. */
+  protected readonly ultimasExportaciones = this.cargar<UltimaExportacion[]>((p) => this.exportaciones.ultimas(p));
 
   // ── Datos para la pantalla ──────────────────────────────────────────
   protected readonly datos = computed(() => {
@@ -95,6 +102,12 @@ export class Inicio {
   protected readonly cargando = computed(() =>
     [this.indicadores(), this.vencimientos(), this.salidasProyecto(), this.estadoTmr(), this.cambiosTmr(), this.pendientes(), this.preparacion()]
       .some((s) => s.estado === 'cargando' || estaActualizando(s)));
+
+  /** null si no se pudo consultar: el panel lo dice en vez de suponer que no hubo exportaciones. */
+  protected readonly listaUltimas = computed<UltimaExportacion[] | null>(() => {
+    const u = this.ultimasExportaciones();
+    return u.estado === 'ok' ? u.datos : null;
+  });
 
   protected readonly totalLiquidaciones = computed(() => {
     const d = this.datos();

@@ -28,10 +28,67 @@
   <div class="contenido" [class.actualizando]="cargando()">
 
     @if (d.filas.length === 0) {
-      <section class="card vacio-grande">
-        <app-icon name="calculator" [size]="32" />
-        <h2>{{ nombreMes() }} todavía no se calcula</h2>
-        <button type="button" class="btn btn--primary" (click)="pedirCalculo()" [disabled]="calculando()">Calcular {{ nombreMes() }}</button>
+      <!-- Primer uso del mes: qué aparece aquí, qué hace falta antes y adónde ir. -->
+      <section class="card vacio-grande" aria-labelledby="vacio-titulo">
+        <span class="vacio-grande__icono"><app-icon name="calculator" [size]="26" /></span>
+        <h2 id="vacio-titulo">{{ nombreMes() }} todavía no se calcula</h2>
+        <p>
+          Al calcular, RPS arma la liquidación de cada colaborador con los días que trabajó en sus proyectos del mes,
+          sus impuestos y los cortes de pago (RN 17 a 25). Después la revisas y la exportas.
+        </p>
+
+        <div class="requisitos">
+          <h3>Antes de calcular</h3>
+          <p class="requisitos__intro">Solo entran al cálculo los colaboradores que en {{ nombreMes() }} tenían:</p>
+          <ul>
+            <li><app-icon name="sliders" [size]="16" /> Clasificación, frecuencia de pago y una cuenta bancaria activa.</li>
+            <li><app-icon name="file" [size]="16" /> Un contrato vigente en algún día del mes.</li>
+            <li><app-icon name="cash" [size]="16" /> Condiciones económicas y asignaciones de proyecto en TMR con días en el mes.</li>
+          </ul>
+
+          @if (resumenCalculo(); as r) {
+            @if (r.configurados !== null && r.sinConfigurar !== null) {
+              @if (r.sinConfigurar > 0) {
+                <p class="aviso aviso--warn requisitos__estado">
+                  <app-icon name="alert" [size]="18" />
+                  <span>
+                    Hoy hay <strong class="num">{{ r.configurados }} de {{ r.configurados + r.sinConfigurar }}</strong> colaboradores configurados.
+                    {{ r.sinConfigurar === 1 ? 'El que falta no entrará' : 'Los ' + r.sinConfigurar + ' que faltan no entrarán' }} al cálculo
+                    hasta completar su configuración. No impide calcular a los demás.
+                  </span>
+                </p>
+              } @else if (r.configurados > 0) {
+                <p class="aviso aviso--ok requisitos__estado">
+                  <app-icon name="check" [size]="18" />
+                  <span>Hoy están configurados los <strong class="num">{{ r.configurados }}</strong> colaboradores.</span>
+                </p>
+              } @else {
+                <p class="aviso aviso--warn requisitos__estado">
+                  <app-icon name="alert" [size]="18" />
+                  <span>Todavía no hay colaboradores en RPS. Sincroniza con TMR desde Colaboradores para traerlos.</span>
+                </p>
+              }
+            }
+          }
+        </div>
+
+        <div class="vacio-grande__acciones">
+          @if (faltaConfigurar()) {
+            <a class="btn btn--primary" routerLink="/colaboradores">
+              <app-icon name="sliders" [size]="17" /> Ir a configurar colaboradores
+            </a>
+            <button type="button" class="btn" (click)="pedirCalculo()" [disabled]="calculando()">
+              <app-icon name="calculator" [size]="17" /> Calcular {{ nombreMes() }}
+            </button>
+          } @else {
+            <button type="button" class="btn btn--primary" (click)="pedirCalculo()" [disabled]="calculando()">
+              <app-icon name="calculator" [size]="17" /> Calcular {{ nombreMes() }}
+            </button>
+            <a class="btn" routerLink="/colaboradores">
+              <app-icon name="sliders" [size]="17" /> Revisar configuración de colaboradores
+            </a>
+          }
+        </div>
       </section>
     } @else {
       <!-- ── Indicadores (GET /api/dashboard) ──────────────────────── -->
@@ -57,22 +114,93 @@
 
       <div class="con-panel">
         <!-- ── Lista ───────────────────────────────────────────────── -->
-        <section class="card lista">
+        <section class="card lista" aria-label="Liquidaciones del período">
+          <!-- Herramientas de revisión: búsqueda y filtro (solo en pantalla, no cambian el cálculo) -->
+          <div class="herramientas">
+            <div class="buscar">
+              <app-icon name="search" [size]="16" />
+              <label for="buscar-liquidacion" class="sr-only">Buscar colaborador por nombre o identificación</label>
+              <input id="buscar-liquidacion" type="search" placeholder="Nombre o identificación" autocomplete="off"
+                     [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" />
+            </div>
+            <div class="segmentos" role="group" aria-label="Mostrar liquidaciones">
+              <button type="button" [class.is-on]="filtroRevision() === 'todas'" [attr.aria-pressed]="filtroRevision() === 'todas'"
+                      (click)="filtroRevision.set('todas')">Todas <span class="contador num">{{ filas().length }}</span></button>
+              <button type="button" [class.is-on]="filtroRevision() === 'porRevisar'" [attr.aria-pressed]="filtroRevision() === 'porRevisar'"
+                      (click)="filtroRevision.set('porRevisar')">Por revisar <span class="contador num">{{ totalPorRevisar() }}</span></button>
+            </div>
+          </div>
+
+          <!-- Revisión de varias: aparece al elegir casillas; confirma con la misma ventana que la individual -->
+          @if (seleccionadas().length) {
+            <div class="seleccion" role="region" aria-label="Liquidaciones seleccionadas">
+              <span class="seleccion__txt" aria-live="polite">
+                <strong class="num">{{ seleccionadas().length }}</strong>
+                {{ seleccionadas().length === 1 ? 'seleccionada' : 'seleccionadas' }}
+                <span class="muted">· neto {{ netoSeleccionado() | dinero }}</span>
+              </span>
+              <div class="seleccion__acciones">
+                <button type="button" class="btn btn--ghost btn--sm" (click)="limpiarSeleccion()">Quitar selección</button>
+                <button type="button" class="btn btn--primary btn--sm" (click)="pedirRevision(seleccionadas())" [disabled]="guardandoRevision()">
+                  <app-icon name="check" [size]="16" />
+                  {{ seleccionadas().length === 1 ? 'Marcar 1 como revisada' : 'Marcar ' + seleccionadas().length + ' como revisadas' }}
+                </button>
+              </div>
+            </div>
+          }
+
           <!-- Las dos vistas usan los mismos datos: las flechas cambian de vista directamente. -->
           <ui-tabs idBase="liquidaciones" etiqueta="Vista de liquidaciones" activacion="auto"
                    [pestanas]="vistas" [activa]="vista()" (cambiar)="vista.set($event)" />
 
           <div uiTabPanel="liquidaciones" [uiTabPanelActiva]="vista()">
-          @if (vista() === 'resumen') {
-            <div class="table-wrap">
-              <table class="tbl">
-                <thead>
-                  <tr><th>Colaborador</th><th class="r">Neto del mes</th><th>Revisión</th></tr>
-                </thead>
-                <tbody>
-                  @for (l of filas(); track l.id) {
-                    <tr class="fila-elegible" [class.is-sel]="seleccionadoId() === l.id" tabindex="0"
-                        (click)="elegir(l)" (keydown.enter)="elegir(l)">
+          @if (vista() === 'cortes') {
+            <p class="aviso aviso--info nota-cortes">
+              <app-icon name="info" [size]="18" />
+              <span>Quincena ({{ rangoCorte('Quincena', periodo()) }}) y fin de mes ({{ rangoCorte('FinDeMes', periodo()) }}).
+              "Desc." son las cuotas de anticipos adicionales de ese corte.</span>
+            </p>
+          }
+          <div class="table-wrap">
+            <table class="tbl tbl--revision">
+              <caption class="sr-only">
+                Liquidaciones de {{ nombreMes() }}. Enter o Espacio sobre una fila abre su detalle; la casilla la elige para revisar varias a la vez.
+              </caption>
+              <thead>
+                <tr>
+                  <th class="col-check" scope="col">
+                    <input type="checkbox" class="check" [checked]="todasSeleccionadas()" [indeterminate]="algunasSeleccionadas()"
+                           [disabled]="!haySeleccionables()" (change)="alternarTodas()"
+                           [attr.aria-label]="todasSeleccionadas() ? 'Quitar todas las liquidaciones por revisar mostradas' : 'Elegir todas las liquidaciones por revisar mostradas'" />
+                  </th>
+                  @if (vista() === 'resumen') {
+                    <th scope="col">Colaborador</th><th class="r" scope="col">Neto del mes</th><th scope="col">Revisión</th>
+                  } @else {
+                    <th scope="col">Colaborador</th><th class="r" scope="col">Neto</th>
+                    <th class="r" scope="col">Desc. quincena</th><th class="r" scope="col">Valor quincena</th>
+                    <th class="r" scope="col">Desc. fin de mes</th><th class="r" scope="col">Valor fin de mes</th>
+                    <th scope="col">Revisión</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (l of filasVisibles(); track l.id) {
+                  <tr class="fila-elegible" [class.is-sel]="seleccionadoId() === l.id" [class.is-revisada]="l.revisado"
+                      [class.is-marcada]="estaSeleccionada(l) && !l.revisado" tabindex="0"
+                      [attr.aria-current]="seleccionadoId() === l.id ? 'true' : null"
+                      (click)="elegir(l)" (keydown.enter)="teclaFila($event, l)" (keydown.space)="teclaFila($event, l)">
+                    <td class="col-check" (click)="$event.stopPropagation()">
+                      @if (!l.revisado) {
+                        <label class="check-area">
+                          <input type="checkbox" class="check" [checked]="estaSeleccionada(l)" (change)="alternarSeleccion(l)"
+                                 [attr.aria-label]="'Elegir la liquidación de ' + l.colaborador + ' para revisar'" />
+                        </label>
+                      } @else {
+                        <app-icon name="check" [size]="16" class="check-hecho" />
+                        <span class="sr-only">Ya revisada</span>
+                      }
+                    </td>
+                    @if (vista() === 'resumen') {
                       <td>
                         <div class="persona">
                           <span class="avatar" aria-hidden="true">{{ iniciales(l.colaborador) }}</span>
@@ -80,35 +208,7 @@
                         </div>
                       </td>
                       <td class="r num"><strong>{{ l.netoConsolidado | dinero }}</strong></td>
-                      <td>
-                        @if (l.revisado) { <app-estado-chip tono="ok">Revisada</app-estado-chip> }
-                        @else { <app-estado-chip tono="neutral">Por revisar</app-estado-chip> }
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          } @else {
-            <p class="aviso aviso--info nota-cortes">
-              <app-icon name="info" [size]="18" />
-              <span>Quincena ({{ rangoCorte('Quincena', periodo()) }}) y fin de mes ({{ rangoCorte('FinDeMes', periodo()) }}).
-              "Desc." son las cuotas de anticipos adicionales de ese corte.</span>
-            </p>
-            <div class="table-wrap">
-              <table class="tbl">
-                <thead>
-                  <tr>
-                    <th>Colaborador</th><th class="r">Neto</th>
-                    <th class="r">Desc. quincena</th><th class="r">Valor quincena</th>
-                    <th class="r">Desc. fin de mes</th><th class="r">Valor fin de mes</th>
-                    <th>Revisado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (l of filas(); track l.id) {
-                    <tr class="fila-elegible" [class.is-sel]="seleccionadoId() === l.id" tabindex="0"
-                        (click)="elegir(l)" (keydown.enter)="elegir(l)">
+                    } @else {
                       <td><strong>{{ l.colaborador }}</strong></td>
                       <td class="r num">{{ l.netoConsolidado | dinero }}</td>
                       @if (corteDe(l, 'Quincena'); as q) {
@@ -123,18 +223,52 @@
                       } @else {
                         <td class="r muted" colspan="2">Sin corte de fin de mes</td>
                       }
-                      <td>
-                        @if (l.revisado) { <app-estado-chip tono="ok">Revisada</app-estado-chip> }
-                        @else { <app-estado-chip tono="neutral">Por revisar</app-estado-chip> }
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          }
+                    }
+                    <td>
+                      @if (l.revisado) { <app-estado-chip tono="ok">Revisada</app-estado-chip> }
+                      @else { <app-estado-chip tono="warn">Por revisar</app-estado-chip> }
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td class="sin-resultados" [attr.colspan]="vista() === 'resumen' ? 4 : 8">
+                      @if (busqueda().trim()) {
+                        Ningún colaborador de {{ nombreMes() }} coincide con “{{ busqueda().trim() }}”@if (filtroRevision() === 'porRevisar') { entre los que faltan revisar}.
+                      } @else {
+                        Todas las liquidaciones de {{ nombreMes() }} están revisadas.
+                      }
+                      <button type="button" class="btn btn--sm" (click)="limpiarFiltros()">Ver todas</button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+              @if (filasVisibles().length) {
+                <tfoot>
+                  <tr class="fila-total">
+                    <td class="col-check"></td>
+                    <th scope="row">
+                      {{ hayFiltros() ? 'Total de lo mostrado' : 'Total del período' }}
+                      <span class="total__cuantos">{{ filasVisibles().length }} {{ filasVisibles().length === 1 ? 'colaborador' : 'colaboradores' }}</span>
+                    </th>
+                    <td class="r num">{{ totales().neto | dinero }}</td>
+                    @if (vista() === 'cortes') {
+                      <td class="r num">{{ totales().descQuincena | dinero }}</td>
+                      <td class="r num">{{ totales().valorQuincena | dinero }}</td>
+                      <td class="r num">{{ totales().descFinDeMes | dinero }}</td>
+                      <td class="r num">{{ totales().valorFinDeMes | dinero }}</td>
+                    }
+                    <td></td>
+                  </tr>
+                </tfoot>
+              }
+            </table>
           </div>
-          <p class="pie-tabla">{{ filas().length }} {{ filas().length === 1 ? 'colaborador' : 'colaboradores' }} · elige uno para ver su detalle</p>
+          </div>
+          <p class="pie-tabla">
+            @if (hayFiltros()) { Mostrando {{ filasVisibles().length }} de {{ filas().length }} · }
+            @else { {{ filas().length }} {{ filas().length === 1 ? 'colaborador' : 'colaboradores' }} · }
+            {{ totalPorRevisar() }} por revisar · elige uno para ver su detalle
+          </p>
         </section>
 
         <!-- ── Detalle del colaborador ─────────────────────────────── -->
@@ -151,7 +285,7 @@
           } @else if (detalle(); as det) {
             <header class="panel-lateral__head">
               <div>
-                <h2>{{ det.colaborador }}</h2>
+                <h2 #tituloDetalle tabindex="-1">{{ det.colaborador }}</h2>
                 <span class="muted">Detalle de liquidación · {{ nombreMes() }}</span>
               </div>
               <button type="button" class="btn btn--ghost btn--sm" (click)="seleccionadoId.set(null)" aria-label="Cerrar detalle">
@@ -239,6 +373,17 @@
                   @if (det.revisadoEn) { El {{ det.revisadoEn | date: 'dd MMM yyyy, HH:mm' }}@if (det.revisadoPorMi) { , por ti }. }
                   No confirma una transferencia.
                 </small>
+                <!-- Seguir revisando sin volver a la lista -->
+                @if (siguientePendiente(); as sig) {
+                  <button type="button" class="btn btn--primary siguiente" (click)="irASiguiente()">
+                    Siguiente por revisar: {{ sig.colaborador }} <app-icon name="chevronRight" [size]="16" />
+                  </button>
+                  <small class="muted">Quedan {{ totalPorRevisar() }} por revisar en {{ nombreMes() }}.</small>
+                } @else if (totalPorRevisar() > 0) {
+                  <small class="muted">Ninguna otra liquidación por revisar coincide con la búsqueda; quedan {{ totalPorRevisar() }} en {{ nombreMes() }}.</small>
+                } @else {
+                  <small class="hecho"><app-icon name="check" [size]="15" /> No quedan liquidaciones por revisar en {{ nombreMes() }}.</small>
+                }
               } @else {
                 <button type="button" class="btn btn--primary" (click)="pedirRevision([det])" [disabled]="guardandoRevision()">
                   <app-icon name="check" [size]="17" /> {{ guardandoRevision() ? 'Guardando…' : 'Marcar revisada para envío' }}

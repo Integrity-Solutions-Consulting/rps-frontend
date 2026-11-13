@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { PeriodoEnPantallaService } from '../../../../core/services/periodo-en-pantalla.service';
 import { DatePipe } from '@angular/common';
 import { catchError, forkJoin, of } from 'rxjs';
@@ -23,6 +23,14 @@ import { DialogoCalcular, ResumenAntesDeCalcular } from '../../components/dialog
 import { DialogoRevisar } from '../../components/dialogo-revisar/dialogo-revisar';
 
 type Vista = 'resumen' | 'cortes';
+type FiltroRevision = 'todas' | 'porRevisar';
+
+/** "Acuña" → "acuna": la búsqueda no distingue tildes ni mayúsculas (igual que app-buscador). */
+const normalizar = (texto: string): string =>
+  texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+/** Suma de importes en centavos, para que el total no arrastre decimales de coma flotante. */
+const sumar = (valores: number[]): number => valores.reduce((t, v) => t + Math.round(v * 100), 0) / 100;
 
 /**
  * Liquidaciones del mes, como las calcula rps-backend.
@@ -75,6 +83,62 @@ export class Liquidaciones {
   protected readonly nombreMes = computed(() => nombrePeriodo(this.periodo()));
   protected readonly filas = computed(() => this.datos()?.filas ?? []);
 
+  // ── Herramientas de revisión: búsqueda, filtro y selección (solo en pantalla) ──
+  protected readonly busqueda = signal('');
+  protected readonly filtroRevision = signal<FiltroRevision>('todas');
+  /** IDs elegidos con las casillas. Solo cuentan los que siguen por revisar y se ven en la tabla. */
+  private readonly seleccion = signal<ReadonlySet<string>>(new Set());
+
+  /** Filas que coinciden con la búsqueda (nombre o identificación), en el orden de la tabla. */
+  private readonly filasBuscadas = computed(() => {
+    const palabras = normalizar(this.busqueda()).split(/\s+/).filter(Boolean);
+    if (!palabras.length) return this.filas();
+    return this.filas().filter((l) => {
+      const texto = normalizar(`${l.colaborador} ${l.identificacion} ${l.tmrColaboradorId}`);
+      return palabras.every((p) => texto.includes(p));
+    });
+  });
+  protected readonly filasVisibles = computed(() =>
+    this.filtroRevision() === 'porRevisar' ? this.filasBuscadas().filter((l) => !l.revisado) : this.filasBuscadas());
+  protected readonly hayFiltros = computed(() => this.busqueda().trim() !== '' || this.filtroRevision() !== 'todas');
+  protected readonly totalPorRevisar = computed(() => this.filas().filter((l) => !l.revisado).length);
+
+  private readonly pendientesVisibles = computed(() => this.filasVisibles().filter((l) => !l.revisado));
+  protected readonly seleccionadas = computed(() => this.pendientesVisibles().filter((l) => this.seleccion().has(l.id)));
+  protected readonly netoSeleccionado = computed(() => sumar(this.seleccionadas().map((l) => l.netoConsolidado)));
+  protected readonly todasSeleccionadas = computed(() =>
+    this.pendientesVisibles().length > 0 && this.seleccionadas().length === this.pendientesVisibles().length);
+  protected readonly algunasSeleccionadas = computed(() => this.seleccionadas().length > 0 && !this.todasSeleccionadas());
+  protected readonly haySeleccionables = computed(() => this.pendientesVisibles().length > 0);
+
+  /** Totales de lo que muestra la tabla (respetan búsqueda y filtro). Solo suma lo que ya calculó el backend. */
+  protected readonly totales = computed(() => {
+    const filas = this.filasVisibles();
+    const de = (corte: 'Quincena' | 'FinDeMes', campo: 'descuento' | 'valor') =>
+      sumar(filas.map((l) => corteDe(l, corte)?.[campo] ?? 0));
+    return {
+      neto: sumar(filas.map((l) => l.netoConsolidado)),
+      descQuincena: de('Quincena', 'descuento'), valorQuincena: de('Quincena', 'valor'),
+      descFinDeMes: de('FinDeMes', 'descuento'), valorFinDeMes: de('FinDeMes', 'valor'),
+    };
+  });
+
+  /**
+   * Siguiente liquidación por revisar después de la abierta (según el orden y la búsqueda de la tabla);
+   * si no hay más abajo, vuelve a la primera pendiente. null si no queda ninguna.
+   */
+  protected readonly siguientePendiente = computed<LiquidacionResumen | null>(() => {
+    const lista = this.filasBuscadas();
+    const actual = this.seleccionadoId();
+    const desde = lista.findIndex((l) => l.id === actual);
+    const orden = desde < 0 ? lista : [...lista.slice(desde + 1), ...lista.slice(0, desde)];
+    return orden.find((l) => !l.revisado && l.id !== actual) ?? null;
+  });
+
+  /** Al saltar a la siguiente, el foco va al título del detalle (el botón pulsado desaparece). */
+  private readonly tituloDetalle = viewChild<ElementRef<HTMLElement>>('tituloDetalle');
+  private enfocarDetalle = false;
+
   // ── Confirmaciones (Calcular y Revisar) ──────────────────────────────
   protected readonly confirmandoCalculo = signal(false);
   /** Liquidaciones por marcar como revisadas: hoy una (la del detalle); la revisión múltiple pasará varias. */
@@ -92,6 +156,12 @@ export class Liquidaciones {
     };
   });
 
+  /** Estado vacío: si faltan colaboradores por configurar (o no hay ninguno), la acción principal lleva a Colaboradores. */
+  protected readonly faltaConfigurar = computed(() => {
+    const i = this.indicadores();
+    return !!i && (i.colaboradores.pendientes > 0 || i.colaboradores.configurados === 0);
+  });
+
   constructor() {
     effect(() => {
       const periodo = this.periodo();
@@ -101,12 +171,21 @@ export class Liquidaciones {
       const id = this.seleccionadoId();
       untracked(() => this.cargarDetalle(id));
     });
+    effect(() => {
+      const titulo = this.tituloDetalle();
+      const det = this.detalle();
+      if (titulo && det && det.id === this.seleccionadoId() && this.enfocarDetalle) {
+        this.enfocarDetalle = false;
+        queueMicrotask(() => titulo.nativeElement.focus());
+      }
+    });
   }
 
   // ── Acciones ─────────────────────────────────────────────────────────
   protected cambiarPeriodo(valor: string): void {
     if (!esPeriodoValido(valor) || valor === this.periodo()) return;
     this.seleccionadoId.set(null);
+    this.seleccion.set(new Set());
     this.periodo.set(valor);
     void this.router.navigate([], { relativeTo: this.ruta, queryParams: { periodo: valor } });
   }
@@ -142,6 +221,54 @@ export class Liquidaciones {
     this.seleccionadoId.set(this.seleccionadoId() === l.id ? null : l.id);
   }
 
+  /** Enter o Espacio sobre la fila (no sobre su casilla) abre o cierra el detalle. */
+  protected teclaFila(evento: Event, l: LiquidacionResumen): void {
+    if (evento.target !== evento.currentTarget) return;
+    evento.preventDefault();
+    this.elegir(l);
+  }
+
+  protected irASiguiente(): void {
+    const sig = this.siguientePendiente();
+    if (!sig) return;
+    this.enfocarDetalle = true;
+    this.seleccionadoId.set(sig.id);
+  }
+
+  protected limpiarFiltros(): void {
+    this.busqueda.set('');
+    this.filtroRevision.set('todas');
+  }
+
+  // ── Selección para revisar varias ────────────────────────────────────
+  protected estaSeleccionada(l: LiquidacionResumen): boolean {
+    return this.seleccion().has(l.id);
+  }
+
+  protected alternarSeleccion(l: LiquidacionResumen): void {
+    if (l.revisado) return;
+    this.seleccion.update((s) => {
+      const nueva = new Set(s);
+      if (nueva.has(l.id)) nueva.delete(l.id); else nueva.add(l.id);
+      return nueva;
+    });
+  }
+
+  /** Casilla del encabezado: elige o quita todas las pendientes que se ven. */
+  protected alternarTodas(): void {
+    const ids = this.pendientesVisibles().map((l) => l.id);
+    const quitar = this.todasSeleccionadas();
+    this.seleccion.update((s) => {
+      const nueva = new Set(s);
+      for (const id of ids) { if (quitar) nueva.delete(id); else nueva.add(id); }
+      return nueva;
+    });
+  }
+
+  protected limpiarSeleccion(): void {
+    this.seleccion.set(new Set());
+  }
+
   /** Botón "Marcar revisada para envío": abre la confirmación (la marca es definitiva). */
   protected pedirRevision(lista: LiquidacionResumen[]): void {
     const pendientes = lista.filter((l) => !l.revisado);
@@ -164,6 +291,7 @@ export class Liquidaciones {
       next: () => {
         this.guardandoRevision.set(false);
         this.porRevisar.set([]);
+        this.seleccion.update((s) => new Set([...s].filter((id) => !lista.some((l) => l.id === id))));
         this.avisos.ok(lista.length === 1
           ? `Liquidación de ${lista[0].colaborador} marcada como revisada para envío.`
           : `${lista.length} liquidaciones marcadas como revisadas para envío.`);
