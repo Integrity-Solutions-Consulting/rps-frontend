@@ -10,26 +10,24 @@
   </header>
 
   @if (administraCuentas()) {
-    <nav class="tabs" role="tablist" aria-label="Secciones de configuración">
-      <button type="button" role="tab" class="tab" [class.is-on]="pestana() === 'general'" [attr.aria-selected]="pestana() === 'general'" (click)="pestana.set('general')">General</button>
-      <button type="button" role="tab" class="tab" [class.is-on]="pestana() === 'roles'" [attr.aria-selected]="pestana() === 'roles'" (click)="pestana.set('roles')">Roles y permisos</button>
-      <button type="button" role="tab" class="tab" [class.is-on]="pestana() === 'usuarios'" [attr.aria-selected]="pestana() === 'usuarios'" (click)="pestana.set('usuarios')">Usuarios</button>
-    </nav>
+    <ui-tabs idBase="config" etiqueta="Secciones de configuración" [pestanas]="pestanas" [activa]="pestana()"
+             (cambiar)="pestana.set($event)" />
   }
 
+  <!-- Sin pestañas (quien no administra cuentas) el contenido no se marca como panel. -->
   @if (pestana() === 'roles') {
-    <app-tab-roles [rolSesion]="rol()" />
+    <app-tab-roles [uiTabPanel]="administraCuentas() ? 'config' : null" [uiTabPanelActiva]="pestana()" [rolSesion]="rol()" />
   } @else if (pestana() === 'usuarios') {
-    <app-tab-usuarios [rolSesion]="rol()" />
+    <app-tab-usuarios [uiTabPanel]="administraCuentas() ? 'config' : null" [uiTabPanelActiva]="pestana()" [rolSesion]="rol()" />
   } @else if (cargando()) {
-    <div class="general" aria-busy="true">
+    <div class="general" aria-busy="true" [uiTabPanel]="administraCuentas() ? 'config' : null" [uiTabPanelActiva]="pestana()">
       <div class="ajustes">
         @for (i of [1, 2, 3]; track i) { <div class="card skeleton" style="height: 170px"></div> }
       </div>
       <div class="card skeleton" style="height: 360px"></div>
     </div>
   } @else if (borrador(); as b) {
-    <div class="general">
+    <div class="general" [uiTabPanel]="administraCuentas() ? 'config' : null" [uiTabPanelActiva]="pestana()">
       <form class="ajustes" novalidate (submit)="$event.preventDefault(); guardar()">
 
         <!-- ── Empresa ─────────────────────────────────────────── -->

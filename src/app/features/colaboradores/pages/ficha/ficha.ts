@@ -11,6 +11,7 @@ import { ContratosService } from '../../../contratos/services/contratos.service'
 import { ContratoResumen } from '../../../contratos/models/contrato.models';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { UiTabPanel, UiTabs } from '../../../../shared/components/ui-tabs/ui-tabs';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
 
 import { TabDatosGenerales } from '../../components/tab-datos-generales/tab-datos-generales';
@@ -35,7 +36,7 @@ export type PestanaFicha = 'generales' | 'proyectos' | 'condiciones' | 'bancario
   selector: 'app-colaborador-ficha',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    RouterLink, Icon, EstadoChip,
+    RouterLink, Icon, EstadoChip, UiTabs, UiTabPanel,
     TabDatosGenerales, TabProyectos, TabCondiciones, TabBancarios, TabContratos, TabHistorial,
   ],
   templateUrl: './ficha.html',

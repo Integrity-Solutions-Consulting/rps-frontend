@@ -58,13 +58,11 @@
       <div class="con-panel">
         <!-- ── Lista ───────────────────────────────────────────────── -->
         <section class="card lista">
-          <div class="tabs" role="tablist">
-            <button type="button" role="tab" class="tab" [class.is-on]="vista() === 'resumen'" [attr.aria-selected]="vista() === 'resumen'"
-                    (click)="vista.set('resumen')">Resumen mensual</button>
-            <button type="button" role="tab" class="tab" [class.is-on]="vista() === 'cortes'" [attr.aria-selected]="vista() === 'cortes'"
-                    (click)="vista.set('cortes')">Por corte</button>
-          </div>
+          <!-- Las dos vistas usan los mismos datos: las flechas cambian de vista directamente. -->
+          <ui-tabs idBase="liquidaciones" etiqueta="Vista de liquidaciones" activacion="auto"
+                   [pestanas]="vistas" [activa]="vista()" (cambiar)="vista.set($event)" />
 
+          <div uiTabPanel="liquidaciones" [uiTabPanelActiva]="vista()">
           @if (vista() === 'resumen') {
             <div class="table-wrap">
               <table class="tbl">
@@ -135,6 +133,7 @@
               </table>
             </div>
           }
+          </div>
           <p class="pie-tabla">{{ filas().length }} {{ filas().length === 1 ? 'colaborador' : 'colaboradores' }} · elige uno para ver su detalle</p>
         </section>
 

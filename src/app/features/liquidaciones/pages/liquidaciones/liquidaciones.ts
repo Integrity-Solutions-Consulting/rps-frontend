@@ -14,6 +14,7 @@ import { IndicadoresDashboard } from '../../../dashboard/models/dashboard.models
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { PestanaUi, UiTabPanel, UiTabs } from '../../../../shared/components/ui-tabs/ui-tabs';
 import { EstadoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { DineroPipe } from '../../../../shared/pipes/dinero.pipe';
 import { ETIQUETA_CORTE, rangoCorte } from '../../../../shared/models/corte';
@@ -31,7 +32,7 @@ type Vista = 'resumen' | 'cortes';
 @Component({
   selector: 'app-liquidaciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, RouterLink, Icon, EstadoChip, DineroPipe],
+  imports: [DatePipe, RouterLink, Icon, EstadoChip, DineroPipe, UiTabs, UiTabPanel],
   templateUrl: './liquidaciones.html',
   styleUrl: './liquidaciones.scss',
 })
@@ -53,6 +54,10 @@ export class Liquidaciones {
   private readonly periodoEnPantalla = inject(PeriodoEnPantallaService);
   private readonly publicarPeriodo = effect(() => this.periodoEnPantalla.periodo.set(this.periodo()));
   protected readonly vista = signal<Vista>('resumen');
+  protected readonly vistas: PestanaUi<Vista>[] = [
+    { id: 'resumen', titulo: 'Resumen mensual' },
+    { id: 'cortes', titulo: 'Por corte' },
+  ];
   protected readonly datos = signal<LiquidacionesPeriodo | null>(null);
   protected readonly indicadores = signal<IndicadoresDashboard | null>(null);
   protected readonly cargando = signal(true);
