@@ -135,6 +135,17 @@ export class Liquidaciones {
     return orden.find((l) => !l.revisado && l.id !== actual) ?? null;
   });
 
+  /** Lector de pantalla: cuántas hay elegidas (vacío cuando ninguna; la región existe siempre). */
+  protected readonly anuncioSeleccion = computed(() => {
+    const n = this.seleccionadas().length;
+    return n === 0 ? '' : `${n} ${n === 1 ? 'liquidación seleccionada' : 'liquidaciones seleccionadas'} para revisar.`;
+  });
+  /**
+   * Lector de pantalla: aviso corto al abrir un detalle desde la tabla. Con "Siguiente por revisar" no se usa,
+   * porque el foco ya va al nombre y se leería dos veces.
+   */
+  protected readonly anuncioDetalle = signal('');
+
   /** Al saltar a la siguiente, el foco va al título del detalle (el botón pulsado desaparece). */
   private readonly tituloDetalle = viewChild<ElementRef<HTMLElement>>('tituloDetalle');
   private enfocarDetalle = false;
@@ -325,11 +336,17 @@ export class Liquidaciones {
   }
 
   private cargarDetalle(id: string | null): void {
-    if (!id) { this.detalle.set(null); return; }
+    if (!id) { this.detalle.set(null); this.anuncioDetalle.set(''); return; }
     this.cargandoDetalle.set(true);
     this.errorDetalle.set(null);
     this.api.obtener(id).subscribe({
-      next: (d) => { this.detalle.set(d); this.cargandoDetalle.set(false); },
+      next: (d) => {
+        // Solo al abrir otro colaborador: recargar el mismo (tras revisarlo) ya lo avisa el mensaje de éxito.
+        if (this.detalle()?.id !== d.id) this.anuncioDetalle.set(this.enfocarDetalle ? ''
+          : `Detalle de ${d.colaborador} abierto, ${d.revisado ? 'revisada para envío' : 'por revisar'}. Está después de la tabla.`);
+        this.detalle.set(d);
+        this.cargandoDetalle.set(false);
+      },
       error: (e: unknown) => { this.cargandoDetalle.set(false); this.errorDetalle.set(leerErrorApi(e).mensaje); },
     });
   }

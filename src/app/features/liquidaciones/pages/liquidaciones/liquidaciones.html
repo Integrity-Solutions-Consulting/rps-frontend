@@ -131,10 +131,14 @@
             </div>
           </div>
 
+          <!-- Anuncios para lector de pantalla: existen siempre, para que también se lea la primera selección -->
+          <p class="sr-only" role="status">{{ anuncioSeleccion() }}</p>
+          <p class="sr-only" role="status">{{ anuncioDetalle() }}</p>
+
           <!-- Revisión de varias: aparece al elegir casillas; confirma con la misma ventana que la individual -->
           @if (seleccionadas().length) {
             <div class="seleccion" role="region" aria-label="Liquidaciones seleccionadas">
-              <span class="seleccion__txt" aria-live="polite">
+              <span class="seleccion__txt">
                 <strong class="num">{{ seleccionadas().length }}</strong>
                 {{ seleccionadas().length === 1 ? 'seleccionada' : 'seleccionadas' }}
                 <span class="muted">· neto {{ netoSeleccionado() | dinero }}</span>
@@ -272,7 +276,7 @@
         </section>
 
         <!-- ── Detalle del colaborador ─────────────────────────────── -->
-        <section class="card panel-lateral" aria-live="polite">
+        <section class="card panel-lateral" aria-label="Detalle de la liquidación">
           @if (!seleccionadoId()) {
             <div class="sin-seleccion">
               <app-icon name="users" [size]="28" />
