@@ -28,6 +28,17 @@
           <span class="muted">{{ o.detalle }}</span>
           <small class="muted">{{ o.porMes ? (todosLosMeses() ? 'Todos los meses' : nombreMes()) : 'Sin filtro de mes' }}</small>
         </div>
+        <!-- ¿Ya salió este reporte? (GET .../ultimas) -->
+        @if (ultimas() !== null) {
+          <p class="opcion__ultima">
+            @if (ultimaDe(o); as u) {
+              <app-icon name="clock" [size]="14" />
+              <span>Última exportación: <b class="num">{{ u.generadoEn | date: 'd MMM, HH:mm' }}</b> · {{ u.usuario ?? 'Usuario no disponible' }} · {{ formato(u.formato) }}</span>
+            } @else {
+              <span class="muted">Todavía no se exporta{{ o.porMes ? (todosLosMeses() ? ' con todos los meses' : ' este mes') : '' }}.</span>
+            }
+          </p>
+        }
         <div class="opcion__botones">
           <button type="button" class="btn" (click)="descargar(o, 'pdf')" [disabled]="generando(o, 'pdf')">
             <app-icon name="file" [size]="17" /> {{ generando(o, 'pdf') ? 'Generando…' : 'Descargar PDF' }}
@@ -39,4 +50,103 @@
       </article>
     }
   </section>
+
+  <!-- ── Exportaciones recientes (GET .../historial) ───────────────── -->
+  <section class="card recientes" aria-labelledby="recientes-titulo">
+    <header class="recientes__head">
+      <div>
+        <h2 id="recientes-titulo">Exportaciones recientes</h2>
+        <p class="muted">{{ alcanceHistorial() }} · RPS no guarda los archivos: “Volver a generar” usa los datos actuales.</p>
+      </div>
+      <div class="recientes__filtros">
+        <div class="field">
+          <label for="filtro-tipo">Reporte</label>
+          <select id="filtro-tipo" class="select" [value]="filtroTipo() ?? ''" (change)="cambiarTipo($any($event.target).value)">
+            <option value="">Todos</option>
+            <option value="liquidaciones">Liquidaciones</option>
+            <option value="honorarios">Honorarios</option>
+            <option value="colaboradores">Colaboradores</option>
+          </select>
+        </div>
+        <label class="todos todos--filtro">
+          <input type="checkbox" [checked]="todosLosPeriodos()" (change)="todosLosPeriodos.set($any($event.target).checked)" />
+          Todos los períodos
+        </label>
+      </div>
+    </header>
+
+    @if (errorHistorial(); as e) {
+      <div class="aviso aviso--danger recientes__aviso" role="alert">
+        <app-icon name="alert" [size]="18" />
+        <div>No se pudo cargar el historial: {{ e }}</div>
+        <button type="button" class="btn btn--sm" (click)="reintentarHistorial()">Reintentar</button>
+      </div>
+    } @else if (cargandoHistorial() && !historial()) {
+      <div class="recientes__cargando" aria-busy="true">
+        @for (i of [1, 2, 3]; track i) { <div class="skeleton" style="height: 40px"></div> }
+      </div>
+    } @else if (historial(); as h) {
+      @if (h.items.length === 0) {
+        <p class="vacio recientes__vacio">
+          @if (filtroTipo()) { No hay exportaciones de este reporte en {{ alcanceHistorial().toLowerCase() }}. }
+          @else if (todosLosPeriodos()) { Todavía no se ha exportado nada. }
+          @else { Todavía no se ha exportado nada de {{ alcanceHistorial().toLowerCase() }}. }
+        </p>
+      } @else {
+        <div class="table-wrap">
+          <table class="tbl recientes__tabla" [attr.aria-busy]="cargandoHistorial()">
+            <thead>
+              <tr>
+                <th>Fecha</th><th>Reporte</th><th>Formato</th>
+                @if (todosLosPeriodos()) { <th>Mes</th> }
+                <th>Contenido</th><th>Generado por</th><th>Datos</th><th><span class="sr-only">Acciones</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (x of h.items; track x.id) {
+                <tr>
+                  <td class="num" data-etiqueta="Fecha">{{ x.generadoEn | date: 'd MMM, HH:mm' }}</td>
+                  <td data-etiqueta="Reporte">
+                    <strong>{{ nombreReporte(x) }}</strong>
+                    <span class="muted small recientes__archivo">{{ x.nombreArchivo }}</span>
+                  </td>
+                  <td data-etiqueta="Formato">{{ formato(x.formato) }}</td>
+                  @if (todosLosPeriodos()) { <td data-etiqueta="Mes">{{ periodoDe(x) }}</td> }
+                  <td class="num" data-etiqueta="Contenido">
+                    {{ cantidad(x) }}@if (x.totalNeto !== null) { · {{ x.totalNeto | dinero }} }
+                  </td>
+                  <td data-etiqueta="Generado por">{{ x.usuario ?? 'Usuario no disponible' }}</td>
+                  <td data-etiqueta="Datos">
+                    @let d = estadoDatos(x);
+                    <app-estado-chip [tono]="d.tono" [attr.title]="d.ayuda">{{ d.texto }}</app-estado-chip>
+                  </td>
+                  <td class="recientes__accion">
+                    <button type="button" class="btn btn--sm" (click)="regenerar(x)" [disabled]="regenerandoFila(x)"
+                            [attr.aria-label]="'Volver a generar ' + nombreReporte(x) + ' en ' + formato(x.formato) + ' de ' + alcanceDe(x)">
+                      <app-icon name="refresh" [size]="15" /> {{ regenerandoFila(x) ? 'Generando…' : 'Volver a generar' }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <footer class="recientes__pie">
+          @if (rango(); as r) { <span class="muted small num">Mostrando {{ r.desde }}–{{ r.hasta }} de {{ r.total }}</span> }
+          @if (totalPaginas() > 1) {
+            <nav class="recientes__paginas" aria-label="Páginas del historial de exportaciones">
+              <button type="button" class="btn btn--sm" (click)="irAPagina(pagina() - 1)" [disabled]="pagina() === 1">Anterior</button>
+              <span class="small num">Página {{ pagina() }} de {{ totalPaginas() }}</span>
+              <button type="button" class="btn btn--sm" (click)="irAPagina(pagina() + 1)" [disabled]="pagina() === totalPaginas()">Siguiente</button>
+            </nav>
+          }
+        </footer>
+      }
+    }
+  </section>
 </div>
+
+@if (porRegenerar(); as x) {
+  <app-dialogo-regenerar [exportacion]="x" [reporte]="nombreReporte(x) + ' (' + formato(x.formato) + ')'" [alcance]="alcanceDe(x)"
+                         (cancelar)="porRegenerar.set(null)" (confirmar)="confirmarRegenerar()" />
+}

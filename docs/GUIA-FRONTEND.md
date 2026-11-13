@@ -39,7 +39,7 @@ src/app/
 │   ├── anticipos/           Anticipos adicionales y plan de cuotas
 │   ├── liquidaciones/       Cálculo del mes y "Revisado para envío"
 │   ├── documentos/          Documento tributario mensual por colaborador
-│   ├── exportaciones/       Descarga de CSV del backend
+│   ├── exportaciones/       Reportes en Excel y PDF y su historial (Exportaciones recientes)
 │   ├── configuracion/       Configuración global (un solo registro)
 │   ├── honorarios/          Servicio y modelos de condiciones económicas (los usa la ficha)
 │   └── integracion-tmr/     Copia de TMR que guarda el backend: nombres, asignaciones, sincronizar
@@ -90,7 +90,7 @@ Otras pantallas abren una pestaña con `?tab=`: `/colaboradores/<id>?tab=condici
 | Anticipos | `.../anticipos/resumen?periodo=` (neto, límite, saldo, disponible, cortes permitidos), `POST .../anticipos`, `PUT .../{id}/plan`, `DELETE .../{id}` | `?colaborador=<id>` |
 | Liquidaciones | `POST /api/honorarios/generar` + `POST /api/liquidaciones/generar`, `GET /api/liquidaciones`, `POST /{id}/revisar` | `?periodo=2026-10&liquidacion=<id>` |
 | Documentos | `.../documentos-mensuales` (tipo, número ≤ 50, fecha de emisión) | `?periodo=&colaborador=` |
-| Exportaciones | `GET /api/exportaciones/honorarios?periodo=`, `/liquidaciones?periodo=`, `/colaboradores` (CSV) | `?periodo=` |
+| Exportaciones | `POST /api/exportaciones/honorarios`, `/liquidaciones`, `/colaboradores` (Excel; `/pdf` para PDF), `GET /historial?periodo=&todos=&tipo=&pagina=`, `GET /ultimas?periodo=` | `?periodo=` |
 | Configuración | `GET`/`PUT /api/configuracion` | — |
 
 ### El flujo del mes
@@ -102,7 +102,7 @@ Otras pantallas abren una pestaña con `?tab=`: `/colaboradores/<id>?tab=condici
 5. **Liquidaciones → Calcular período**: genera honorarios y liquidaciones (el backend no rehace las ya generadas).
 6. **Documentos**: registrar el documento mensual.
 7. **Liquidaciones → Marcar revisada para envío** (el backend no permite desmarcar).
-8. **Exportaciones**: descargar los CSV.
+8. **Exportaciones**: descargar los reportes. "Exportaciones recientes" muestra qué ya salió del mes, quién lo generó y si los datos cambiaron desde entonces (RPS no guarda los archivos).
 
 ### Inicio
 
