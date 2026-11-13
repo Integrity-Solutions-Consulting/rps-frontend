@@ -161,14 +161,14 @@
     <!-- ── Anticipos registrados (GET .../anticipos) ───────────────── -->
     <section class="card">
       <header class="bloque__head registrados__head"><h2>Anticipos registrados</h2></header>
-      @if (anticipos().length === 0) {
+      @if (anticiposVisibles().length === 0) {
         <p class="vacio registrados__vacio">Este colaborador no tiene anticipos adicionales.</p>
       } @else {
         <div class="table-wrap">
           <table class="tbl">
             <thead><tr><th>Fecha</th><th class="r">Monto</th><th class="r">Saldo pendiente</th><th>Cuotas</th><th>Observaciones</th><th>Acciones</th></tr></thead>
             <tbody>
-              @for (a of anticipos(); track a.id) {
+              @for (a of anticiposVisibles(); track a.id) {
                 <tr [class.is-sel]="planDe() === a.id">
                   <td class="num" [title]="a.creadoPorMi ? 'Registrado por ti' : ''">{{ a.fecha | date: 'dd MMM yyyy' }}</td>
                   <td class="r num"><strong>{{ a.monto | dinero }}</strong></td>
@@ -177,7 +177,8 @@
                   <td class="muted">{{ a.observaciones ?? '—' }}</td>
                   <td class="acciones">
                     <button type="button" class="btn btn--sm" (click)="abrirPlan(a)">Plan</button>
-                    <button type="button" class="btn btn--sm btn--danger" (click)="eliminar(a)">Eliminar</button>
+                    <button type="button" class="btn btn--sm btn--danger" (click)="eliminar(a, $event)"
+                            [attr.aria-label]="'Eliminar anticipo de ' + (a.monto | dinero) + ' del ' + (a.fecha | date: 'dd MMM yyyy')">Eliminar</button>
                   </td>
                 </tr>
               }
@@ -188,3 +189,8 @@
     </section>
   }
 </div>
+
+@if (porEliminar(); as a) {
+  <app-dialogo-eliminar-anticipo [anticipo]="a" [colaborador]="nombreColaborador()" [segundosParaDeshacer]="segundosParaDeshacer"
+                                 (cancelar)="cancelarEliminar()" (confirmar)="confirmarEliminar()" />
+}

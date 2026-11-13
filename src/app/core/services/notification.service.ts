@@ -16,8 +16,8 @@ export interface Aviso {
 }
 
 const DURACION_NORMAL = 7000;
-/** Con un botón se da más tiempo para reaccionar. */
-const DURACION_CON_ACCION = 10000;
+/** Con un botón se da más tiempo para reaccionar. Exportada para que un "Deshacer" espere lo mismo que el aviso. */
+export const DURACION_CON_ACCION = 10000;
 
 /**
  * Avisos breves en la esquina inferior derecha (los muestra core/layout/app-layout).
