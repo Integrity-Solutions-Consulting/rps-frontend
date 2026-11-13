@@ -95,6 +95,8 @@ export class Liquidaciones {
     this.filtroRevision() === 'porRevisar' ? this.filasBuscadas().filter((l) => !l.revisado) : this.filasBuscadas());
   protected readonly hayFiltros = computed(() => this.busqueda().trim() !== '' || this.filtroRevision() !== 'todas');
   protected readonly totalPorRevisar = computed(() => this.filas().filter((l) => !l.revisado).length);
+  /** Liquidaciones que cambiaron después de calcular y todavía no se vuelven a revisar. */
+  protected readonly modificadas = computed(() => this.filas().filter((l) => l.modificadaEn !== null));
 
   private readonly pendientesVisibles = computed(() => this.filasVisibles().filter((l) => !l.revisado));
   protected readonly seleccionadas = computed(() => this.pendientesVisibles().filter((l) => this.seleccion().has(l.id)));

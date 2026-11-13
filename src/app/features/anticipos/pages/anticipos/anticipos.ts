@@ -198,6 +198,23 @@ export class Anticipos {
     return Math.round((tope.disponible + propio) * 100) / 100;
   }
 
+  /**
+   * Cuota de quincena que este anticipo ya tenía en un mes cuya quincena ya se pagó: ya se
+   * descontó, así que se muestra pero no se puede cambiar ni quitar (el backend lo vuelve a validar).
+   */
+  protected cuotaYaPagada(c: { corte: TipoCorte; importe: string }): boolean {
+    if (c.corte !== 'Quincena' || !this.resumen()?.quincenaCerrada) return false;
+    const periodo = primerDia(this.periodo());
+    const original = (this.anticipoDelPlan()?.cuotas ?? []).find((o) => o.corte === 'Quincena' && o.periodo === periodo);
+    return !!original && aNumero(c.importe) === original.importe;
+  }
+
+  /** Cortes que se pueden elegir en la fila: los permitidos, más el suyo si es una quincena ya pagada. */
+  protected opcionesCorte(corte: TipoCorte): TipoCorte[] {
+    const permitidos = this.resumen()?.cortesPermitidos ?? ['FinDeMes'];
+    return permitidos.includes(corte) ? permitidos : [corte, ...permitidos];
+  }
+
   protected valorBaseDe(corte: TipoCorte): number | null {
     return this.resumen()?.topesPorCorte?.find((t) => t.corte === corte)?.valorBase ?? null;
   }
@@ -205,8 +222,11 @@ export class Anticipos {
   /** El mismo aviso que da el backend, antes de enviar. */
   private errorDeCortes(): string | null {
     const permitidos = this.resumen()?.cortesPermitidos ?? ['FinDeMes'];
-    if (this.cuotas().some((c) => !permitidos.includes(c.corte))) {
-      return 'Este colaborador cobra solo a fin de mes: no se le puede descontar en la quincena porque ese día no se le paga. Pon la cuota en Fin de mes.';
+    const fueraDeCorte = this.cuotas().find((c) => !permitidos.includes(c.corte) && !this.cuotaYaPagada(c));
+    if (fueraDeCorte) {
+      return fueraDeCorte.corte === 'Quincena' && this.resumen()?.quincenaCerrada
+        ? `La quincena de ${this.nombreMes().toLowerCase()} ya se pagó: solo se le puede descontar de lo que le queda, en el fin de mes.`
+        : 'Este colaborador cobra solo a fin de mes: no se le puede descontar en la quincena porque ese día no se le paga. Pon la cuota en Fin de mes.';
     }
     const vistos = new Set<TipoCorte>();
     for (const c of this.cuotas()) {
@@ -216,6 +236,7 @@ export class Anticipos {
       vistos.add(c.corte);
     }
     for (const c of this.cuotas()) {
+      if (this.cuotaYaPagada(c)) continue;
       const importe = aNumero(c.importe);
       const maximo = this.maximoPara(c.corte);
       if (importe !== null && maximo !== null && importe > maximo) {

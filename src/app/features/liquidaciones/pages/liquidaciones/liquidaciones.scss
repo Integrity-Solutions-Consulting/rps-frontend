@@ -108,3 +108,10 @@ td.col-check { cursor: default; }
   .segmentos { width: 100%; button { flex: 1; justify-content: center; } }
   .seleccion__acciones { width: 100%; .btn { flex: 1; justify-content: center; } }
 }
+
+/* Aviso de liquidaciones que cambiaron después de calcular */
+.cambios { margin-bottom: 16px; align-items: flex-start; }
+.cambios__cuerpo { display: grid; gap: 6px; }
+.cambios__lista { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.cambios__estado { font-weight: 600; }
+.link { background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }

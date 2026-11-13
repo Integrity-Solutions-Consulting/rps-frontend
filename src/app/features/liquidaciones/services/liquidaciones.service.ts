@@ -91,6 +91,9 @@ export class LiquidacionesService {
       revisado: l.revisado, revisadoEn: l.revisadoEn,
       revisadoPorMi: l.revisadoPorUsuarioId !== null && l.revisadoPorUsuarioId === this.sesion.usuario()?.id,
       calculadoEn: l.creadoEn,
+      modificadaEn: l.modificadaEn ?? null,
+      motivoModificacion: l.motivoModificacion ?? null,
+      revisionAnulada: l.revisionAnulada ?? false,
     };
   }
 }

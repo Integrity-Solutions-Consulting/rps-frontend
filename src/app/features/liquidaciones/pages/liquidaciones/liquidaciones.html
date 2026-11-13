@@ -2,7 +2,6 @@
   <header class="pagina__head">
     <div>
       <h1>Liquidaciones</h1>
-      <p>Cálculo de honorarios por mes: cada proyecto con sus días e impuestos, el total por colaborador y los dos cortes de pago.</p>
     </div>
     <div class="pagina__acciones">
       <div class="field">
@@ -109,6 +108,30 @@
               <strong class="indicador__valor num">{{ i.liquidaciones.revisadas }} <small class="muted">de {{ i.liquidaciones.revisadas + i.liquidaciones.sinRevisar }}</small></strong>
             </div>
           </article>
+        </section>
+      }
+
+      <!-- ── Cambios después de calcular (anticipo nuevo, honorarios tardíos…) ── -->
+      @if (modificadas().length) {
+        <section class="aviso aviso--warn cambios" aria-labelledby="cambios-titulo">
+          <app-icon name="alert" [size]="18" />
+          <div class="cambios__cuerpo">
+            <strong id="cambios-titulo">
+              {{ modificadas().length === 1 ? '1 liquidación cambió' : modificadas().length + ' liquidaciones cambiaron' }}
+              después de calcular {{ nombreMes() }}
+            </strong>
+            <ul class="cambios__lista">
+              @for (m of modificadas(); track m.id) {
+                <li>
+                  <button type="button" class="link" (click)="elegir(m)">{{ m.colaborador }}</button>:
+                  {{ m.motivoModificacion }}
+                  @if (m.revisionAnulada) { <span class="cambios__estado">· estaba revisada, volvió a Por revisar</span> }
+                  <span class="muted">· {{ m.modificadaEn | date: 'dd MMM, HH:mm' }}</span>
+                </li>
+              }
+            </ul>
+            <small class="muted">El aviso desaparece cuando vuelves a marcarla como revisada.</small>
+          </div>
         </section>
       }
 
@@ -230,7 +253,11 @@
                     }
                     <td>
                       @if (l.revisado) { <app-estado-chip tono="ok">Revisada</app-estado-chip> }
+                      @else if (l.revisionAnulada) { <app-estado-chip tono="warn">Volvió a por revisar</app-estado-chip> }
                       @else { <app-estado-chip tono="warn">Por revisar</app-estado-chip> }
+                      @if (l.modificadaEn) {
+                        <app-estado-chip tono="info" [attr.title]="l.motivoModificacion">Modificada</app-estado-chip>
+                      }
                     </td>
                   </tr>
                 } @empty {
@@ -294,6 +321,18 @@
                 <app-icon name="x" [size]="18" />
               </button>
             </header>
+
+            @if (det.modificadaEn) {
+              <div class="aviso aviso--warn">
+                <app-icon name="alert" [size]="18" />
+                <div>
+                  <strong>Cambió después de calcular</strong> ({{ det.modificadaEn | date: 'dd MMM yyyy, HH:mm' }}):
+                  {{ det.motivoModificacion }}.
+                  @if (det.revisionAnulada) { Estaba revisada, por eso volvió a <strong>Por revisar</strong>. }
+                  Revísala de nuevo antes de exportar.
+                </div>
+              </div>
+            }
 
             <!-- Días por proyecto: cada proyecto cuenta los suyos (RN 25) -->
             <div class="resumen-proyectos">
