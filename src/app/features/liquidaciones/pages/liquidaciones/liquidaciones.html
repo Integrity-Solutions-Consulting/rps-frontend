@@ -25,25 +25,7 @@
     <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ error() }}</div>
       <button type="button" class="btn btn--sm" (click)="reintentar()">Reintentar</button></div>
   } @else if (datos(); as d) {
-  <div [class.actualizando]="cargando()">
-
-    <!-- El backend calcula solo a los colaboradores activos con configuración completa. -->
-    @if (d.pendientes.length) {
-      <div class="aviso aviso--warn pendientes">
-        <app-icon name="alert" [size]="18" />
-        <details>
-          <summary>
-            <strong>{{ d.pendientes.length }} {{ d.pendientes.length === 1 ? 'colaborador activo tiene' : 'colaboradores activos tienen' }} la configuración pendiente</strong>
-            y no se incluyen al calcular.
-          </summary>
-          <ul class="pendientes__lista">
-            @for (p of d.pendientes; track p.colaboradorId) {
-              <li><a [routerLink]="['/colaboradores', p.colaboradorId]" [queryParams]="{ tab: 'condiciones' }">{{ p.colaborador }}</a></li>
-            }
-          </ul>
-        </details>
-      </div>
-    }
+  <div class="contenido" [class.actualizando]="cargando()">
 
     @if (d.filas.length === 0) {
       <section class="card vacio-grande">
