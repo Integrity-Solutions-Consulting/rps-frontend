@@ -1,6 +1,6 @@
 :host { display: grid; gap: 20px; }
 
-.head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px; }
 .head__title {
   h1 { font-size: 26px; font-weight: 600; letter-spacing: -.02em; }
   p { margin: 4px 0 0; color: var(--rps-muted); font-size: 13px; }
@@ -49,10 +49,27 @@
 .bar__fill { display: block; height: 100%; background: var(--rps-ok-dot); border-radius: inherit; }
 
 /* Paneles */
-/* stretch: Vencimientos y Requiere atención siempre con la misma altura, aunque haya pocas filas o ninguna */
-.grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 20px; align-items: stretch; }
+/* Izquierda: Vencimientos y Salidas, uno debajo del otro. Derecha: Requiere atención ocupa las dos
+   filas, así no queda una tarjeta a media fila con un hueco en blanco al lado. */
+.grid {
+  display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 20px; align-items: stretch;
+  grid-template-areas: "vencimientos alertas" "salidas alertas";
+}
+.area-vencimientos { grid-area: vencimientos; }
+.area-salidas { grid-area: salidas; }
+.area-alertas { grid-area: alertas; }
 .panel--alto { display: flex; flex-direction: column; }
-@media (max-width: 1180px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1180px) {
+  .grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "alertas" "vencimientos" "salidas"; }
+}
+
+/* Sin datos: una línea discreta en vez de un párrafo suelto */
+.vacio-panel {
+  display: flex; align-items: center; gap: 8px; margin: 0 22px 18px; padding: 12px 14px;
+  border-radius: 10px; background: var(--rps-subtle); color: var(--rps-muted); font-size: 13px;
+  app-icon { color: var(--rps-ok); flex: none; }
+}
+.nota-panel { margin: -6px 22px 10px; color: var(--rps-muted); font-size: 12px; }
 
 .panel { overflow: hidden; }
 .panel__head { padding: 18px 22px 14px;
@@ -82,7 +99,7 @@
 /* Alertas: botones por tipo, con scroll cuando hay muchos o se abre uno */
 .grupos {
   list-style: none; margin: 0; padding: 0 16px 12px; display: grid; gap: 2px;
-  max-height: 360px; overflow-y: auto; overscroll-behavior: contain;
+  max-height: 520px; overflow-y: auto; overscroll-behavior: contain;
   scrollbar-width: thin; scrollbar-color: var(--rps-border) transparent;
 }
 .grupo + .grupo { border-top: 1px solid #f0f1f4; }

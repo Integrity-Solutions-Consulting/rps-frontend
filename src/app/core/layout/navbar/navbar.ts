@@ -1,3 +1,4 @@
+import { RouterLink } from '@angular/router';
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 import { SessionService } from '../../services/session.service';
 import { Icon } from '../../../shared/components/icon/icon';
@@ -6,7 +7,7 @@ import { Campana } from '../../../features/notificaciones/components/campana/cam
 @Component({
   selector: 'app-navbar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon, Campana],
+  imports: [Icon, Campana, RouterLink],
   templateUrl: './navbar.html',
   styleUrl: './navbar.scss',
   host: { '(document:keydown.escape)': 'menuAbierto.set(false)' },

@@ -2,6 +2,16 @@
   <button type="button" class="navbar__menu" [class.navbar__menu--visible]="menuOculto()" aria-label="Mostrar menú" title="Mostrar menú" (click)="toggleMenu.emit()">
     <app-icon name="menu" [size]="22" />
   </button>
+  <!-- Con el menú lateral cerrado, el logo se queda aquí -->
+  <a routerLink="/inicio" class="navbar__logo" [class.navbar__logo--visible]="menuOculto()" aria-label="RPS Contabilidad, ir a Inicio">
+    <svg class="navbar__logo-icono" viewBox="0 0 40 46" aria-hidden="true">
+      <path d="M5 0h30a5 5 0 0 1 5 5v41l-5-4-5 4-5-4-5 4-5-4-5 4-5-4-5 4V5a5 5 0 0 1 5-5z" fill="#17264a" />
+      <rect x="9" y="9" width="22" height="4" rx="2" fill="#ffffff" />
+      <rect x="9" y="18" width="16" height="4" rx="2" fill="#ffffff" />
+      <rect x="9" y="28" width="22" height="4.5" rx="2.25" fill="#5b9be6" />
+    </svg>
+    <span class="navbar__logo-txt"><strong>RPS</strong><small>Contabilidad</small></span>
+  </a>
 
   <div class="navbar__right">
     <app-campana />

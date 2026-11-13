@@ -100,7 +100,7 @@
 
 <div class="grid">
   <!-- ── Vencimientos (GET /api/dashboard/vencimientos) ─────────── -->
-  <section class="card panel panel--alto">
+  <section class="card panel panel--alto area-vencimientos">
     <header class="panel__head panel__head--accion">
       <h2>Vencimientos de contratos</h2>
       <a class="ver-todos" routerLink="/contratos">Ver todos <app-icon name="chevronRight" [size]="16" /></a>
@@ -115,7 +115,7 @@
       }
       @case ('ok') {
         @if (listaVencimientos().length === 0) {
-          <p class="pad muted">No hay contratos por vencer en los próximos {{ diasPrimerAviso() }} días.</p>
+          <p class="vacio-panel"><app-icon name="check" [size]="16" /> No hay contratos por vencer en los próximos {{ diasPrimerAviso() }} días.</p>
         } @else {
           <div class="table-wrap">
             <table class="tbl">
@@ -148,12 +148,11 @@
   </section>
 
   <!-- ── Salidas de proyecto (GET /api/dashboard/salidas-proyecto) ─────────── -->
-  <section class="card panel panel--alto">
+  <section class="card panel panel--alto area-salidas">
     <header class="panel__head panel__head--accion">
       <h2>Salidas de proyecto</h2>
       <a class="ver-todos" routerLink="/contratos">Ver contratos <app-icon name="chevronRight" [size]="16" /></a>
     </header>
-    <p class="pad muted">Solo contratos que se pagan por proyecto: desde el día siguiente a la salida, ese monto deja de pagarse.</p>
 
     @switch (salidasProyecto().estado) {
       @case ('cargando') { <div class="pad"><div class="skeleton" style="height: 100px"></div></div> }
@@ -162,8 +161,9 @@
       }
       @case ('ok') {
         @if (listaSalidas().length === 0) {
-          <p class="pad muted">Nadie sale de un proyecto pagado por proyecto en los próximos {{ diasPrimerAviso() }} días.</p>
+          <p class="vacio-panel"><app-icon name="check" [size]="16" /> Nadie sale de un proyecto pagado por proyecto en los próximos {{ diasPrimerAviso() }} días.</p>
         } @else {
+          <p class="nota-panel">Solo contratos que se pagan por proyecto: desde el día siguiente a la salida, ese monto deja de pagarse.</p>
           <div class="table-wrap">
             <table class="tbl">
               <thead>
@@ -192,7 +192,7 @@
   </section>
 
   <!-- ── Requiere atención: un botón por tipo; al abrirlo se ven las personas ── -->
-  <section class="card panel alertas">
+  <section class="card panel panel--alto alertas area-alertas">
     <header class="panel__head">
       <h2>Requiere atención <span class="count">{{ totalAtencion() }}</span></h2>
     </header>
@@ -202,7 +202,7 @@
         @for (i of [1, 2, 3]; track i) { <div class="skeleton" style="height: 56px"></div> }
       </div>
     } @else if (grupos().length === 0) {
-      <p class="pad muted">Nada pendiente de atención.</p>
+      <p class="vacio-panel"><app-icon name="check" [size]="16" /> Nada pendiente de atención.</p>
     } @else {
       <ul class="grupos" aria-label="Requiere atención, por tipo">
         @for (g of grupos(); track g.clave) {
