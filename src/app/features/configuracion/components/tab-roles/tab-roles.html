@@ -82,7 +82,7 @@
               @if (menuAbierto(); as menu) {
                 @if (menu.id === r.id) {
                   <div class="menu-fila__lista" role="menu" [style.top.px]="menu.top" [style.left.px]="menu.left" (click)="$event.stopPropagation()">
-                    <button type="button" role="menuitem" class="menu-fila__item" (click)="cambiarEstado(r)">
+                    <button type="button" role="menuitem" class="menu-fila__item" (click)="pedirCambioEstado(r)" [disabled]="guardandoEstado()">
                       <app-icon [name]="r.activo ? 'userX' : 'userCheck'" [size]="17" />
                       {{ r.activo ? 'Desactivar rol' : 'Activar rol' }}
                     </button>
@@ -105,6 +105,10 @@
 @if (editando(); as r) {
   <app-dialogo-permisos [titulo]="r.nombre" [permisosIniciales]="permisosDe(r)" [guardando]="guardando()" [error]="errorPermisos()"
                         (cancelar)="editando.set(null)" (guardar)="guardarPermisos($event)" />
+}
+@if (desactivando(); as r) {
+  <app-dialogo-confirmar-estado [rol]="r" [descripcionRol]="descripcion(r)" [guardando]="guardandoEstado()"
+                                (cancelar)="desactivando.set(null)" (confirmar)="confirmarDesactivar()" />
 }
 @if (creando()) {
   <app-dialogo-crear-rol (cancelar)="creando.set(false)" (creado)="alCrear($event)" />

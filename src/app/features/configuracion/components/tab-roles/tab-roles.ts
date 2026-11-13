@@ -12,6 +12,7 @@ import { EstadoChip } from '../../../../shared/components/estado-chip/estado-chi
 import { Icon } from '../../../../shared/components/icon/icon';
 import { DialogoPermisos } from '../dialogo-permisos/dialogo-permisos';
 import { DialogoCrearRol } from '../dialogo-crear-rol/dialogo-crear-rol';
+import { DialogoConfirmarEstado } from '../dialogo-confirmar-estado/dialogo-confirmar-estado';
 
 type FiltroEstado = 'todos' | 'activos' | 'inactivos';
 
@@ -19,11 +20,12 @@ type FiltroEstado = 'todos' | 'activos' | 'inactivos';
  * Pestaña Roles: roles que el usuario en sesión puede administrar (el backend decide cuáles).
  * Administrador: todos menos el propio rol Administrador, y puede crear roles.
  * Administrador Contable: Asistente Contable y los roles nuevos.
+ * Igual que en Usuarios, desactivar pide confirmación; activar no.
  */
 @Component({
   selector: 'app-tab-roles',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, EstadoChip, Icon, DialogoPermisos, DialogoCrearRol],
+  imports: [FormsModule, EstadoChip, Icon, DialogoPermisos, DialogoCrearRol, DialogoConfirmarEstado],
   host: {
     '(document:click)': 'menuAbierto.set(null)',
     '(document:keydown.escape)': 'menuAbierto.set(null)',
@@ -48,6 +50,8 @@ export class TabRoles {
   protected readonly errorPermisos = signal<string | null>(null);
   protected readonly creando = signal(false);
   protected readonly guardando = signal(false);
+  protected readonly desactivando = signal<RolSistemaDetalle | null>(null);
+  protected readonly guardandoEstado = signal(false);
 
   protected readonly roles = this.api.roles;
   protected readonly cargando = this.api.cargando;
@@ -92,11 +96,30 @@ export class TabRoles {
     this.menuAbierto.set({ id, top: abajo ? boton.bottom + 6 : boton.top - 6 - alto, left: Math.max(8, boton.right - ancho) });
   }
 
-  protected cambiarEstado(r: RolSistemaDetalle): void {
+  /** Desactivar pide confirmación (sus usuarios pierden esos permisos); activar se hace directo. */
+  protected pedirCambioEstado(r: RolSistemaDetalle): void {
     this.menuAbierto.set(null);
-    this.api.cambiarEstado(r.id, !r.activo).subscribe({
-      next: (x) => this.avisos.ok(`Rol ${x.nombre} ${x.activo ? 'activado' : 'desactivado'}.`),
-      error: (e: unknown) => this.avisos.error(leerErrorApi(e).mensaje),
+    if (r.activo) this.desactivando.set(r);
+    else this.cambiarEstado(r, true);
+  }
+
+  protected confirmarDesactivar(): void {
+    const r = this.desactivando();
+    if (r) this.cambiarEstado(r, false);
+  }
+
+  private cambiarEstado(r: RolSistemaDetalle, activo: boolean): void {
+    this.guardandoEstado.set(true);
+    this.api.cambiarEstado(r.id, activo).subscribe({
+      next: (x) => {
+        this.guardandoEstado.set(false);
+        this.desactivando.set(null);
+        this.avisos.ok(`Rol ${x.nombre} ${x.activo ? 'activado' : 'desactivado'}.`);
+      },
+      error: (e: unknown) => {
+        this.guardandoEstado.set(false);
+        this.avisos.error(leerErrorApi(e).mensaje);
+      },
     });
   }
 

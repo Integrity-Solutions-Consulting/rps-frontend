@@ -3,22 +3,44 @@
   <div class="dialogo__cuerpo confirmar">
     <span class="confirmar__icono" aria-hidden="true"><app-icon name="userX" [size]="22" /></span>
     <div class="confirmar__texto">
-      <h2 id="desactivar-titulo">¿Desactivar a {{ usuario().nombre }}?</h2>
-      <p id="desactivar-texto">Ya no podrá entrar a RPS. Puedes volver a activarlo cuando quieras desde Usuarios.</p>
-      <div class="cuenta">
-        <span class="avatar" [class]="'avatar--' + tonoAvatar(usuario().email)" aria-hidden="true">{{ iniciales(usuario().nombre) }}</span>
-        <div>
-          <strong>{{ usuario().email }}</strong>
-          <span>{{ usuario().rol }}</span>
+      @if (usuario(); as u) {
+        <h2 id="desactivar-titulo">¿Desactivar a {{ u.nombre }}?</h2>
+        <p id="desactivar-texto">Ya no podrá entrar a RPS. Puedes volver a activarlo cuando quieras desde Usuarios.</p>
+        <div class="cuenta">
+          <span class="avatar" [class]="'avatar--' + tonoAvatar(u.email)" aria-hidden="true">{{ iniciales(u.nombre) }}</span>
+          <div>
+            <strong>{{ u.email }}</strong>
+            <span>{{ u.rol }}</span>
+          </div>
         </div>
-      </div>
+      } @else if (rol(); as r) {
+        <h2 id="desactivar-titulo">¿Desactivar el rol {{ r.nombre }}?</h2>
+        <p id="desactivar-texto">
+          @if (r.usuarios > 0) {
+            {{ r.usuarios === 1 ? 'Su usuario perderá' : 'Sus ' + r.usuarios + ' usuarios perderán' }} los permisos de este rol
+            la próxima vez que entren o se renueve su sesión.
+          }
+          Tampoco se podrá asignar a otros usuarios. Puedes volver a activarlo cuando quieras desde Roles.
+        </p>
+        <div class="cuenta">
+          <span class="avatar avatar--rol" aria-hidden="true"><app-icon name="shield" [size]="16" /></span>
+          <div>
+            <strong>{{ r.nombre }}</strong>
+            <span>{{ descripcionRol() || 'Rol personalizado' }} · {{ r.usuarios === 0 ? 'Sin usuarios' : r.usuarios === 1 ? '1 usuario' : r.usuarios + ' usuarios' }}</span>
+          </div>
+        </div>
+      }
     </div>
   </div>
   <footer class="dialogo__pie">
     <div class="dialogo__acciones">
       <button #botonCancelar type="button" class="btn" (click)="cancelar.emit()" [disabled]="guardando()">Cancelar</button>
       <button type="button" class="btn btn--peligro" (click)="confirmar.emit()" [disabled]="guardando()">
-        {{ guardando() ? 'Desactivando…' : 'Desactivar usuario' }}
+        @if (rol()) {
+          {{ guardando() ? 'Desactivando…' : 'Desactivar rol' }}
+        } @else {
+          {{ guardando() ? 'Desactivando…' : 'Desactivar usuario' }}
+        }
       </button>
     </div>
   </footer>
