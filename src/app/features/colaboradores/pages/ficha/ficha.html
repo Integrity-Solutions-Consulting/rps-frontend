@@ -48,32 +48,30 @@
   }
 
   <!-- ── Pestañas ──────────────────────────────────────────────── -->
-  <div class="tabs" role="tablist">
-    @for (p of pestanas; track p.id) {
-      <button type="button" role="tab" class="tab" [class.is-on]="pestana() === p.id"
-              [attr.aria-selected]="pestana() === p.id" (click)="pestana.set(p.id)">{{ p.titulo }}</button>
-    }
-  </div>
+  <ui-tabs idBase="ficha" etiqueta="Secciones del colaborador" [pestanas]="pestanas" [activa]="pestana()"
+           (cambiar)="pestana.set($event)" />
 
   @switch (pestana()) {
     @case ('generales') {
-      <app-tab-datos-generales [colaborador]="c" [datosTmr]="datosTmr()" [errorTmr]="errorTmr()"
+      <app-tab-datos-generales uiTabPanel="ficha" [uiTabPanelActiva]="pestana()"
+                               [colaborador]="c" [datosTmr]="datosTmr()" [errorTmr]="errorTmr()"
                                [proyectos]="proyectos()" (irA)="pestana.set($event)" />
     }
     @case ('proyectos') {
-      <app-tab-proyectos [asignaciones]="datosTmr()?.asignaciones ?? []" [contratos]="contratos()" [errorTmr]="errorTmr()" />
+      <app-tab-proyectos uiTabPanel="ficha" [uiTabPanelActiva]="pestana()"
+                         [asignaciones]="datosTmr()?.asignaciones ?? []" [contratos]="contratos()" [errorTmr]="errorTmr()" />
     }
     @case ('condiciones') {
-      <app-tab-condiciones [colaborador]="c" [frecuencias]="frecuencias()" />
+      <app-tab-condiciones uiTabPanel="ficha" [uiTabPanelActiva]="pestana()" [colaborador]="c" [frecuencias]="frecuencias()" />
     }
     @case ('bancarios') {
-      <app-tab-bancarios [colaborador]="c" [titular]="datosTmr() ? nombre() : null" />
+      <app-tab-bancarios uiTabPanel="ficha" [uiTabPanelActiva]="pestana()" [colaborador]="c" [titular]="datosTmr() ? nombre() : null" />
     }
     @case ('contratos') {
-      <app-tab-contratos [contratos]="contratos()" />
+      <app-tab-contratos uiTabPanel="ficha" [uiTabPanelActiva]="pestana()" [contratos]="contratos()" />
     }
     @case ('historial') {
-      <app-tab-historial [colaboradorId]="c.id" [version]="version()" />
+      <app-tab-historial uiTabPanel="ficha" [uiTabPanelActiva]="pestana()" [colaboradorId]="c.id" [version]="version()" />
     }
   }
 }
