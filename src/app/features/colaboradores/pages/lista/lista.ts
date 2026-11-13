@@ -118,7 +118,7 @@ export class ColaboradoresLista {
     { initialValue: null },
   );
   protected readonly totalPendientes = computed(() => this.pendientes()?.length ?? 0);
-  protected readonly pendientesTop = computed(() => (this.pendientes() ?? []).slice(0, 4).map((c) => ({
+  protected readonly pendientesTop = computed(() => (this.pendientes() ?? []).slice(0, 3).map((c) => ({
     id: c.id,
     nombre: `${c.nombres ?? ''} ${c.apellidos ?? ''}`.trim() || `ID TMR ${c.tmrColaboradorId}`,
     tipo: c.clasificacion ? ETIQUETA_CLASIFICACION[c.clasificacion] : 'Sin tipo de servicio',
