@@ -24,9 +24,7 @@
 /* ── Estado de configuración + Requieren atención ───────────────── */
 .resumen-fila { display: flex; flex-wrap: wrap; gap: 20px; }
 
-/* justify-content: space-between reparte el espacio sobrante entre las secciones en vez de
-   dejarlo todo como un bloque vacío debajo de la leyenda, cuando "Requieren atención" es más alta */
-.estado { flex: 2 1 520px; min-width: 0; padding: 20px 22px; display: flex; flex-direction: column; justify-content: space-between; gap: 18px;
+.estado { flex: 2 1 520px; min-width: 0; padding: 20px 22px; display: flex; flex-direction: column; gap: 18px;
   h2 { font-size: 15px; font-weight: 600; }
   p { margin: 4px 0 0; font-size: 12px; color: var(--rps-muted); } }
 .estado__kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
@@ -56,7 +54,10 @@
   li { border-bottom: 1px solid #f0f1f4; &:last-child { border-bottom: 0; } }
   a { display: flex; align-items: center; gap: 12px; padding: 12px 0; text-decoration: none; color: var(--rps-text);
       &:hover strong { text-decoration: underline; } } }
-.atencion__vacio { margin: 0; padding: 12px 0; font-size: 13px; color: var(--rps-muted); }
+/* flex: 1 + centrado: si no hay pendientes, el mensaje ocupa el espacio sobrante
+   de forma intencional en vez de dejarlo vacío arriba */
+.atencion__vacio { margin: 0; padding: 12px 0; font-size: 13px; color: var(--rps-muted);
+  flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; }
 .atencion h2 { display: flex; align-items: center; gap: 8px; }
 .atencion__total { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 99px; background: #f3a54f; color: #3d2105; }
 .atencion__ini { width: 34px; height: 34px; flex: none; border-radius: 9px; display: grid; place-items: center; font-size: 12px; font-weight: 600; }
@@ -67,7 +68,9 @@
 .atencion__txt { display: flex; flex-direction: column; min-width: 0;
   strong { font-size: 13px; font-weight: 600; }
   small { font-size: 12px; color: var(--rps-muted); } }
-.atencion__mas { margin-top: 4px; padding: 10px 0; border: 0; border-top: 1px solid #f0f1f4; background: none; text-align: left;
+/* margin-top: auto ancla el botón al fondo de la tarjeta, absorbiendo el espacio
+   sobrante cuando "Requieren atención" queda más alta que "Estado de configuración" */
+.atencion__mas { margin-top: auto; padding: 10px 0; border: 0; border-top: 1px solid #f0f1f4; background: none; text-align: left;
   font: inherit; font-size: 13px; font-weight: 500; color: var(--rps-text); cursor: pointer;
   &:hover { text-decoration: underline; } }
 
