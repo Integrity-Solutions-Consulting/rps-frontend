@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, LOCALE_ID, computed, effect, inject, signal, untracked } from '@angular/core';
 import { PeriodoEnPantallaService } from '../../../../core/services/periodo-en-pantalla.service';
-import { DatePipe } from '@angular/common';
+import { DatePipe, formatCurrency, formatDate } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -8,7 +8,8 @@ import { AnticiposService } from '../../services/anticipos.service';
 import { Anticipo, ResumenAnticipos } from '../../models/anticipo.models';
 import { ColaboradoresService } from '../../../colaboradores/services/colaboradores.service';
 import { leerErrorApi } from '../../../../core/http/error-api';
-import { NotificationService } from '../../../../core/services/notification.service';
+import { DURACION_CON_ACCION, NotificationService } from '../../../../core/services/notification.service';
+import { DialogoEliminarAnticipo } from '../../components/dialogo-eliminar-anticipo/dialogo-eliminar-anticipo';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { Buscador } from '../../../../shared/components/buscador/buscador';
 import { DineroPipe } from '../../../../shared/pipes/dinero.pipe';
@@ -18,6 +19,14 @@ import { esPeriodoValido, nombrePeriodo, periodoActual, periodoDeFecha, primerDi
 
 interface OpcionColaborador { id: string; nombre: string }
 interface CuotaForm { clave: number; corte: TipoCorte; importe: string }
+/** Eliminación confirmada que espera el tiempo de "Deshacer" antes de enviar el DELETE. */
+interface EliminacionPendiente {
+  anticipo: Anticipo;
+  colaboradorId: string;
+  descripcion: string;
+  temporizador: ReturnType<typeof setTimeout>;
+  avisoId: number | null;
+}
 
 /** "1250,50" o "1250.5" → 1250.5 (el campo solo acepta esos formatos); vacío → null y el backend responde que falta. */
 const aNumero = (texto: string): number | null => {
@@ -31,14 +40,15 @@ const aNumero = (texto: string): number | null => {
  * Anticipos adicionales. Sigue el flujo de rps-backend:
  *   1. Registrar el anticipo (monto y observaciones).
  *   2. Registrar o reemplazar su plan de cuotas para un mes.
- *   3. Eliminarlo si todavía no tiene cuotas.
+ *   3. Eliminarlo si todavía no tiene cuotas. Se pide confirmación y, al confirmar, la fila se oculta y el
+ *      DELETE se envía cuando vence el aviso con "Deshacer" (no hay endpoint para recuperar un anticipo).
  * Neto, límite, saldo y disponible vienen de GET .../anticipos/resumen; las validaciones las hace el backend.
  * Query param: ?colaborador=<id de RPS>.
  */
 @Component({
   selector: 'app-anticipos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, RouterLink, Icon, Buscador, DineroPipe, SoloNumeros],
+  imports: [DatePipe, FormsModule, RouterLink, Icon, Buscador, DineroPipe, SoloNumeros, DialogoEliminarAnticipo],
   templateUrl: './anticipos.html',
   styleUrl: './anticipos.scss',
 })
@@ -83,7 +93,23 @@ export class Anticipos {
 
   protected readonly anticipoDelPlan = computed(() => this.anticipos().find((a) => a.id === this.planDe()) ?? null);
 
+  // ── 3. Eliminar (con confirmación y "Deshacer") ──────────────────────
+  private readonly locale = inject(LOCALE_ID);
+  protected readonly segundosParaDeshacer = DURACION_CON_ACCION / 1000;
+  /** Anticipo cuya confirmación está abierta. */
+  protected readonly porEliminar = signal<Anticipo | null>(null);
+  /** Anticipos confirmados para eliminar que todavía se pueden deshacer: no se muestran en la tabla. */
+  private readonly ocultos = signal<ReadonlySet<string>>(new Set());
+  protected readonly anticiposVisibles = computed(() => this.anticipos().filter((a) => !this.ocultos().has(a.id)));
+  protected readonly nombreColaborador = computed(() => this.opciones().find((o) => o.id === this.colaboradorId())?.nombre ?? '');
+  private pendiente: EliminacionPendiente | null = null;
+  /** Botón "Eliminar" que abrió la confirmación: recupera el foco al cancelar. */
+  private origenDialogo: HTMLElement | null = null;
+  private destruido = false;
+
   constructor() {
+    // Si se sale de la pantalla durante el "Deshacer", la eliminación ya confirmada se envía igual.
+    inject(DestroyRef).onDestroy(() => { this.destruido = true; this.enviarEliminacion(); });
     this.cargarColaboradores();
     effect(() => {
       const id = this.colaboradorId();
@@ -238,16 +264,69 @@ export class Anticipos {
     });
   }
 
-  /** DELETE .../anticipos/{id} */
-  protected eliminar(a: Anticipo): void {
-    this.api.eliminar(this.colaboradorId(), a.id).subscribe({
+  /** Botón "Eliminar" de la tabla: solo abre la confirmación. */
+  protected eliminar(a: Anticipo, evento: Event): void {
+    this.origenDialogo = evento.currentTarget instanceof HTMLElement ? evento.currentTarget : null;
+    this.porEliminar.set(a);
+  }
+
+  protected cancelarEliminar(): void {
+    this.porEliminar.set(null);
+    this.origenDialogo?.focus();
+    this.origenDialogo = null;
+  }
+
+  /** Confirmado: se oculta la fila y se ofrece "Deshacer"; el DELETE sale cuando vence el aviso. */
+  protected confirmarEliminar(): void {
+    const a = this.porEliminar();
+    if (!a) return;
+    this.porEliminar.set(null);
+    this.origenDialogo = null;
+    // Una sola eliminación en espera: si había otra, se envía ya.
+    this.enviarEliminacion();
+    if (this.planDe() === a.id) this.cerrarPlan();
+    this.ocultos.update((s) => new Set(s).add(a.id));
+
+    const descripcion = `el anticipo de ${formatCurrency(a.monto, this.locale, '$', 'USD', '1.2-2')} del ${formatDate(a.fecha, 'dd MMM yyyy', this.locale)}`;
+    const pendiente: EliminacionPendiente = {
+      anticipo: a, colaboradorId: this.colaboradorId(), descripcion, avisoId: null,
+      temporizador: setTimeout(() => this.enviarEliminacion(), DURACION_CON_ACCION),
+    };
+    this.pendiente = pendiente;
+    const mensaje = `Se eliminará ${descripcion}.`;
+    this.avisos.info(mensaje, { texto: 'Deshacer', ejecutar: () => this.deshacerEliminar(pendiente) });
+    pendiente.avisoId = this.avisos.avisos().find((v) => v.mensaje === mensaje)?.id ?? null;
+  }
+
+  private deshacerEliminar(p: EliminacionPendiente): void {
+    if (this.pendiente !== p) return; // ya se envió: el aviso se cierra en ese momento, no debería llegar aquí
+    clearTimeout(p.temporizador);
+    this.pendiente = null;
+    this.mostrarDeNuevo(p.anticipo.id);
+    this.avisos.ok(`No se eliminó ${p.descripcion}.`);
+  }
+
+  /** DELETE .../anticipos/{id} de la eliminación en espera, si la hay. */
+  private enviarEliminacion(): void {
+    const p = this.pendiente;
+    if (!p) return;
+    this.pendiente = null;
+    clearTimeout(p.temporizador);
+    if (p.avisoId !== null) this.avisos.cerrar(p.avisoId);
+    this.api.eliminar(p.colaboradorId, p.anticipo.id).subscribe({
       next: () => {
-        this.avisos.ok('Anticipo eliminado.');
-        if (this.planDe() === a.id) this.cerrarPlan();
-        this.recargar(null);
+        this.avisos.ok(`Se eliminó ${p.descripcion}.`);
+        if (!this.destruido && p.colaboradorId === this.colaboradorId()) this.recargar(null);
       },
-      error: (e: unknown) => this.avisos.error(leerErrorApi(e).mensaje),
+      error: (e: unknown) => {
+        if (!this.destruido) this.mostrarDeNuevo(p.anticipo.id);
+        this.avisos.error(`No se pudo eliminar ${p.descripcion}: ${leerErrorApi(e).mensaje}`);
+      },
     });
+  }
+
+  private mostrarDeNuevo(id: string): void {
+    this.ocultos.update((s) => { const n = new Set(s); n.delete(id); return n; });
   }
 
   protected limpiarFormulario(): void {

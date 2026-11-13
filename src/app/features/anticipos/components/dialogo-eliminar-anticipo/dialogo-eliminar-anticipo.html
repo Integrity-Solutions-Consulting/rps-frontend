@@ -1,0 +1,28 @@
+<div class="fondo" (click)="cancelar.emit()"></div>
+<section class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="eliminar-anticipo-titulo" aria-describedby="eliminar-anticipo-texto">
+  <div class="dialogo__cuerpo confirmar">
+    <span class="confirmar__icono" aria-hidden="true"><app-icon name="trash" [size]="22" /></span>
+    <div class="confirmar__texto">
+      <h2 id="eliminar-anticipo-titulo">¿Eliminar el anticipo de {{ anticipo().monto | dinero }}?</h2>
+      <p id="eliminar-anticipo-texto">
+        Se quitará de los anticipos{{ colaborador() ? ' de ' + colaborador() : '' }}.
+        Después de confirmar tendrás {{ segundosParaDeshacer() }} segundos para deshacerlo.
+      </p>
+      <dl class="detalle">
+        <div><dt>Fecha</dt><dd class="num">{{ anticipo().fecha | date: 'dd MMM yyyy' }}</dd></div>
+        <div><dt>Monto</dt><dd class="num">{{ anticipo().monto | dinero }}</dd></div>
+        <div><dt>Saldo pendiente</dt><dd class="num">{{ anticipo().saldoPendiente | dinero }}</dd></div>
+        <div><dt>Cuotas</dt><dd>{{ anticipo().cuotas.length ? anticipo().cuotas.length + ' registradas' : 'Sin plan' }}</dd></div>
+        @if (anticipo().observaciones; as obs) {
+          <div class="detalle__ancho"><dt>Observaciones</dt><dd>{{ obs }}</dd></div>
+        }
+      </dl>
+    </div>
+  </div>
+  <footer class="dialogo__pie">
+    <div class="dialogo__acciones">
+      <button #botonCancelar type="button" class="btn" (click)="cancelar.emit()">Cancelar</button>
+      <button type="button" class="btn btn--peligro" (click)="confirmar.emit()">Eliminar anticipo</button>
+    </div>
+  </footer>
+</section>
