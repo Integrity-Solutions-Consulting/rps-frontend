@@ -32,12 +32,9 @@ export class LiquidacionesService {
     return forkJoin({
       liquidaciones: this.http.get<BeLiquidacion[]>(this.base, { params }),
       c: this.be.colaboradoresConNombre(),
-      // El backend solo calcula a los activos con configuración completa.
-      pendientes: this.http.get<BeColaborador[]>(`${this.be.api}/colaboradores`, { params: { estado: 'Pendiente', activo: 'true' } }),
-    }).pipe(map(({ liquidaciones, c, pendientes }) => ({
+    }).pipe(map(({ liquidaciones, c }) => ({
       periodo,
       filas: liquidaciones.map((l) => this.aResumen(l, c.lista, c.nombres)),
-      pendientes: pendientes.map((p) => ({ colaboradorId: p.id, colaborador: this.be.nombreDe(c.nombres, p.tmrColaboradorId) })),
     })));
   }
 
