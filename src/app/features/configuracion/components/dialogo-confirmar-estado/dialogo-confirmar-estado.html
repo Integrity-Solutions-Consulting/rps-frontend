@@ -1,5 +1,6 @@
 <div class="fondo" (click)="cancelar.emit()"></div>
-<section class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="desactivar-titulo" aria-describedby="desactivar-texto">
+<section class="dialogo" ui-dialog rol="alertdialog" tituloId="desactivar-titulo" descripcionId="desactivar-texto"
+         [cerrarConEscape]="!guardando()" (cerrar)="cancelar.emit()">
   <div class="dialogo__cuerpo confirmar">
     <span class="confirmar__icono" aria-hidden="true"><app-icon name="userX" [size]="22" /></span>
     <div class="confirmar__texto">
@@ -34,7 +35,7 @@
   </div>
   <footer class="dialogo__pie">
     <div class="dialogo__acciones">
-      <button #botonCancelar type="button" class="btn" (click)="cancelar.emit()" [disabled]="guardando()">Cancelar</button>
+      <button data-foco-inicial type="button" class="btn" (click)="cancelar.emit()" [disabled]="guardando()">Cancelar</button>
       <button type="button" class="btn btn--peligro" (click)="confirmar.emit()" [disabled]="guardando()">
         @if (rol()) {
           {{ guardando() ? 'Desactivando…' : 'Desactivar rol' }}

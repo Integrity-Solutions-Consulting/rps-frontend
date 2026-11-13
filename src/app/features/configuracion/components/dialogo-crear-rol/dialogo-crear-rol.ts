@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, computed, inject, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { MODULOS_PERMISO, ModuloPermiso, Permisos, RolSistemaDetalle, listaDesdePermisos, permisosDesdeLista } from '../../models/accesos.models';
 import { RolesService } from '../../services/roles.service';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { UiDialog } from '../../../../shared/components/ui-dialog/ui-dialog';
 
 /** Largos máximos que valida el backend (RolesService: MaxNombre y MaxDescripcion). */
 const MAX_NOMBRE = 50;
@@ -17,8 +18,7 @@ const MAX_DESCRIPCION = 200;
 @Component({
   selector: 'app-dialogo-crear-rol',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Icon],
-  host: { '(document:keydown.escape)': 'cancelar.emit()' },
+  imports: [FormsModule, Icon, UiDialog],
   templateUrl: './dialogo-crear-rol.html',
   styleUrl: './dialogo-crear-rol.scss',
 })
@@ -27,8 +27,6 @@ export class DialogoCrearRol {
 
   readonly cancelar = output<void>();
   readonly creado = output<RolSistemaDetalle>();
-
-  private readonly campoNombre = viewChild<ElementRef<HTMLInputElement>>('campoNombre');
 
   protected readonly maxNombre = MAX_NOMBRE;
   protected readonly maxDescripcion = MAX_DESCRIPCION;
@@ -41,10 +39,6 @@ export class DialogoCrearRol {
   protected readonly guardando = signal(false);
   protected readonly todos = computed(() => this.modulos.every((m) => this.permisos()[m.clave]));
   protected readonly elegidos = computed(() => this.modulos.filter((m) => this.permisos()[m.clave]).length);
-
-  constructor() {
-    afterNextRender(() => this.campoNombre()?.nativeElement.focus());
-  }
 
   protected cambiarNombre(valor: string): void {
     this.nombre.set(valor);

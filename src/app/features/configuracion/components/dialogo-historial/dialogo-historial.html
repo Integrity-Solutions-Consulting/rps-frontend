@@ -1,9 +1,9 @@
 <div class="fondo" (click)="cerrar.emit()"></div>
-<section class="dialogo" role="dialog" aria-modal="true" aria-labelledby="historial-titulo">
+<section class="dialogo" ui-dialog tituloId="historial-titulo" descripcionId="historial-texto" (cerrar)="cerrar.emit()">
   <header class="dialogo__head">
     <div>
       <h2 id="historial-titulo">Historial de cambios</h2>
-      <p>Configuración general · el sistema registra cada cambio solo</p>
+      <p id="historial-texto">Configuración general · el sistema registra cada cambio solo</p>
     </div>
     <button type="button" class="dialogo__cerrar" aria-label="Cerrar" (click)="cerrar.emit()"><app-icon name="x" [size]="18" /></button>
   </header>
@@ -12,7 +12,7 @@
     <div class="filtros">
       <div class="field">
         <label for="h-desde">Desde</label>
-        <input #primerCampo id="h-desde" class="input" type="date" [max]="hasta() || null"
+        <input data-foco-inicial id="h-desde" class="input" type="date" [max]="hasta() || null"
                [ngModel]="desde()" (ngModelChange)="cambiarFiltro(desde, $event)" />
       </div>
       <div class="field">

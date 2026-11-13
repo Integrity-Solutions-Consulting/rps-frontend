@@ -2,13 +2,13 @@ import { ChangeDetectionStrategy, Component, computed, input, output, signal } f
 
 import { MODULOS_PERMISO, ModuloPermiso, Permisos } from '../../models/accesos.models';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { UiDialog } from '../../../../shared/components/ui-dialog/ui-dialog';
 
 /** Ventana para activar o bloquear los módulos de un rol. Guardar lo decide quien la abre (backend). */
 @Component({
   selector: 'app-dialogo-permisos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icon],
-  host: { '(document:keydown.escape)': 'cancelar.emit()' },
+  imports: [Icon, UiDialog],
   templateUrl: './dialogo-permisos.html',
   styleUrl: './dialogo-permisos.scss',
 })

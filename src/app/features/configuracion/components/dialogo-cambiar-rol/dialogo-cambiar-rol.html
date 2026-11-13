@@ -1,9 +1,10 @@
 <div class="fondo" (click)="cancelar.emit()"></div>
-<section class="dialogo" role="dialog" aria-modal="true" aria-labelledby="cambiar-rol-titulo">
+<section class="dialogo" ui-dialog tituloId="cambiar-rol-titulo" descripcionId="cambiar-rol-texto"
+         [cerrarConEscape]="!guardando()" (cerrar)="cancelar.emit()">
   <header class="dialogo__head">
     <div>
       <h2 id="cambiar-rol-titulo">Cambiar rol</h2>
-      <p>Elige el nuevo rol para esta cuenta</p>
+      <p id="cambiar-rol-texto">Elige el nuevo rol para esta cuenta</p>
     </div>
     <button type="button" class="dialogo__cerrar" aria-label="Cerrar" (click)="cancelar.emit()"><app-icon name="x" [size]="18" /></button>
   </header>
