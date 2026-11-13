@@ -1,8 +1,5 @@
 :host { display: block; }
 
-/* Mismo espacio entre bloques que .pagina (indicadores, lista y detalle). */
-.contenido { display: grid; gap: 18px; min-width: 0; }
-
 .vacio-grande { padding: 40px 20px; display: grid; justify-items: center; gap: 10px; text-align: center; color: var(--rps-muted);
   h2 { color: var(--rps-text); font-size: 18px; }
   p { margin: 0; max-width: 60ch; } }
