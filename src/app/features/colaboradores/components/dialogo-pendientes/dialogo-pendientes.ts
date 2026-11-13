@@ -15,7 +15,8 @@ type Carga<T> = { estado: 'cargando' } | { estado: 'ok'; datos: T } | { estado: 
 
 /**
  * Ventana "Pendientes de configuración" (desde "Requieren atención" en Colaboradores).
- * El backend filtra todo: GET /api/colaboradores?estado=Pendiente&activo=true&busqueda=…&clasificacion=…
+ * GET /api/colaboradores?estado=Pendiente&activo=true&busqueda=… filtra en el backend; el tipo de servicio
+ * lo filtra ColaboradoresService.listar sobre la respuesta (el backend no tiene ese filtro).
  * Aquí solo se muestra la lista en páginas de 6.
  */
 @Component({

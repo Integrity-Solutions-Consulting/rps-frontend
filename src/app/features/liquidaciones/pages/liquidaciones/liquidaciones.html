@@ -249,17 +249,16 @@
               @if (filasVisibles().length) {
                 <tfoot>
                   <tr class="fila-total">
-                    <td class="col-check"></td>
-                    <th scope="row">
+                    <th scope="row" colspan="2" class="total__etiqueta">
                       {{ hayFiltros() ? 'Total de lo mostrado' : 'Total del período' }}
-                      <span class="total__cuantos">{{ filasVisibles().length }} {{ filasVisibles().length === 1 ? 'colaborador' : 'colaboradores' }}</span>
+                      <span class="total__cuantos">· {{ filasVisibles().length }} {{ filasVisibles().length === 1 ? 'colaborador' : 'colaboradores' }}</span>
                     </th>
-                    <td class="r num">{{ totales().neto | dinero }}</td>
+                    <td class="r num total__importe"><span class="total__cifra">{{ totales().neto | dinero }}</span></td>
                     @if (vista() === 'cortes') {
-                      <td class="r num">{{ totales().descQuincena | dinero }}</td>
-                      <td class="r num">{{ totales().valorQuincena | dinero }}</td>
-                      <td class="r num">{{ totales().descFinDeMes | dinero }}</td>
-                      <td class="r num">{{ totales().valorFinDeMes | dinero }}</td>
+                      <td class="r num total__importe"><span class="total__cifra">{{ totales().descQuincena | dinero }}</span></td>
+                      <td class="r num total__importe"><span class="total__cifra">{{ totales().valorQuincena | dinero }}</span></td>
+                      <td class="r num total__importe"><span class="total__cifra">{{ totales().descFinDeMes | dinero }}</span></td>
+                      <td class="r num total__importe"><span class="total__cifra">{{ totales().valorFinDeMes | dinero }}</span></td>
                     }
                     <td></td>
                   </tr>
@@ -270,8 +269,7 @@
           </div>
           <p class="pie-tabla">
             @if (hayFiltros()) { Mostrando {{ filasVisibles().length }} de {{ filas().length }} · }
-            @else { {{ filas().length }} {{ filas().length === 1 ? 'colaborador' : 'colaboradores' }} · }
-            {{ totalPorRevisar() }} por revisar · elige uno para ver su detalle
+            {{ totalPorRevisar() === 0 ? 'Todas revisadas' : totalPorRevisar() + ' por revisar' }} · elige una fila para ver su detalle
           </p>
         </section>
 

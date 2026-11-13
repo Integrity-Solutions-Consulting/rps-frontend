@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
   ColaboradorDetalle, EventoHistorial, ColaboradorResumen, CuentaBancaria, FiltrosColaboradores,
@@ -19,8 +19,12 @@ export class ColaboradoresService {
     if (filtros.estado) params = params.set('estado', filtros.estado);
     if (filtros.activo !== null) params = params.set('activo', String(filtros.activo));
     if (filtros.busqueda?.trim()) params = params.set('busqueda', filtros.busqueda.trim());
-    if (filtros.clasificacion) params = params.set('clasificacion', filtros.clasificacion);
-    return this.http.get<ColaboradorResumen[]>(this.base, { params });
+    // GET /api/colaboradores solo filtra por estado, activo y búsqueda: el tipo de servicio lo ignora.
+    // Por eso se filtra aquí, sobre la respuesta, para que la lista y el diálogo de pendientes muestren solo ese tipo.
+    const clasificacion = filtros.clasificacion ?? null;
+    return this.http.get<ColaboradorResumen[]>(this.base, { params }).pipe(
+      map((lista) => (clasificacion ? lista.filter((c) => c.clasificacion === clasificacion) : lista)),
+    );
   }
 
   /** GET /api/colaboradores/{id} */

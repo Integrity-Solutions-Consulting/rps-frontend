@@ -21,13 +21,10 @@ import { ETIQUETA_CORTE, rangoCorte } from '../../../../shared/models/corte';
 import { esPeriodoValido, nombrePeriodo, periodoActual } from '../../../../shared/utils/periodo';
 import { DialogoCalcular, ResumenAntesDeCalcular } from '../../components/dialogo-calcular/dialogo-calcular';
 import { DialogoRevisar } from '../../components/dialogo-revisar/dialogo-revisar';
+import { coincide } from '../../../../shared/utils/texto';
 
 type Vista = 'resumen' | 'cortes';
 type FiltroRevision = 'todas' | 'porRevisar';
-
-/** "Acuña" → "acuna": la búsqueda no distingue tildes ni mayúsculas (igual que app-buscador). */
-const normalizar = (texto: string): string =>
-  texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 /** Suma de importes en centavos, para que el total no arrastre decimales de coma flotante. */
 const sumar = (valores: number[]): number => valores.reduce((t, v) => t + Math.round(v * 100), 0) / 100;
@@ -91,12 +88,8 @@ export class Liquidaciones {
 
   /** Filas que coinciden con la búsqueda (nombre o identificación), en el orden de la tabla. */
   private readonly filasBuscadas = computed(() => {
-    const palabras = normalizar(this.busqueda()).split(/\s+/).filter(Boolean);
-    if (!palabras.length) return this.filas();
-    return this.filas().filter((l) => {
-      const texto = normalizar(`${l.colaborador} ${l.identificacion} ${l.tmrColaboradorId}`);
-      return palabras.every((p) => texto.includes(p));
-    });
+    const q = this.busqueda();
+    return this.filas().filter((l) => coincide(`${l.colaborador} ${l.identificacion} ${l.tmrColaboradorId}`, q));
   });
   protected readonly filasVisibles = computed(() =>
     this.filtroRevision() === 'porRevisar' ? this.filasBuscadas().filter((l) => !l.revisado) : this.filasBuscadas());

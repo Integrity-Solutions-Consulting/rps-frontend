@@ -34,14 +34,14 @@
       <div class="tipos">
         <div class="tipos__head"><span>Tipo de servicio</span><span class="num">{{ porTipo().porcentajeConfigurado }} % configurado</span></div>
         <div class="tipos__barra" role="img"
-             [attr.aria-label]="'Profesional ' + porTipo().profesional + ', Junior ' + porTipo().junior + ', sin definir ' + porTipo().sinDefinir">
+             [attr.aria-label]="etiquetaClasificacion.Profesional + ' ' + porTipo().profesional + ', ' + etiquetaClasificacion.Junior + ' ' + porTipo().junior + ', sin definir ' + porTipo().sinDefinir">
           @if (porTipo().profesional) { <span class="t-prof" [style.flex-grow]="porTipo().profesional"></span> }
           @if (porTipo().junior) { <span class="t-jun" [style.flex-grow]="porTipo().junior"></span> }
           @if (porTipo().sinDefinir) { <span class="t-sin" [style.flex-grow]="porTipo().sinDefinir"></span> }
         </div>
         <div class="tipos__leyenda">
-          <span><i class="t-prof" aria-hidden="true"></i>Profesional <strong class="num">{{ porTipo().profesional }}</strong></span>
-          <span><i class="t-jun" aria-hidden="true"></i>Junior <strong class="num">{{ porTipo().junior }}</strong></span>
+          <span><i class="t-prof" aria-hidden="true"></i>{{ etiquetaClasificacion.Profesional }} <strong class="num">{{ porTipo().profesional }}</strong></span>
+          <span><i class="t-jun" aria-hidden="true"></i>{{ etiquetaClasificacion.Junior }} <strong class="num">{{ porTipo().junior }}</strong></span>
           <span><i class="t-sin" aria-hidden="true"></i>Sin definir <strong class="num">{{ porTipo().sinDefinir }}</strong></span>
         </div>
       </div>
@@ -90,8 +90,8 @@
         <label for="f-tipo">Tipo de servicio</label>
         <select id="f-tipo" class="select" [ngModel]="filtroTipo()" (ngModelChange)="filtroTipo.set($event)">
           <option value="">Todos</option>
-          <option value="Profesional">Profesionales</option>
-          <option value="Junior">Juniors</option>
+          <option value="Profesional">{{ etiquetaClasificacion.Profesional }}</option>
+          <option value="Junior">{{ etiquetaClasificacion.Junior }}</option>
         </select>
       </div>
       <div class="segmentos" role="group" aria-label="Mostrar">

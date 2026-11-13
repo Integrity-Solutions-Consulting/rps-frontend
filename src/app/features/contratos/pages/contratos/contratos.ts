@@ -22,6 +22,7 @@ import { Icon } from '../../../../shared/components/icon/icon';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { nombrePeriodo, periodoActual, periodoDeFecha, periodoSiguiente, primerDia } from '../../../../shared/utils/periodo';
 import { conservarDatosAlRecargar, estaActualizando } from '../../../../shared/utils/carga';
+import { coincide } from '../../../../shared/utils/texto';
 
 type FrecuenciaElegida = { frecuencia: Frecuencia; vigenteDesdeMes: string };
 
@@ -98,10 +99,9 @@ export class Contratos {
     if (c.estado !== 'ok') return [];
     const colaborador = this.filtroColaborador();
     const lista = colaborador ? c.datos.filter((x) => x.tmrColaboradorId === colaborador) : c.datos;
-    const t = this.busqueda().trim().toLowerCase();
-    if (!t) return lista;
-    return lista.filter((x) => `${x.colaborador} ${this.nombresProyectos(x)} ${this.clientesTexto(x)} ${x.referencia ?? ''} ${x.tmrColaboradorId}`
-      .toLowerCase().includes(t));
+    const t = this.busqueda();
+    return lista.filter((x) =>
+      coincide(`${x.colaborador} ${this.nombresProyectos(x)} ${this.clientesTexto(x)} ${x.referencia ?? ''} ${x.tmrColaboradorId}`, t));
   });
 
   // ── Paginación (10 por página, como el mockup) ───────────────────────
@@ -201,10 +201,8 @@ export class Contratos {
   private cerrarListaTimeout: ReturnType<typeof setTimeout> | undefined;
 
   protected readonly colaboradoresFiltrados = computed(() => {
-    const t = this.busquedaColaborador().trim().toLowerCase();
-    const lista = this.colaboradoresTodos();
-    if (!t) return lista;
-    return lista.filter((c) => c.colaborador.toLowerCase().includes(t));
+    const t = this.busquedaColaborador();
+    return this.colaboradoresTodos().filter((c) => coincide(c.colaborador, t));
   });
 
   // Paso 2: proyectos disponibles de ese colaborador (0, 1 o varios).

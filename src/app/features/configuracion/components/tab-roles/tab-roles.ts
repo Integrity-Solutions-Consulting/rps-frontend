@@ -13,6 +13,7 @@ import { Icon } from '../../../../shared/components/icon/icon';
 import { DialogoPermisos } from '../dialogo-permisos/dialogo-permisos';
 import { DialogoCrearRol } from '../dialogo-crear-rol/dialogo-crear-rol';
 import { DialogoConfirmarEstado } from '../dialogo-confirmar-estado/dialogo-confirmar-estado';
+import { coincide } from '../../../../shared/utils/texto';
 
 type FiltroEstado = 'todos' | 'activos' | 'inactivos';
 
@@ -60,11 +61,11 @@ export class TabRoles {
   protected readonly puedeCrear = computed(() => this.rolSesion() === ROL_ADMINISTRADOR);
 
   protected readonly filas = computed(() => {
-    const q = this.busqueda().trim().toLowerCase();
+    const q = this.busqueda();
     const e = this.estado();
     return this.roles().filter((r) =>
       (e === 'todos' || (e === 'activos') === r.activo) &&
-      (!q || [r.nombre, this.descripcion(r)].some((t) => t.toLowerCase().includes(q))));
+      coincide(`${r.nombre} ${this.descripcion(r)}`, q));
   });
 
   constructor() {

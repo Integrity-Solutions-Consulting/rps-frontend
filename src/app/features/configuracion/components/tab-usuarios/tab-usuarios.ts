@@ -13,6 +13,7 @@ import { DialogoCrearUsuario } from '../dialogo-crear-usuario/dialogo-crear-usua
 import { DialogoCambiarRol } from '../dialogo-cambiar-rol/dialogo-cambiar-rol';
 import { DialogoConfirmarEstado } from '../dialogo-confirmar-estado/dialogo-confirmar-estado';
 import { iniciales, tonoAvatar } from '../avatar';
+import { coincide } from '../../../../shared/utils/texto';
 
 type FiltroEstado = 'todos' | 'activos' | 'inactivos';
 
@@ -61,13 +62,13 @@ export class TabUsuarios {
   protected readonly rolesEnLista = computed(() => [...new Set(this.usuarios().map((u) => u.rol))].sort((a, b) => a.localeCompare(b)));
 
   protected readonly filas = computed(() => {
-    const q = this.busqueda().trim().toLowerCase();
+    const q = this.busqueda();
     const e = this.estado();
     const r = this.filtroRol();
     return this.usuarios().filter((u) =>
       (e === 'todos' || (e === 'activos') === u.activo) &&
       (!r || u.rol === r) &&
-      (!q || [u.nombre, u.email, u.rol].some((t) => t.toLowerCase().includes(q))));
+      coincide(`${u.nombre} ${u.email} ${u.rol}`, q));
   });
   protected readonly hayFiltros = computed(() => !!(this.busqueda().trim() || this.filtroRol() || this.estado() !== 'todos'));
 

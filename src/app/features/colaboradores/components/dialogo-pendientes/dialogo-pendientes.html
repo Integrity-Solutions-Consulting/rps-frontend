@@ -11,7 +11,7 @@
       </button>
     </header>
 
-    <!-- Buscar por nombre + tipo de servicio (los filtra el backend) -->
+    <!-- Buscar por nombre (backend) + tipo de servicio (se filtra en ColaboradoresService.listar) -->
     <div class="ventana__barra">
       <div class="buscar">
         <app-icon name="search" [size]="16" />
@@ -22,8 +22,8 @@
         <label for="tipo-pendientes">Tipo de servicio</label>
         <select id="tipo-pendientes" class="select" [ngModel]="tipo()" (ngModelChange)="tipo.set($event)">
           <option value="">Todos</option>
-          <option value="Profesional">Profesionales</option>
-          <option value="Junior">Juniors</option>
+          <option value="Profesional">{{ etiquetaClasificacion.Profesional }}</option>
+          <option value="Junior">{{ etiquetaClasificacion.Junior }}</option>
         </select>
       </div>
     </div>

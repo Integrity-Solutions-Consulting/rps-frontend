@@ -44,7 +44,7 @@ export class ColaboradoresLista {
 
   protected readonly etiquetaClasificacion = ETIQUETA_CLASIFICACION;
 
-  // ── Filtros: los resuelve el backend ──
+  // ── Filtros: estado, activo y búsqueda los resuelve el backend; el tipo de servicio, ColaboradoresService.listar ──
   /** Tipo de servicio: Todos ('') · Profesional · Junior. */
   protected readonly filtroTipo = signal<Clasificacion | ''>('');
   protected readonly filtroActivo = signal<FiltroActivo>('todos');
