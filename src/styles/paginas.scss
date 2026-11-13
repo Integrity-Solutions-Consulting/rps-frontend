@@ -6,7 +6,9 @@
 /* Encabezado: título, descripción y acciones */
 .pagina { display: grid; gap: 18px; min-width: 0; }
 .pagina__head {
-  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px;
+  /* Altura fija y título centrado con las acciones: todas las pantallas empiezan a la misma altura,
+     tengan o no descripción bajo el título. */
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px;
   h1 { font-size: 26px; font-weight: 600; letter-spacing: -.02em; }
   p { margin: 4px 0 0; color: var(--rps-muted); font-size: 13px; max-width: 75ch; }
 }

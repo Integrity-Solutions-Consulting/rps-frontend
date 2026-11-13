@@ -18,17 +18,6 @@
     </button>
   </div>
 
-  <!-- Usuario de la sesión y el mes que está viendo (sigue al selector de período de la pantalla) -->
-  @if (session.usuario(); as u) {
-    <div class="sidebar__area" [title]="u.nombre + ' · ' + u.area">
-      <span class="sidebar__avatar" aria-hidden="true">{{ u.iniciales }}</span>
-      <span class="sidebar__area-txt">
-        <strong>{{ u.nombre }}</strong>
-        <small>{{ u.area }} · {{ mesActual() }}</small>
-      </span>
-    </div>
-  }
-
   <nav aria-label="Menú principal">
     <ul class="sidebar__menu">
       @for (item of menu; track item.ruta) {

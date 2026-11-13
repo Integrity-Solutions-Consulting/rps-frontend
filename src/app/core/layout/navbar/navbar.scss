@@ -10,6 +10,14 @@
 }
 .navbar__menu--visible { display: inline-flex; }
 
+/* Logo de RPS: aparece cuando el menú lateral está cerrado (escritorio) y en pantallas pequeñas */
+.navbar__logo { display: none; align-items: center; gap: 8px; margin-left: 4px; text-decoration: none; }
+.navbar__logo--visible { display: inline-flex; }
+.navbar__logo-icono { width: 24px; height: 28px; flex: none; }
+.navbar__logo-txt { display: flex; flex-direction: column; line-height: 1;
+  strong { font-size: 20px; font-weight: 800; letter-spacing: -.02em; color: #17264a; }
+  small { margin-top: 3px; font-size: 7px; font-weight: 600; letter-spacing: .32em; text-transform: uppercase; color: #2f64b5; } }
+
 
 .navbar__right { margin-left: auto; display: flex; align-items: center; gap: 14px; color: var(--rps-muted); }
 .navbar__area { color: #4b5160; font-size: 13px; font-weight: 500; }
@@ -34,6 +42,6 @@
 
 @media (max-width: 960px) {
   .navbar { padding: 0 16px; }
-  .navbar__menu { display: inline-flex; }
+  .navbar__menu, .navbar__logo { display: inline-flex; }
   .navbar__area, .navbar__sep { display: none; }
 }

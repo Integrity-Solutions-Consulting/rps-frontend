@@ -21,15 +21,6 @@
   &:hover { background: #f1f2f5; color: var(--rps-text); }
 }
 
-/* Tarjeta con el usuario de la sesión, su área y el mes que está viendo */
-.sidebar__area {
-  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-  border: 1px solid var(--rps-border); border-radius: 12px; background: var(--rps-subtle);
-}
-.sidebar__area-txt { display: flex; flex-direction: column; min-width: 0;
-  strong { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  small { font-size: 12px; color: var(--rps-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
-
 .sidebar__menu { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 
 .sidebar__item {
@@ -52,10 +43,4 @@ nav { min-width: 0; }
 .sidebar__foot {
   margin-top: auto; padding-top: 12px; border-top: 1px solid #eceef2; display: grid; gap: 12px;
   p { margin: 0; padding: 0 6px; font-size: 11px; line-height: 1.4; color: var(--rps-muted); }
-}
-.sidebar__avatar {
-  width: 32px; height: 32px; flex: none; border-radius: 50%; display: grid; place-items: center;
-  background: var(--rps-info-50); color: var(--rps-info); font-size: 12px; font-weight: 700;
-  /* Contorno azul fuerte, igual que los usuarios registrados en Configuración > Usuarios */
-  box-shadow: 0 0 0 2px var(--rps-info);
 }

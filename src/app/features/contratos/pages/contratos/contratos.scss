@@ -1,7 +1,7 @@
 :host { display: grid; gap: 20px; }
 
 .head {
-  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px;
   h1 { font-size: 26px; font-weight: 600; letter-spacing: -.02em; }
   p { margin: 4px 0 0; color: var(--rps-muted); font-size: 13px; max-width: 70ch; }
 }
