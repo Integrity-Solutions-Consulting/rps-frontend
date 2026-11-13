@@ -58,9 +58,16 @@ export interface LiquidacionDetalle extends LiquidacionResumen {
   detalleProyectos: ProyectoLiquidado[];
 }
 
+/** Colaborador activo con configuración pendiente: el backend no lo incluye al calcular. */
+export interface LiquidacionPendiente {
+  colaboradorId: string;
+  colaborador: string;
+}
+
 export interface LiquidacionesPeriodo {
   periodo: string;
   filas: LiquidacionResumen[];
+  pendientes: LiquidacionPendiente[];
 }
 
 /** Resultado de "Calcular": lo que respondió el backend en sus dos pasos. */
