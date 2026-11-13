@@ -58,7 +58,18 @@ export class UiDialog {
       (marcado && visible(marcado) ? marcado : this.panel).focus();
     });
 
+    // Al guardar, el botón enfocado se deshabilita (o desaparece) y el navegador, un momento después, manda el foco
+    // a <body> sin avisar. Se adelanta: el foco pasa al panel para que la ventana siga siendo el contexto del teclado
+    // y del lector de pantalla.
+    const vigilante = new MutationObserver(() => {
+      if (abiertas[abiertas.length - 1] !== this) return;
+      const activo = document.activeElement as (HTMLElement & { disabled?: boolean }) | null;
+      if (!activo || activo === document.body || !activo.isConnected || activo.disabled === true) this.panel.focus({ preventScroll: true });
+    });
+    vigilante.observe(this.panel, { subtree: true, childList: true, attributes: true, attributeFilter: ['disabled'] });
+
     inject(DestroyRef).onDestroy(() => {
+      vigilante.disconnect();
       const i = abiertas.indexOf(this);
       if (i >= 0) abiertas.splice(i, 1);
       // Después de que la pantalla termine de actualizarse (filas que desaparecen, menús que se cierran).

@@ -19,9 +19,11 @@
         <p id="desactivar-texto">
           @if (r.usuarios > 0) {
             {{ r.usuarios === 1 ? 'Su usuario perderá' : 'Sus ' + r.usuarios + ' usuarios perderán' }} los permisos de este rol
-            la próxima vez que entren o se renueve su sesión.
+            la próxima vez que entren o se renueve su sesión. Tampoco se podrá asignar a otros usuarios.
+          } @else {
+            No se podrá asignar a otros usuarios.
           }
-          Tampoco se podrá asignar a otros usuarios. Puedes volver a activarlo cuando quieras desde Roles.
+          Puedes volver a activarlo cuando quieras desde Roles.
         </p>
         <div class="cuenta">
           <span class="avatar avatar--rol" aria-hidden="true"><app-icon name="shield" [size]="16" /></span>
