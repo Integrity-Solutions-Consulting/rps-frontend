@@ -48,7 +48,7 @@ node node_modules/@angular/compiler-cli/bundles/src/bin/ngc.js -p tsconfig.app.j
 | Anticipos | `/api/colaboradores/{id}/anticipos` (+ `/resumen`, `/{id}/plan`) |
 | Liquidaciones | `POST /api/honorarios/generar`, `POST /api/liquidaciones/generar`, `GET /api/liquidaciones`, `POST /{id}/revisar` |
 | Documentos tributarios | `/api/colaboradores/{id}/documentos-mensuales`, `GET /api/honorarios?periodo=` |
-| Exportaciones | `GET /api/exportaciones/honorarios`, `/liquidaciones`, `/colaboradores` (CSV) |
+| Exportaciones | `POST /api/exportaciones/honorarios`, `/liquidaciones`, `/colaboradores` (Excel; `/pdf` para PDF; registran la exportación), `GET /historial`, `GET /ultimas` |
 | Configuración | `GET` y `PUT /api/configuracion` |
 
 ## Dónde está cada cosa

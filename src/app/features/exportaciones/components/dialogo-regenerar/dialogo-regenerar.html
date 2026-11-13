@@ -1,0 +1,24 @@
+<div class="fondo" (click)="cancelar.emit()"></div>
+<section class="dialogo" ui-dialog rol="alertdialog" tituloId="regenerar-titulo" descripcionId="regenerar-texto" (cerrar)="cancelar.emit()">
+  <div class="dialogo__cuerpo confirmar">
+    <span class="confirmar__icono" aria-hidden="true"><app-icon name="alert" [size]="22" /></span>
+    <div class="confirmar__texto">
+      <h2 id="regenerar-titulo">Los datos cambiaron desde esta exportación</h2>
+      <p id="regenerar-texto">
+        {{ reporte() }} de {{ alcance() }} se exportó el {{ exportacion().generadoEn | date: "d MMM 'a las' HH:mm" }}
+        y desde entonces sus datos cambiaron. El archivo nuevo tendrá los valores actuales; el anterior no se puede
+        recuperar desde RPS.
+      </p>
+      <dl class="detalle">
+        <div><dt>Archivo anterior</dt><dd>{{ exportacion().nombreArchivo }}</dd></div>
+        <div><dt>Generado por</dt><dd>{{ exportacion().usuario ?? 'Usuario no disponible' }}</dd></div>
+      </dl>
+    </div>
+  </div>
+  <footer class="dialogo__pie">
+    <div class="dialogo__acciones">
+      <button data-foco-inicial type="button" class="btn" (click)="cancelar.emit()">Cancelar</button>
+      <button type="button" class="btn btn--primary" (click)="confirmar.emit()">Generar con datos actuales</button>
+    </div>
+  </footer>
+</section>
