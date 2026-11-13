@@ -9,7 +9,7 @@
         <label for="periodo">Período</label>
         <input id="periodo" type="month" class="input" [value]="periodo()" (change)="cambiarPeriodo($any($event.target).value)" />
       </div>
-      <button type="button" class="btn btn--primary" (click)="calcular()" [disabled]="calculando() || cargando()">
+      <button type="button" class="btn btn--primary" (click)="pedirCalculo()" [disabled]="calculando() || cargando()">
         <app-icon name="calculator" [size]="18" /> {{ calculando() ? 'Calculando…' : 'Calcular período' }}
       </button>
       <a class="btn" routerLink="/exportaciones" [queryParams]="{ periodo: periodo() }">
@@ -31,7 +31,7 @@
       <section class="card vacio-grande">
         <app-icon name="calculator" [size]="32" />
         <h2>{{ nombreMes() }} todavía no se calcula</h2>
-        <button type="button" class="btn btn--primary" (click)="calcular()" [disabled]="calculando()">Calcular {{ nombreMes() }}</button>
+        <button type="button" class="btn btn--primary" (click)="pedirCalculo()" [disabled]="calculando()">Calcular {{ nombreMes() }}</button>
       </section>
     } @else {
       <!-- ── Indicadores (GET /api/dashboard) ──────────────────────── -->
@@ -240,7 +240,7 @@
                   No confirma una transferencia.
                 </small>
               } @else {
-                <button type="button" class="btn btn--primary" (click)="marcarRevisado(det)" [disabled]="guardandoRevision()">
+                <button type="button" class="btn btn--primary" (click)="pedirRevision([det])" [disabled]="guardandoRevision()">
                   <app-icon name="check" [size]="17" /> {{ guardandoRevision() ? 'Guardando…' : 'Marcar revisada para envío' }}
                 </button>
                 <small class="muted">No confirma una transferencia; solo indica que la información fue revisada.</small>
@@ -263,3 +263,12 @@
   </div>
   }
 </div>
+
+@if (confirmandoCalculo()) {
+  <app-dialogo-calcular [mes]="nombreMes()" [resumen]="resumenCalculo()" [calculando]="calculando()"
+                        (cancelar)="confirmandoCalculo.set(false)" (confirmar)="calcular()" />
+}
+@if (porRevisar().length) {
+  <app-dialogo-revisar [liquidaciones]="porRevisar()" [mes]="nombreMes()" [guardando]="guardandoRevision()"
+                       (cancelar)="cancelarRevision()" (confirmar)="confirmarRevision()" />
+}

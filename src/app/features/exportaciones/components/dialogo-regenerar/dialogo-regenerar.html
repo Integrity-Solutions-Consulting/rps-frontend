@@ -9,6 +9,12 @@
         y desde entonces sus datos cambiaron. El archivo nuevo tendrá los valores actuales; el anterior no se puede
         recuperar desde RPS.
       </p>
+      @if (sinRevisar() > 0) {
+        <p class="pendientes">
+          {{ sinRevisar() === 1 ? 'Además, falta revisar 1 liquidación' : 'Además, faltan revisar ' + sinRevisar() + ' liquidaciones' }}
+          de {{ alcance() }}: el archivo indica cuáles están pendientes.
+        </p>
+      }
       <dl class="detalle">
         <div><dt>Archivo anterior</dt><dd>{{ exportacion().nombreArchivo }}</dd></div>
         <div><dt>Generado por</dt><dd>{{ exportacion().usuario ?? 'Usuario no disponible' }}</dd></div>

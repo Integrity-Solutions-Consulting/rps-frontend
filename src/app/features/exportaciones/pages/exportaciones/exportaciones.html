@@ -13,6 +13,48 @@
     </div>
   </header>
 
+  <!-- ── Estado del mes (GET /api/dashboard?periodo=) ──────────────── -->
+  <section class="estado-mes" aria-labelledby="estado-mes-titulo" aria-live="polite">
+    <h2 id="estado-mes-titulo" class="sr-only">Estado de las liquidaciones del mes</h2>
+    @if (todosLosMeses()) {
+      <p class="estado-mes__linea muted">Con «Todos los meses» el estado de revisión no se resume: elige un mes para ver cuántas liquidaciones faltan revisar.</p>
+    } @else if (cargandoEstado() && !estadoPeriodo()) {
+      <div class="skeleton estado-mes__cargando" aria-busy="true"></div>
+    } @else if (errorEstado()) {
+      <div class="aviso aviso--warn">
+        <app-icon name="alert" [size]="18" />
+        <div>No se pudo cargar el estado de {{ nombreMes().toLowerCase() }}. Las exportaciones siguen disponibles.</div>
+        <button type="button" class="btn btn--sm" (click)="reintentarEstado()">Reintentar</button>
+      </div>
+    } @else if (estadoPeriodo(); as e) {
+      <p class="estado-mes__linea">
+        <strong>{{ nombreMes() }}:</strong>
+        <span class="num">{{ calculadas() === 1 ? '1 calculada' : calculadas() + ' calculadas' }}</span>
+        @if (calculadas()) {
+          <span aria-hidden="true">·</span>
+          <span class="num">{{ e.revisadas }} de {{ calculadas() }} revisadas</span>
+          @if (e.sinRevisar === 0) { <app-estado-chip tono="ok">Todas revisadas</app-estado-chip> }
+        }
+      </p>
+      @if (calculadas() === 0) {
+        <div class="aviso aviso--info">
+          <app-icon name="info" [size]="18" />
+          <div>{{ nombreMes() }} todavía no se calcula. Las exportaciones de liquidaciones se habilitan cuando se calcule el mes.</div>
+          <a class="btn btn--sm" routerLink="/liquidaciones" [queryParams]="{ periodo: periodo() }">Ir a Liquidaciones</a>
+        </div>
+      } @else if (e.sinRevisar > 0) {
+        <div class="aviso aviso--warn">
+          <app-icon name="alert" [size]="18" />
+          <div>
+            {{ e.sinRevisar === 1 ? 'Falta revisar 1 liquidación' : 'Faltan revisar ' + e.sinRevisar + ' liquidaciones' }} de {{ nombreMes().toLowerCase() }}.
+            Puedes exportar igual: el archivo indica cuáles están pendientes.
+          </div>
+          <a class="btn btn--sm" routerLink="/liquidaciones" [queryParams]="{ periodo: periodo() }">Revisar en Liquidaciones</a>
+        </div>
+      }
+    }
+  </section>
+
   <!-- ── Reportes (Excel y PDF) ────────────────────────────────────── -->
   <h2 class="subtitulo subtitulo--seccion">Reportes</h2>
   <label class="todos">
@@ -39,11 +81,19 @@
             }
           </p>
         }
+        @if (bloqueada(o)) {
+          <p class="opcion__bloqueo" [id]="'bloqueo-' + o.clave">
+            <app-icon name="info" [size]="14" />
+            <span>Se habilita cuando se calcule {{ nombreMes().toLowerCase() }}: todavía no hay liquidaciones que exportar.</span>
+          </p>
+        }
         <div class="opcion__botones">
-          <button type="button" class="btn" (click)="descargar(o, 'pdf')" [disabled]="generando(o, 'pdf')">
+          <button type="button" class="btn" (click)="descargar(o, 'pdf')" [disabled]="generando(o, 'pdf') || bloqueada(o)"
+                  [attr.aria-describedby]="bloqueada(o) ? 'bloqueo-' + o.clave : null">
             <app-icon name="file" [size]="17" /> {{ generando(o, 'pdf') ? 'Generando…' : 'Descargar PDF' }}
           </button>
-          <button type="button" class="btn btn--primary" (click)="descargar(o, 'xlsx')" [disabled]="generando(o, 'xlsx')">
+          <button type="button" class="btn btn--primary" (click)="descargar(o, 'xlsx')" [disabled]="generando(o, 'xlsx') || bloqueada(o)"
+                  [attr.aria-describedby]="bloqueada(o) ? 'bloqueo-' + o.clave : null">
             <app-icon name="download" [size]="17" /> {{ generando(o, 'xlsx') ? 'Generando…' : 'Descargar Excel' }}
           </button>
         </div>
@@ -148,5 +198,10 @@
 
 @if (porRegenerar(); as x) {
   <app-dialogo-regenerar [exportacion]="x" [reporte]="nombreReporte(x) + ' (' + formato(x.formato) + ')'" [alcance]="alcanceDe(x)"
-                         (cancelar)="porRegenerar.set(null)" (confirmar)="confirmarRegenerar()" />
+                         [sinRevisar]="pendientesDe(x)" (cancelar)="porRegenerar.set(null)" (confirmar)="confirmarRegenerar()" />
+}
+@if (porConfirmar(); as p) {
+  <app-dialogo-exportar-pendientes [reporte]="p.reporte" [mes]="nombreMes().toLowerCase()" [periodo]="periodo()"
+                                   [sinRevisar]="estadoPeriodo()?.sinRevisar ?? 0" [calculadas]="calculadas() ?? 0"
+                                   (cancelar)="porConfirmar.set(null)" (confirmar)="confirmarExportacion()" />
 }

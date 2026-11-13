@@ -12,6 +12,25 @@
   li { line-height: 1.5; } }
 .subtitulo--seccion { margin: 8px 0 12px; }
 
+/* Estado del mes: una línea de hechos y, si hace falta, un aviso con la acción para resolverlo. */
+.estado-mes { display: grid; gap: 10px; margin-bottom: 8px;
+  .aviso { align-items: center;
+    > div { flex: 1; }
+    .btn { flex: none; } } }
+.estado-mes__linea { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 14px;
+  strong { font-weight: 600; } }
+.estado-mes__cargando { height: 22px; max-width: 360px; border-radius: 6px; }
+/* Angosto: el texto conserva un ancho legible y el botón baja a su propia línea. */
+@media (max-width: 720px) {
+  .estado-mes .aviso { flex-wrap: wrap;
+    > div { flex: 1 1 220px; }
+    .btn { margin-left: auto; } } }
+
+/* Por qué los botones de liquidaciones están deshabilitados. */
+.opcion__bloqueo { grid-column: 1 / -1; margin: 0; display: flex; align-items: flex-start; gap: 6px; font-size: 12.5px;
+  color: var(--rps-info); background: var(--rps-info-50); border-radius: 8px; padding: 8px 10px;
+  app-icon { flex: none; margin-top: 2px; } }
+
 .todos { display: flex; align-items: center; gap: 8px; height: 38px; font-size: 13.5px; cursor: pointer; margin-bottom: 12px; }
 
 .opciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }

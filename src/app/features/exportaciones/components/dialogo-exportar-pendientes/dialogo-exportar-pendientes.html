@@ -1,0 +1,29 @@
+<div class="fondo" (click)="cancelar.emit()"></div>
+<section class="dialogo" ui-dialog rol="alertdialog" tituloId="pendientes-exportar-titulo" descripcionId="pendientes-exportar-texto"
+         (cerrar)="cancelar.emit()">
+  <div class="dialogo__cuerpo confirmar">
+    <span class="confirmar__icono" aria-hidden="true"><app-icon name="alert" [size]="22" /></span>
+    <div class="confirmar__texto">
+      <h2 id="pendientes-exportar-titulo">
+        {{ sinRevisar() === 1 ? 'Falta revisar 1 liquidación' : 'Faltan revisar ' + sinRevisar() + ' liquidaciones' }} de {{ mes() }}
+      </h2>
+      <p id="pendientes-exportar-texto">
+        Puedes exportar igual: el archivo indica cuáles están pendientes de revisión. Revisarlas antes evita preparar
+        pagos con valores que nadie ha controlado.
+      </p>
+      <dl class="detalle">
+        <div><dt>Reporte</dt><dd>{{ reporte() }}</dd></div>
+        <div><dt>Revisadas</dt><dd class="num">{{ calculadas() - sinRevisar() }} de {{ calculadas() }}</dd></div>
+      </dl>
+    </div>
+  </div>
+  <footer class="dialogo__pie">
+    <a class="btn btn--enlace" routerLink="/liquidaciones" [queryParams]="{ periodo: periodo() }" (click)="cancelar.emit()">
+      Revisar en Liquidaciones
+    </a>
+    <div class="dialogo__acciones">
+      <button data-foco-inicial type="button" class="btn" (click)="cancelar.emit()">Cancelar</button>
+      <button type="button" class="btn btn--oscuro" (click)="confirmar.emit()">Exportar de todos modos</button>
+    </div>
+  </footer>
+</section>
