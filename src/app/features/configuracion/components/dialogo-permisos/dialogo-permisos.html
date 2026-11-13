@@ -1,9 +1,10 @@
 <div class="fondo" (click)="cancelar.emit()"></div>
-<section class="ventana" role="dialog" aria-modal="true" aria-labelledby="permisos-titulo">
+<section class="ventana" ui-dialog tituloId="permisos-titulo" descripcionId="permisos-texto"
+         [cerrarConEscape]="!guardando()" (cerrar)="cancelar.emit()">
   <header class="ventana__head">
     <div>
       <h2 id="permisos-titulo">Editar permisos</h2>
-      <p class="muted small">Rol {{ titulo() }}</p>
+      <p id="permisos-texto" class="muted small">Rol {{ titulo() }}</p>
     </div>
     <button type="button" class="btn btn--ghost btn--sm cerrar" aria-label="Cerrar" (click)="cancelar.emit()">
       <app-icon name="x" [size]="18" />

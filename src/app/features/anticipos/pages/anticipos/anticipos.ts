@@ -103,8 +103,6 @@ export class Anticipos {
   protected readonly anticiposVisibles = computed(() => this.anticipos().filter((a) => !this.ocultos().has(a.id)));
   protected readonly nombreColaborador = computed(() => this.opciones().find((o) => o.id === this.colaboradorId())?.nombre ?? '');
   private pendiente: EliminacionPendiente | null = null;
-  /** Botón "Eliminar" que abrió la confirmación: recupera el foco al cancelar. */
-  private origenDialogo: HTMLElement | null = null;
   private destruido = false;
 
   constructor() {
@@ -264,16 +262,13 @@ export class Anticipos {
     });
   }
 
-  /** Botón "Eliminar" de la tabla: solo abre la confirmación. */
-  protected eliminar(a: Anticipo, evento: Event): void {
-    this.origenDialogo = evento.currentTarget instanceof HTMLElement ? evento.currentTarget : null;
+  /** Botón "Eliminar" de la tabla: solo abre la confirmación (ui-dialog devuelve el foco al cerrar). */
+  protected eliminar(a: Anticipo): void {
     this.porEliminar.set(a);
   }
 
   protected cancelarEliminar(): void {
     this.porEliminar.set(null);
-    this.origenDialogo?.focus();
-    this.origenDialogo = null;
   }
 
   /** Confirmado: se oculta la fila y se ofrece "Deshacer"; el DELETE sale cuando vence el aviso. */
@@ -281,7 +276,6 @@ export class Anticipos {
     const a = this.porEliminar();
     if (!a) return;
     this.porEliminar.set(null);
-    this.origenDialogo = null;
     // Una sola eliminación en espera: si había otra, se envía ya.
     this.enviarEliminacion();
     if (this.planDe() === a.id) this.cerrarPlan();

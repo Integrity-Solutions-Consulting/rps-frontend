@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, computed, inject, output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { MODULOS_PERMISO, RolSistema } from '../../models/accesos.models';
@@ -7,6 +7,7 @@ import { UsuariosService } from '../../services/usuarios.service';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { iniciales } from '../avatar';
+import { UiDialog } from '../../../../shared/components/ui-dialog/ui-dialog';
 
 /**
  * Ventana "Agregar usuario". Valida lo básico para avisar antes de enviar;
@@ -16,8 +17,7 @@ import { iniciales } from '../avatar';
 @Component({
   selector: 'app-dialogo-crear-usuario',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, Icon],
-  host: { '(document:keydown.escape)': 'cancelar.emit()' },
+  imports: [FormsModule, Icon, UiDialog],
   templateUrl: './dialogo-crear-usuario.html',
   styleUrl: './dialogo-crear-usuario.scss',
 })
@@ -27,8 +27,6 @@ export class DialogoCrearUsuario {
 
   readonly cancelar = output<void>();
   readonly creado = output<string>();
-
-  private readonly campoNombre = viewChild<ElementRef<HTMLInputElement>>('campoNombre');
 
   /** Roles activos que da el backend (GET /api/roles/asignables). */
   protected readonly roles = signal<RolSistema[]>([]);
@@ -57,7 +55,6 @@ export class DialogoCrearUsuario {
       error: (e: unknown) => this.error.set(leerErrorApi(e).mensaje),
     });
     if (this.rolesApi.roles().length === 0) this.rolesApi.cargar();
-    afterNextRender(() => this.campoNombre()?.nativeElement.focus());
   }
 
   protected limpiar(campo: string): void {

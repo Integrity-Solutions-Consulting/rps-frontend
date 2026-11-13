@@ -177,7 +177,7 @@
                   <td class="muted">{{ a.observaciones ?? '—' }}</td>
                   <td class="acciones">
                     <button type="button" class="btn btn--sm" (click)="abrirPlan(a)">Plan</button>
-                    <button type="button" class="btn btn--sm btn--danger" (click)="eliminar(a, $event)"
+                    <button type="button" class="btn btn--sm btn--danger" (click)="eliminar(a)"
                             [attr.aria-label]="'Eliminar anticipo de ' + (a.monto | dinero) + ' del ' + (a.fecha | date: 'dd MMM yyyy')">Eliminar</button>
                   </td>
                 </tr>
