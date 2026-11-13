@@ -22,7 +22,9 @@
   input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; color: var(--rps-text); } }
 
 /* ── Estado de configuración + Requieren atención ───────────────── */
-.resumen-fila { display: flex; flex-wrap: wrap; gap: 20px; }
+/* align-items: flex-start evita que la tarjeta "Estado de configuración" se estire
+   a la altura de "Requieren atención" cuando esta tiene más filas, dejando espacio vacío */
+.resumen-fila { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 20px; }
 
 .estado { flex: 2 1 520px; min-width: 0; padding: 20px 22px; display: flex; flex-direction: column; gap: 18px;
   h2 { font-size: 15px; font-weight: 600; }
