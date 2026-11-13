@@ -25,7 +25,7 @@
     <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ error() }}</div>
       <button type="button" class="btn btn--sm" (click)="reintentar()">Reintentar</button></div>
   } @else if (datos(); as d) {
-  <div [class.actualizando]="cargando()">
+  <div class="contenido" [class.actualizando]="cargando()">
 
     @if (d.filas.length === 0) {
       <section class="card vacio-grande">
