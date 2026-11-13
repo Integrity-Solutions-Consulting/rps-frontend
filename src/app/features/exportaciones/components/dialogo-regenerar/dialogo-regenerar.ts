@@ -22,6 +22,8 @@ export class DialogoRegenerar {
   readonly reporte = input.required<string>();
   /** "noviembre 2026", "todos los meses"… */
   readonly alcance = input.required<string>();
+  /** Liquidaciones sin revisar del mes (0 = no aplica): la advertencia va aquí para no pedir dos confirmaciones seguidas. */
+  readonly sinRevisar = input(0);
   readonly cancelar = output<void>();
   readonly confirmar = output<void>();
 }

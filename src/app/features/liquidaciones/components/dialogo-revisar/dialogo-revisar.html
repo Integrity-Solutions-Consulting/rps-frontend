@@ -1,0 +1,46 @@
+<div class="fondo" (click)="!guardando() && cancelar.emit()"></div>
+<section class="dialogo" ui-dialog rol="alertdialog" tituloId="revisar-titulo" descripcionId="revisar-texto"
+         [cerrarConEscape]="!guardando()" (cerrar)="cancelar.emit()">
+  <div class="dialogo__cuerpo confirmar">
+    <span class="confirmar__icono" aria-hidden="true"><app-icon name="check" [size]="22" /></span>
+    <div class="confirmar__texto">
+      <h2 id="revisar-titulo">
+        @if (una(); as l) { ¿Marcar como revisada la liquidación de {{ l.colaborador }}? }
+        @else { ¿Marcar como revisadas {{ cantidad() }} liquidaciones? }
+      </h2>
+      <p id="revisar-texto">
+        <strong>La marca es definitiva:</strong> no se puede quitar desde RPS. Solo indica que Contabilidad revisó la
+        información; no confirma una transferencia.
+      </p>
+
+      <dl class="detalle">
+        <div><dt>Período</dt><dd>{{ mes() }}</dd></div>
+        @if (una(); as l) {
+          <div><dt>Colaborador</dt><dd>{{ l.colaborador }}</dd></div>
+          <div><dt>Neto del mes</dt><dd class="num">{{ l.netoConsolidado | dinero }}</dd></div>
+        } @else {
+          <div><dt>Liquidaciones</dt><dd class="num">{{ cantidad() }}</dd></div>
+          <div><dt>Neto total</dt><dd class="num">{{ netoTotal() | dinero }}</dd></div>
+          <div class="detalle__lista">
+            <dt>Colaboradores</dt>
+            <dd>
+              <ul>
+                @for (l of visibles(); track l.id) { <li>{{ l.colaborador }}</li> }
+                @if (restantes() > 0) { <li class="muted">y {{ restantes() }} más</li> }
+              </ul>
+            </dd>
+          </div>
+        }
+      </dl>
+      <p class="nota">Si un nuevo cálculo de {{ mesMinusculas() }} cambia el total, RPS retira la marca y habrá que revisarla de nuevo.</p>
+    </div>
+  </div>
+  <footer class="dialogo__pie">
+    <div class="dialogo__acciones">
+      <button data-foco-inicial type="button" class="btn" (click)="cancelar.emit()" [disabled]="guardando()">Cancelar</button>
+      <button type="button" class="btn btn--oscuro" (click)="confirmar.emit()" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando…' : (una() ? 'Marcar como revisada' : 'Marcar ' + cantidad() + ' como revisadas') }}
+      </button>
+    </div>
+  </footer>
+</section>

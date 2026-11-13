@@ -1,0 +1,68 @@
+<div class="fondo" (click)="!calculando() && cancelar.emit()"></div>
+<section class="dialogo" ui-dialog tituloId="calcular-titulo" descripcionId="calcular-texto"
+         [cerrarConEscape]="!calculando()" (cerrar)="cancelar.emit()">
+  <header class="dialogo__head">
+    <div>
+      <h2 id="calcular-titulo">{{ recalculo() ? '¿Volver a calcular ' + mesMinusculas() + '?' : '¿Calcular ' + mesMinusculas() + '?' }}</h2>
+      <p id="calcular-texto">RPS calcula los honorarios y las liquidaciones del mes con los datos de hoy.</p>
+    </div>
+  </header>
+
+  <div class="dialogo__cuerpo">
+    <div class="resumen">
+      <div class="resumen__grid">
+        <div class="mini">
+          <span>Configurados</span>
+          <strong class="num">{{ cantidad(resumen().configurados) }}</strong>
+          <small>Entran si tienen días asignados en {{ mesMinusculas() }}</small>
+        </div>
+        <div class="mini" [class.mini--aviso]="(resumen().sinConfigurar ?? 0) > 0">
+          <span>Sin configurar</span>
+          <strong class="num">{{ cantidad(resumen().sinConfigurar) }}</strong>
+          <small>Quedan fuera del cálculo</small>
+        </div>
+        <div class="mini">
+          <span>Ya calculadas</span>
+          <strong class="num">{{ resumen().yaCalculadas }}</strong>
+          <small>{{ resumen().revisadas === 1 ? '1 revisada' : resumen().revisadas + ' revisadas' }}</small>
+        </div>
+      </div>
+      @if (resumen().configurados === null) {
+        <p class="resumen__nota">No se pudo cargar cuántos colaboradores están configurados. El cálculo funciona igual.</p>
+      }
+    </div>
+
+    @if (nadieConfigurado()) {
+      <div class="aviso aviso--warn">
+        <app-icon name="alert" [size]="18" />
+        <div>Ningún colaborador está configurado: el cálculo no generará liquidaciones. Configúralos desde su ficha o desde Contratos.</div>
+      </div>
+    }
+
+    @if (recalculo()) {
+      <div class="consecuencias">
+        <h3>Al volver a calcular</h3>
+        <ul>
+          <li>Lo ya calculado se conserva: no se duplica ni se rehace.</li>
+          <li>Los honorarios nuevos (por ejemplo, un contrato registrado tarde) se suman a la liquidación de esa persona.</li>
+          @if (resumen().revisadas > 0) {
+            <li class="consecuencias__aviso">
+              Si a una liquidación revisada se le suman honorarios, cambia su total y pierde la marca «Revisada»: habrá que
+              revisarla de nuevo.
+            </li>
+          }
+        </ul>
+      </div>
+    }
+  </div>
+
+  <footer class="dialogo__pie">
+    <span class="dialogo__nota">Calcular no paga ni exporta nada.</span>
+    <div class="dialogo__acciones">
+      <button data-foco-inicial type="button" class="btn" (click)="cancelar.emit()" [disabled]="calculando()">Cancelar</button>
+      <button type="button" class="btn btn--oscuro" (click)="confirmar.emit()" [disabled]="calculando()">
+        <app-icon name="calculator" [size]="17" /> {{ calculando() ? 'Calculando…' : (recalculo() ? 'Volver a calcular' : 'Calcular ' + mesMinusculas()) }}
+      </button>
+    </div>
+  </footer>
+</section>

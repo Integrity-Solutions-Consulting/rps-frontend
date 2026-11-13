@@ -1,7 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { PeriodoEnPantallaService } from '../../../../core/services/periodo-en-pantalla.service';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { catchError, of } from 'rxjs';
+import { DashboardService } from '../../../dashboard/services/dashboard.service';
+import { DialogoExportarPendientes } from '../../components/dialogo-exportar-pendientes/dialogo-exportar-pendientes';
 import { ExportacionesService } from '../../services/exportaciones.service';
 import {
   ExportacionRegistrada, FormatoExportacion, PaginaExportaciones, TipoExportacion, UltimaExportacion, VistaLiquidaciones,
@@ -22,6 +25,15 @@ interface OpcionExportacion {
 }
 
 const POR_PAGINA = 20;
+
+/** Liquidaciones del mes elegido (GET /api/dashboard?periodo=): null mientras carga o si falló. */
+interface EstadoPeriodo { revisadas: number; sinRevisar: number }
+
+/** Una exportación de liquidaciones que espera confirmar el aviso de pendientes. */
+interface ExportacionPorConfirmar {
+  clave: string; tipo: TipoExportacion; periodo: string | null; formato: FormatoExportacion;
+  vista: VistaLiquidaciones | null; reporte: string;
+}
 const ETIQUETA_FORMATO: Record<FormatoExportacion, string> = { xlsx: 'Excel', pdf: 'PDF' };
 /** Qué cuenta cada reporte en "Contenido" (singular y plural). */
 const UNIDAD: Record<TipoExportacion, [string, string]> = {
@@ -38,7 +50,7 @@ const UNIDAD: Record<TipoExportacion, [string, string]> = {
 @Component({
   selector: 'app-exportaciones',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, Icon, EstadoChip, DineroPipe, DialogoRegenerar],
+  imports: [DatePipe, RouterLink, Icon, EstadoChip, DineroPipe, DialogoRegenerar, DialogoExportarPendientes],
   templateUrl: './exportaciones.html',
   styleUrl: './exportaciones.scss',
 })
@@ -78,8 +90,58 @@ export class Exportaciones {
     { clave: 'colaboradores', tipo: 'colaboradores', titulo: 'Colaboradores', detalle: 'Colaboradores registrados en RPS: identificación, clasificación, frecuencia y estado.', icono: 'users', porMes: false },
   ];
 
+  // ── Estado del mes (liquidaciones calculadas y revisadas) ─────────
+  private readonly tablero = inject(DashboardService);
+  protected readonly estadoPeriodo = signal<EstadoPeriodo | null>(null);
+  protected readonly cargandoEstado = signal(false);
+  protected readonly errorEstado = signal(false);
+
+  protected readonly calculadas = computed(() => {
+    const e = this.estadoPeriodo();
+    return e ? e.revisadas + e.sinRevisar : null;
+  });
+  /** Liquidaciones del mes elegido que faltan revisar (0 con "Todos los meses" o si no se sabe). */
+  protected readonly sinRevisar = computed(() => (this.todosLosMeses() ? 0 : this.estadoPeriodo()?.sinRevisar ?? 0));
+  /** El mes elegido no tiene liquidaciones: las exportaciones de liquidaciones no tienen qué exportar. Solo si se sabe. */
+  protected readonly mesSinCalcular = computed(() => !this.todosLosMeses() && this.calculadas() === 0);
+
+  /** Solo las tarjetas de liquidaciones dependen del cálculo del mes; las demás nunca se bloquean. */
+  protected bloqueada(o: OpcionExportacion): boolean {
+    return o.tipo === 'liquidaciones' && this.mesSinCalcular();
+  }
+
+  private cargarEstado(periodo: string): void {
+    this.cargandoEstado.set(true);
+    this.errorEstado.set(false);
+    this.tablero.indicadores(periodo).pipe(catchError(() => of(null))).subscribe((i) => {
+      this.cargandoEstado.set(false);
+      // Si falla, no se bloquea nada ni se avisa de pendientes que no se conocen.
+      this.errorEstado.set(i === null);
+      this.estadoPeriodo.set(i ? { revisadas: i.liquidaciones.revisadas, sinRevisar: i.liquidaciones.sinRevisar } : null);
+    });
+  }
+
+  protected reintentarEstado(): void {
+    this.cargarEstado(this.periodo());
+  }
+
+  // ── Aviso antes de exportar liquidaciones con pendientes de revisión (no bloquea) ──
+  protected readonly porConfirmar = signal<ExportacionPorConfirmar | null>(null);
+
   protected descargar(o: OpcionExportacion, formato: FormatoExportacion): void {
-    this.generar(`${o.clave}-${formato}`, o.tipo, this.periodoElegido(), formato, o.vista ?? null);
+    if (this.bloqueada(o)) return;
+    const pedido: ExportacionPorConfirmar = {
+      clave: `${o.clave}-${formato}`, tipo: o.tipo, periodo: this.periodoElegido(), formato, vista: o.vista ?? null,
+      reporte: `${o.titulo} (${ETIQUETA_FORMATO[formato]})`,
+    };
+    if (o.tipo === 'liquidaciones' && this.sinRevisar() > 0) { this.porConfirmar.set(pedido); return; }
+    this.generar(pedido.clave, pedido.tipo, pedido.periodo, pedido.formato, pedido.vista);
+  }
+
+  protected confirmarExportacion(): void {
+    const p = this.porConfirmar();
+    this.porConfirmar.set(null);
+    if (p) this.generar(p.clave, p.tipo, p.periodo, p.formato, p.vista);
   }
 
   /** POST de la descarga; al terminar bien, el backend ya la registró: se actualizan el historial y las tarjetas. */
@@ -140,6 +202,11 @@ export class Exportaciones {
   });
 
   constructor() {
+    // Estado del mes: al cambiar de mes (con "Todos los meses" la línea explica que se ve por mes).
+    effect(() => {
+      const periodo = this.periodo();
+      untracked(() => this.cargarEstado(periodo));
+    });
     // Mes o filtros nuevos: se vuelve a la primera página y se recargan historial y tarjetas.
     effect(() => {
       const periodo = this.periodoElegido();
@@ -170,6 +237,8 @@ export class Exportaciones {
   private recargarRegistro(): void {
     this.cargarHistorial(this.periodoElegido(), this.todosLosPeriodos(), this.filtroTipo(), this.pagina());
     this.cargarUltimas(this.periodoElegido());
+    // Otra persona pudo revisar o calcular mientras tanto: el estado del mes se refresca con cada exportación.
+    this.cargarEstado(this.periodo());
   }
 
   private cargarHistorial(periodo: string | null, todos: boolean, tipo: TipoExportacion | null, pagina: number): void {
@@ -181,10 +250,26 @@ export class Exportaciones {
     });
   }
 
-  /** "Volver a generar": mismo reporte, formato y mes; si los datos cambiaron, primero se confirma. */
+  /**
+   * "Volver a generar": mismo reporte, formato y mes. Si los datos cambiaron se confirma (y esa ventana también avisa
+   * de pendientes de revisión); si no, pero es de liquidaciones del mes elegido con pendientes, se avisa igual.
+   */
   protected regenerar(x: ExportacionRegistrada): void {
     if (x.datosCambiaron === true) { this.porRegenerar.set(x); return; }
+    if (this.pendientesDe(x) > 0) {
+      this.porConfirmar.set({
+        clave: `fila-${x.id}`, tipo: x.tipo, periodo: x.periodo ? periodoDeFecha(x.periodo) : null, formato: x.formato,
+        vista: x.vista, reporte: `${this.nombreReporte(x)} (${ETIQUETA_FORMATO[x.formato]})`,
+      });
+      return;
+    }
     this.generarDe(x);
+  }
+
+  /** Pendientes de revisión que aplican a una fila: solo liquidaciones del mes que muestra la línea de estado. */
+  protected pendientesDe(x: ExportacionRegistrada): number {
+    if (x.tipo !== 'liquidaciones' || !x.periodo || periodoDeFecha(x.periodo) !== this.periodo()) return 0;
+    return this.estadoPeriodo()?.sinRevisar ?? 0;
   }
 
   protected confirmarRegenerar(): void {
