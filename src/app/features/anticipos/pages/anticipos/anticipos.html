@@ -2,7 +2,6 @@
   <header class="pagina__head">
     <div>
       <h1>Anticipos adicionales</h1>
-      <p>Dinero que se entrega aparte y se recupera con cuotas en los cortes de un mes.</p>
     </div>
   </header>
 
@@ -109,23 +108,26 @@
                 @for (c of cuotas(); track c.clave) {
                   <tr>
                     <td>
-                      <select class="select" [attr.aria-label]="'Corte de la cuota'" [ngModel]="c.corte" (ngModelChange)="cambiarCuota(c.clave, { corte: $event })">
-                        @for (k of r.cortesPermitidos; track k) { <option [value]="k">{{ etiquetaCorte[k] }}</option> }
+                      <select class="select" [attr.aria-label]="'Corte de la cuota'" [ngModel]="c.corte" [disabled]="cuotaYaPagada(c)"
+                              (ngModelChange)="cambiarCuota(c.clave, { corte: $event })">
+                        @for (k of opcionesCorte(c.corte); track k) { <option [value]="k">{{ etiquetaCorte[k] }}</option> }
                       </select>
                     </td>
                     <td>
                       <div class="con-prefijo"><span>$</span>
                         <input class="input num" appSoloNumeros="monto" placeholder="0,00" [attr.aria-label]="'Importe de la cuota'"
-                               [ngModel]="c.importe" (ngModelChange)="cambiarCuota(c.clave, { importe: $event })" />
+                               [disabled]="cuotaYaPagada(c)" [ngModel]="c.importe" (ngModelChange)="cambiarCuota(c.clave, { importe: $event })" />
                       </div>
-                      @if (maximoPara(c.corte); as max) {
+                      @if (cuotaYaPagada(c)) {
+                        <span class="muted small tope">Ya se descontó en la quincena pagada; no se puede cambiar</span>
+                      } @else if (maximoPara(c.corte); as max) {
                         <span class="muted small tope">Máximo {{ max | dinero }} · se le pagan {{ valorBaseDe(c.corte) | dinero }}</span>
                       } @else if (maximoPara(c.corte) === 0) {
                         <span class="muted small tope">Ya no hay de dónde descontar en este corte</span>
                       }
                     </td>
                     <td class="r">
-                      <button type="button" class="btn btn--ghost btn--sm" (click)="quitarCuota(c.clave)" aria-label="Quitar cuota">
+                      <button type="button" class="btn btn--ghost btn--sm" (click)="quitarCuota(c.clave)" aria-label="Quitar cuota" [disabled]="cuotaYaPagada(c)">
                         <app-icon name="trash" [size]="16" />
                       </button>
                     </td>
@@ -140,7 +142,9 @@
                   [attr.title]="cortesCompletos() ? 'Ya hay una cuota en cada corte; cambia el importe de la que ya está.' : null">
             <app-icon name="plus" [size]="15" /> Agregar cuota
           </button>
-          @if (r.cortesPermitidos.length === 1) {
+          @if (r.quincenaCerrada && r.topesPorCorte.length > 1) {
+            <p class="muted small">La quincena de {{ nombreMes().toLowerCase() }} ya se pagó: el anticipo se descuenta solo de lo que le queda, en el fin de mes.</p>
+          } @else if (r.cortesPermitidos.length === 1) {
             <p class="muted small">Cobra solo a fin de mes: la cuota se descuenta en el pago de fin de mes.</p>
           }
           @if (errorPlan(); as e) {

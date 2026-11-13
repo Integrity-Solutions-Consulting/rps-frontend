@@ -126,6 +126,10 @@ export interface BeCorte {
 export interface BeLiquidacion {
   id: string; colaboradorId: string; periodo: string; netoConsolidado: number;
   revisado: boolean; revisadoEn: string | null; revisadoPorUsuarioId: string | null; creadoEn: string; cortes: BeCorte[];
+  /** Cambió después de calculada (anticipo, honorarios tardíos…); se limpia al volver a revisarla. */
+  modificadaEn: string | null; motivoModificacion: string | null;
+  /** Estaba revisada y por el cambio volvió a "Por revisar". */
+  revisionAnulada: boolean;
 }
 
 export interface BeLiquidacionDetalle extends BeLiquidacion { honorarios: BeHonorario[] }
@@ -143,6 +147,8 @@ export interface BeResumenAnticipos {
   limite: number; saldoPendiente: number; disponible: number; periodo: string; cortesPermitidos: TipoCorte[];
   /** Tope de descuento por corte del mes: lo que se le paga ahí menos lo ya programado por sus anticipos. */
   topesPorCorte: BeTopeCorte[];
+  /** Pasó el día 15 del mes: la quincena ya se pagó y solo se descuenta de lo que le queda (fin de mes). */
+  quincenaCerrada: boolean;
 }
 
 /** valorBase: quincena = 50 % del subtotal; fin de mes = neto − quincena (o neto completo si cobra solo a fin de mes). */

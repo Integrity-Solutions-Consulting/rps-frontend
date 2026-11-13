@@ -2,7 +2,6 @@
   <header class="pagina__head">
     <div>
       <h1>Configuración</h1>
-      <p>Datos de la empresa, días de pago, límite de anticipos e impuestos. Los cambios rigen desde que se guardan.</p>
     </div>
     @if (pestana() === 'general' && datos(); as d) {
       <p class="guardado">Guardado el {{ d.actualizadoEn | date: 'dd MMM yyyy, HH:mm' }}</p>

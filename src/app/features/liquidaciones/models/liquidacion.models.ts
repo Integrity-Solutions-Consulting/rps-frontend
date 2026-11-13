@@ -54,6 +54,11 @@ export interface LiquidacionResumen {
   /** true si quien revisó fue el usuario de la sesión actual (no hay directorio de usuarios en el frontend). */
   revisadoPorMi: boolean;
   calculadoEn: string;
+  /** Cambió después de calculada; null si no hay cambios pendientes de revisar. */
+  modificadaEn: string | null;
+  motivoModificacion: string | null;
+  /** Estaba revisada y por el cambio volvió a "Por revisar". */
+  revisionAnulada: boolean;
 }
 
 export interface LiquidacionDetalle extends LiquidacionResumen {
