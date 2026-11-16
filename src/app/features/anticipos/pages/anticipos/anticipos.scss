@@ -38,5 +38,11 @@ tr.is-sel td:first-child { box-shadow: inset 3px 0 0 var(--rps-navy); }
 
 .acciones { display: flex; gap: 6px; white-space: nowrap; }
 
+/* "Se cobrará en": pago más próximo en el que se descuenta el anticipo nuevo (RN 45). */
+.cobro { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid #c7d9ee; border-radius: 10px; background: var(--rps-info-50); }
+.cobro__etiqueta { font-size: 12px; font-weight: 500; color: #1d4f86; }
+.cobro__valor { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: #1d4f86; }
+.cuotas-detalle { display: block; margin-top: 4px; }
+
 /* Tope de la cuota: cuánto se puede descontar como máximo en ese corte. */
 .tope { display: block; margin-top: 4px; }

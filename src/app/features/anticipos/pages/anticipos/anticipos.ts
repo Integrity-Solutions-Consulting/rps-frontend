@@ -11,6 +11,7 @@ import { leerErrorApi } from '../../../../core/http/error-api';
 import { DURACION_CON_ACCION, NotificationService } from '../../../../core/services/notification.service';
 import { DialogoEliminarAnticipo } from '../../components/dialogo-eliminar-anticipo/dialogo-eliminar-anticipo';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { Buscador } from '../../../../shared/components/buscador/buscador';
 import { DineroPipe } from '../../../../shared/pipes/dinero.pipe';
 import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
@@ -36,10 +37,18 @@ const aNumero = (texto: string): number | null => {
   return Number.isFinite(v) ? v : null;
 };
 
+/** Día en que se paga el corte del período "yyyy-MM": la quincena el 15; el fin de mes, el último día. → "yyyy-MM-dd". */
+const fechaDePago = (corte: TipoCorte, periodo: string): string => {
+  const [anio, mes] = periodo.split('-').map(Number);
+  const dia = corte === 'Quincena' ? 15 : new Date(anio, mes, 0).getDate();
+  return `${periodo}-${String(dia).padStart(2, '0')}`;
+};
+
 /**
  * Anticipos adicionales. Sigue el flujo de rps-backend:
- *   1. Registrar el anticipo (monto y observaciones).
- *   2. Registrar o reemplazar su plan de cuotas para un mes.
+ *   1. Registrar el anticipo (monto y observaciones). El backend lo cobra completo en el pago más
+ *      próximo del mes (RN 45): quincena hasta el 15, si cobra en dos pagos; si no, fin de mes.
+ *   2. Corregir su plan de cuotas para un mes, si hace falta repartirlo distinto.
  *   3. Eliminarlo si todavía no tiene cuotas. Se pide confirmación y, al confirmar, la fila se oculta y el
  *      DELETE se envía cuando vence el aviso con "Deshacer" (no hay endpoint para recuperar un anticipo).
  * Neto, límite, saldo y disponible vienen de GET .../anticipos/resumen; las validaciones las hace el backend.
@@ -48,7 +57,7 @@ const aNumero = (texto: string): number | null => {
 @Component({
   selector: 'app-anticipos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, FormsModule, RouterLink, Icon, Buscador, DineroPipe, SoloNumeros, DialogoEliminarAnticipo],
+  imports: [DatePipe, FormsModule, RouterLink, Icon, EstadoChip, Buscador, DineroPipe, SoloNumeros, DialogoEliminarAnticipo],
   templateUrl: './anticipos.html',
   styleUrl: './anticipos.scss',
 })
@@ -84,6 +93,27 @@ export class Anticipos {
   protected readonly guardando = signal(false);
   protected readonly errorGuardar = signal<string | null>(null);
 
+  /** Resumen del mes actual: un anticipo nuevo siempre se cobra en este mes, aunque se esté viendo otro. */
+  protected readonly resumenHoy = signal<ResumenAnticipos | null>(null);
+
+  /** Pago más próximo en el que se cobrará un anticipo nuevo (misma regla que el backend al registrar). */
+  protected readonly cobroNuevo = computed(() => {
+    const r = this.resumenHoy();
+    if (!r) return null;
+    const corte: TipoCorte = r.cortesPermitidos.includes('Quincena') ? 'Quincena' : 'FinDeMes';
+    const disponible = r.topesPorCorte.find((t) => t.corte === corte)?.disponible ?? 0;
+    return { corte, fecha: fechaDePago(corte, periodoActual()), disponible };
+  });
+
+  /** El monto supera lo que se le puede descontar en ese pago o el disponible del límite: el campo se pone en rojo. */
+  protected readonly montoExcede = computed(() => {
+    const monto = aNumero(this.monto());
+    const cobro = this.cobroNuevo();
+    const r = this.resumenHoy();
+    if (monto === null || !cobro || !r) return false;
+    return monto > cobro.disponible || monto > r.disponible;
+  });
+
   // ── 2. Plan de cuotas de un anticipo ─────────────────────────────────
   protected readonly planDe = signal<string | null>(null);
   protected readonly cuotas = signal<CuotaForm[]>([]);
@@ -112,7 +142,7 @@ export class Anticipos {
     effect(() => {
       const id = this.colaboradorId();
       const periodo = this.periodo();
-      untracked(() => this.cargarResumen(id, periodo));
+      untracked(() => { this.cargarResumen(id, periodo); this.cargarResumenHoy(id); });
     });
     effect(() => {
       const id = this.colaboradorId();
@@ -134,15 +164,18 @@ export class Anticipos {
 
   /** POST .../anticipos */
   protected registrar(): void {
-    if (!this.colaboradorId()) return;
+    if (!this.colaboradorId() || this.montoExcede()) return;
     this.guardando.set(true);
     this.errorGuardar.set(null);
     this.api.registrar(this.colaboradorId(), aNumero(this.monto()), this.observaciones().trim() || null).subscribe({
       next: (a) => {
         this.guardando.set(false);
-        this.avisos.ok('Anticipo registrado. Ahora registra su plan de cuotas.');
+        const cobro = a.cuotas[0];
+        this.avisos.ok(cobro
+          ? `Anticipo registrado: se cobra en ${ETIQUETA_CORTE[cobro.corte].toLowerCase()}, el ${formatDate(fechaDePago(cobro.corte, periodoDeFecha(cobro.periodo)), 'dd MMM yyyy', this.locale)}.`
+          : 'Anticipo registrado.');
         this.limpiarFormulario();
-        this.recargar(a.id);
+        this.recargar(null);
       },
       error: (e: unknown) => {
         this.guardando.set(false);
@@ -352,6 +385,22 @@ export class Anticipos {
     this.errorGuardar.set(null);
   }
 
+  /**
+   * Columna "Se cobra": el pago más próximo que todavía no pasó entre sus cuotas. Si ya pasaron
+   * todos, el último, como cobrado. La quincena cuenta como pagada desde el 16 (igual que el backend).
+   */
+  protected seCobra(a: Anticipo): { texto: string; tono: TonoChip } | null {
+    if (!a.cuotas.length) return null;
+    const hoy = formatDate(new Date(), 'yyyy-MM-dd', this.locale);
+    const pagos = a.cuotas
+      .map((c) => ({ corte: c.corte, fecha: fechaDePago(c.corte, periodoDeFecha(c.periodo)) }))
+      .sort((x, y) => x.fecha.localeCompare(y.fecha));
+    const proximo = pagos.find((p) => p.fecha >= hoy);
+    const p = proximo ?? pagos[pagos.length - 1];
+    const texto = `${ETIQUETA_CORTE[p.corte]} · ${formatDate(p.fecha, 'dd MMM yyyy', this.locale)}`;
+    return proximo ? { texto, tono: 'info' } : { texto: `Cobrado · ${texto}`, tono: 'ok' };
+  }
+
   protected textoCuotas(a: Anticipo): string {
     return a.cuotas.map((c) => `${this.mesDeFecha(c.periodo)} · ${ETIQUETA_CORTE[c.corte]} ${c.importe.toLocaleString('es-EC', { style: 'currency', currency: 'USD' })}`).join(' · ');
   }
@@ -359,6 +408,7 @@ export class Anticipos {
   // ── Carga ────────────────────────────────────────────────────────────
   private recargar(abrirPlanDe: string | null): void {
     this.cargarResumen(this.colaboradorId(), this.periodo());
+    this.cargarResumenHoy(this.colaboradorId());
     this.cargarAnticipos(this.colaboradorId(), abrirPlanDe);
   }
 
@@ -380,8 +430,22 @@ export class Anticipos {
     this.cargandoResumen.set(true);
     this.errorResumen.set(null);
     this.api.resumen(id, periodo).subscribe({
-      next: (r) => { this.resumen.set(r); this.cargandoResumen.set(false); },
+      next: (r) => {
+        this.resumen.set(r);
+        this.cargandoResumen.set(false);
+        if (periodo === periodoActual()) this.resumenHoy.set(r);
+      },
       error: (e: unknown) => { this.cargandoResumen.set(false); this.errorResumen.set(leerErrorApi(e).mensaje); },
+    });
+  }
+
+  /** Resumen del mes actual para "Se cobrará en"; si el mes en pantalla ya es el actual, lo pone cargarResumen. */
+  private cargarResumenHoy(id: string): void {
+    if (!id) { this.resumenHoy.set(null); return; }
+    if (this.periodo() === periodoActual()) return;
+    this.api.resumen(id, periodoActual()).subscribe({
+      next: (r) => this.resumenHoy.set(r),
+      error: () => this.resumenHoy.set(null),
     });
   }
 

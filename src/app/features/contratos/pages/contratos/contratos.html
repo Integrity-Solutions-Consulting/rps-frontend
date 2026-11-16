@@ -83,13 +83,6 @@
         @if (colaboradorElegidoId()) {
           <div class="field campo-ancho">
             <label>Proyectos que cubre este contrato (opcional)</label>
-            @if (modoFormulario() === 'editar') {
-              <span class="field__hint">
-                {{ modoOriginal() === 'proyecto'
-                  ? 'Se paga por proyecto: para agregar o quitar proyectos registra una adenda.'
-                  : 'Puedes agregar proyectos (no cambia el pago). Para quitar uno, registra una adenda.' }}
-              </span>
-            }
             @if (asignacionesDelColaborador().length === 0) {
               <p class="field__hint">Sin asignaciones disponibles en TMR: este contrato queda sin proyecto (ej. personal de RR. HH.).</p>
             } @else {
@@ -125,7 +118,7 @@
             <option value="Junior">Servicios junior</option>
           </select>
           @if (errorContratoDe('clasificacion'); as e) { <span class="field__error">{{ e }}</span> }
-          @else if (clasificacionDesdeTmr()) { <span class="field__hint">Viene de su tipo de contrato en TMR; se cambia allí.</span> }
+          @else if (clasificacionDesdeTmr()) { @if (modoFormulario() !== 'editar') { <span class="field__hint">Viene de su tipo de contrato en TMR; se cambia allí.</span> } }
           @else { <span class="field__hint">Medio tiempo o consultor externo en TMR: elige si factura como profesional o junior.</span> }
         </div>
         <div class="field">
@@ -143,7 +136,7 @@
             <span class="field__hint">Vigente desde {{ frecuenciaActual()!.vigenteDesdeMes | date: 'MM/yyyy' : 'UTC' }}.</span>
           } @else if (frecuenciaActual()) {
             <span class="field__hint">El cambio rige desde el próximo mes; este mes se mantiene la actual.</span>
-          } @else {
+          } @else if (modoFormulario() !== 'editar') {
             <span class="field__hint">Rige desde este mismo mes.</span>
           }
         </div>
@@ -183,7 +176,8 @@
           <div class="field">
             <label for="fin">Fin</label>
             @if (modoFormulario() === 'editar') {
-              <input class="input" [value]="indefinidoForm() ? 'Indefinido' : finForm()" [attr.type]="indefinidoForm() ? 'text' : 'date'" disabled />            } @else {
+              <input class="input" [value]="indefinidoForm() ? 'Indefinido' : finForm()" [attr.type]="indefinidoForm() ? 'text' : 'date'" disabled />
+            } @else {
               <input id="fin" name="fin" type="date" class="input" max="9999-12-31" [class.is-invalid]="errorContratoDe('fechaFin')"
                      [disabled]="indefinidoForm()" [min]="inicioForm() || '2000-01-01'" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" (blur)="marcarTocadoContrato('fechaFin')" />
               <label class="check check--inline">
@@ -197,7 +191,7 @@
             <label for="referencia">Referencia (opcional)</label>
             <input id="referencia" name="referencia" class="input" maxlength="100" placeholder="Ej. CT-2026-031"
                    [ngModel]="referenciaForm()" (ngModelChange)="referenciaForm.set($event)" />
-            <span class="field__hint">El número o código con el que Contabilidad archiva este documento.</span>
+            @if (modoFormulario() !== 'editar') { <span class="field__hint">El número o código con el que Contabilidad archiva este documento.</span> }
           </div>
           <div class="field campo-ancho">
             <label for="observaciones">Observaciones (opcional)</label>
@@ -215,7 +209,6 @@
             } @else {
               <p class="valor-fijo">Por proyecto (un monto por cada proyecto).</p>
             }
-            <span class="field__hint">El monto o la forma de pago se cambian con una adenda.</span>
           </div>
         } @else {
         <!-- Paso 4: cómo se paga el contrato y cuánto -->
