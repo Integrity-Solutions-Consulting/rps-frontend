@@ -93,6 +93,8 @@ export interface BeContrato {
   /** Null: contrato indefinido (sin fecha de fin). */
   fechaInicio: string; fechaFin: string | null; fechaFinVigente: string | null;
   referencia: string | null; observaciones: string | null; vigente: boolean;
+  /** Terminado antes de tiempo porque el colaborador se desactivó (rige hasta ese día inclusive). */
+  fechaTerminacion?: string | null; motivoTerminacion?: string | null;
 }
 
 export interface BeAdenda {

@@ -53,8 +53,11 @@ export interface ContratoResumen {
   fechaInicio: string;
   /** Null: contrato indefinido (sin fecha de fin). Nunca cambia (RN 12). */
   fechaFinOriginal: string | null;
-  /** Refleja la última adenda (RN 12). Null si es indefinido: nunca vence. */
+  /** Refleja la última adenda (RN 12) o la terminación. Null si es indefinido: nunca vence. */
   fechaFinVigente: string | null;
+  /** Terminado porque el colaborador se desactivó: ya no admite adendas; si se reactiva, va un contrato nuevo. */
+  fechaTerminacion: string | null;
+  motivoTerminacion: string | null;
   /** El peor estado entre sus proyectos; Vigente/NoVigente si no tiene proyectos. */
   estado: EstadoContrato;
   numeroAdendas: number;
