@@ -76,10 +76,16 @@
         <div class="field">
           <label for="monto">Monto del anticipo</label>
           <div class="con-prefijo"><span>$</span>
-            <input id="monto" name="monto" class="input num" appSoloNumeros="monto" placeholder="0,00"
+            <input id="monto" name="monto" class="input num" appSoloNumeros="monto" placeholder="0,00" [class.is-invalid]="montoExcede()"
                    [ngModel]="monto()" (ngModelChange)="monto.set($event)" />
           </div>
         </div>
+        @if (cobroNuevo(); as c) {
+          <div class="cobro">
+            <span class="cobro__etiqueta">Se cobrará en</span>
+            <strong class="cobro__valor"><app-icon name="calendar" [size]="16" /> {{ etiquetaCorte[c.corte] }} · {{ c.fecha | date: 'dd MMM yyyy' }}</strong>
+          </div>
+        }
         <div class="field">
           <label for="obs">Observaciones (opcional)</label>
           <textarea id="obs" name="obs" class="input area" maxlength="500" rows="2"
@@ -89,7 +95,7 @@
           <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
         }
         <div class="form-actions">
-          <button type="submit" class="btn btn--primary" [disabled]="guardando()">
+          <button type="submit" class="btn btn--primary" [disabled]="guardando() || montoExcede()">
             {{ guardando() ? 'Guardando…' : 'Registrar anticipo' }}
           </button>
         </div>
@@ -170,14 +176,21 @@
       } @else {
         <div class="table-wrap">
           <table class="tbl">
-            <thead><tr><th>Fecha</th><th class="r">Monto</th><th class="r">Saldo pendiente</th><th>Cuotas</th><th>Observaciones</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>Fecha</th><th class="r">Monto</th><th class="r">Saldo pendiente</th><th>Se cobra</th><th>Observaciones</th><th>Acciones</th></tr></thead>
             <tbody>
               @for (a of anticiposVisibles(); track a.id) {
                 <tr [class.is-sel]="planDe() === a.id">
                   <td class="num" [title]="a.creadoPorMi ? 'Registrado por ti' : ''">{{ a.fecha | date: 'dd MMM yyyy' }}</td>
                   <td class="r num"><strong>{{ a.monto | dinero }}</strong></td>
                   <td class="r num">{{ a.saldoPendiente | dinero }}</td>
-                  <td>{{ a.cuotas.length ? textoCuotas(a) : 'Sin plan' }}</td>
+                  <td>
+                    @if (seCobra(a); as s) {
+                      <app-estado-chip [tono]="s.tono">{{ s.texto }}</app-estado-chip>
+                      @if (a.cuotas.length > 1) { <span class="muted small cuotas-detalle">{{ textoCuotas(a) }}</span> }
+                    } @else {
+                      <app-estado-chip tono="warn">Sin plan</app-estado-chip>
+                    }
+                  </td>
                   <td class="muted">{{ a.observaciones ?? '—' }}</td>
                   <td class="acciones">
                     <button type="button" class="btn btn--sm" (click)="abrirPlan(a)">Plan</button>
