@@ -108,15 +108,27 @@
       }
 
       <!-- ── Cambios después de calcular (anticipo nuevo, honorarios tardíos…) ── -->
-      @if (modificadas().length) {
+      @if (mostrarAvisoCambios()) {
         <section class="aviso aviso--warn cambios" aria-labelledby="cambios-titulo">
           <app-icon name="alert" [size]="18" />
           <div class="cambios__cuerpo">
-            <strong id="cambios-titulo">
-              {{ modificadas().length === 1 ? '1 liquidación cambió' : modificadas().length + ' liquidaciones cambiaron' }}
-              después de calcular {{ nombreMes() }}
-            </strong>
-            <ul class="cambios__lista">
+            <div class="cambios__head">
+              <strong id="cambios-titulo">
+                {{ modificadas().length === 1 ? '1 Liquidación cambió' : modificadas().length + ' Liquidaciones cambiaron' }}
+                después de calcular {{ nombreMes() }}
+              </strong>
+              <div class="cambios__acciones">
+                <button type="button" class="btn btn--ghost btn--sm" aria-controls="cambios-detalle"
+                        [attr.aria-expanded]="avisoCambiosAbierto()" (click)="avisoCambiosAbierto.set(!avisoCambiosAbierto())">
+                  {{ avisoCambiosAbierto() ? 'Contraer' : 'Expandir' }}
+                </button>
+                <button type="button" class="btn btn--ghost btn--sm cambios__cerrar" aria-label="Cerrar aviso" (click)="descartarAvisoCambios()">
+                  <app-icon name="x" [size]="16" />
+                </button>
+              </div>
+            </div>
+            @if (avisoCambiosAbierto()) {
+            <ul class="cambios__lista" id="cambios-detalle">
               @for (m of modificadas(); track m.id) {
                 <li>
                   <button type="button" class="link" (click)="elegir(m)">{{ m.colaborador }}</button>:
@@ -127,6 +139,7 @@
               }
             </ul>
             <small class="muted">El aviso desaparece cuando vuelves a marcarla como revisada.</small>
+            }
           </div>
         </section>
       }

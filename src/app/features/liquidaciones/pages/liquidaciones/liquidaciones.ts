@@ -107,6 +107,16 @@ export class Liquidaciones {
   /** Liquidaciones que cambiaron después de calcular y todavía no se vuelven a revisar. */
   protected readonly modificadas = computed(() => this.filas().filter((l) => l.modificadaEn !== null));
 
+  /** Aviso de cambios: se puede contraer, y la X lo oculta hasta que llegue un cambio nuevo. */
+  protected readonly avisoCambiosAbierto = signal(true);
+  private readonly cambiosDescartados = signal('');
+  private readonly claveCambios = computed(() => this.modificadas().map((m) => `${m.id}@${m.modificadaEn}`).join('|'));
+  protected readonly mostrarAvisoCambios = computed(() =>
+    this.modificadas().length > 0 && this.claveCambios() !== this.cambiosDescartados());
+  protected descartarAvisoCambios(): void {
+    this.cambiosDescartados.set(this.claveCambios());
+  }
+
   private readonly pendientesVisibles = computed(() => this.filasVisibles().filter((l) => !l.revisado));
   protected readonly seleccionadas = computed(() => this.pendientesVisibles().filter((l) => this.seleccion().has(l.id)));
   protected readonly netoSeleccionado = computed(() => sumar(this.seleccionadas().map((l) => l.netoConsolidado)));
