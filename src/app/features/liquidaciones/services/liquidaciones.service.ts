@@ -41,10 +41,11 @@ export class LiquidacionesService {
   /** Genera los honorarios del mes y luego las liquidaciones (dos pasos en el backend). Devuelve lo que respondió. */
   calcular(periodo: string): Observable<ResultadoCalculo> {
     const body = { periodo: diaUno(periodo) };
-    return this.http.post<{ generados: number; omitidos: number }>(`${this.be.api}/honorarios/generar`, body).pipe(
+    return this.http.post<{ generados: number; omitidos: number; recalculados?: number }>(`${this.be.api}/honorarios/generar`, body).pipe(
       switchMap((h) => this.http.post<{ generadas: number; honorariosIncluidos: number }>(`${this.base}/generar`, body).pipe(
         map((l): ResultadoCalculo => ({
-          honorariosGenerados: h.generados, honorariosOmitidos: h.omitidos, liquidacionesGeneradas: l.generadas,
+          honorariosGenerados: h.generados, honorariosOmitidos: h.omitidos, honorariosRecalculados: h.recalculados ?? 0,
+          liquidacionesGeneradas: l.generadas,
         })),
       )),
     );
