@@ -819,26 +819,108 @@ export class Contratos {
     this.erroresAdendaServidor.set(null);
   }
 
-  /** Corrige una adenda ya registrada (ej. se escribió mal la fecha). */
+  /** Adenda que rige desde una fecha futura: mientras exista no se registra otra, se corrige esta. */
+  protected readonly adendaProgramada = computed(() => this.detalle()?.adendas.find((a) => a.programada) ?? null);
+
+  /** La adenda que se está corrigiendo. */
+  protected readonly adendaEnCorreccion = signal<Adenda | null>(null);
+  /** "Rige desde" corregido (solo en la última adenda). */
+  protected readonly vigenciaCorreccionForm = signal('');
+  /** Honorarios que registró la adenda, con su monto corregible (solo en la última adenda). */
+  protected readonly honorariosCorreccion = signal<{
+    id: string; etiqueta: string; importe: string; modalidad: Modalidad; importeOriginal: number; modalidadOriginal: Modalidad; desde: string;
+  }[]>([]);
+  protected readonly cargandoHonorariosCorreccion = signal(false);
+
+  /** Error en vivo de "rige desde" al corregir: si cambia, de hoy en adelante. */
+  protected readonly errorVigenciaCorreccion = computed(() => {
+    const a = this.adendaEnCorreccion();
+    const v = this.vigenciaCorreccionForm();
+    if (!a?.esUltima || v === a.fechaVigencia) return null;
+    if (!v) return 'Es obligatoria.';
+    if (!fechaEnRango(v)) return MENSAJE_FECHA_FUERA_DE_RANGO;
+    if (v < this.hoy) return 'No puede ser anterior a hoy.';
+    return null;
+  });
+
+  protected actualizarHonorarioCorreccion(id: string, cambio: { importe?: string; modalidad?: Modalidad }): void {
+    this.honorariosCorreccion.update((lista) => lista.map((h) => (h.id === id ? { ...h, ...cambio } : h)));
+  }
+
+  /** Corrige una adenda mal registrada: fin y observaciones; en la última, también "rige desde" y montos. */
   protected abrirEditarAdenda(a: Adenda): void {
     this.editandoAdendaId.set(a.id);
+    this.adendaEnCorreccion.set(a);
     this.nuevaFinForm.set(a.nuevaFechaFin ?? '');
     this.observacionesAdendaForm.set(a.observaciones ?? '');
+    this.vigenciaCorreccionForm.set(a.fechaVigencia);
+    this.honorariosCorreccion.set([]);
     this.erroresAdendaServidor.set(null);
     this.errorAdenda.set(null);
     this.agregandoAdenda.set(true);
+
+    const d = this.detalle();
+    if (!a.esUltima || !d) return;
+    this.cargandoHonorariosCorreccion.set(true);
+    this.honorariosApi.condiciones(d.tmrColaboradorId).subscribe({
+      next: (condiciones) => {
+        this.cargandoHonorariosCorreccion.set(false);
+        this.honorariosCorreccion.set(condiciones.filter((c) => c.adendaId === a.id).map((c) => ({
+          id: c.id, etiqueta: c.proyectoNombre ?? 'Monto del contrato', importe: String(c.importeMensual), modalidad: c.modalidad,
+          importeOriginal: c.importeMensual, modalidadOriginal: c.modalidad, desde: c.fechaInicioVigencia,
+        })));
+      },
+      error: (e: unknown) => { this.cargandoHonorariosCorreccion.set(false); this.errorAdenda.set(leerErrorApi(e).mensaje); },
+    });
   }
 
   protected cancelarAdenda(): void {
     this.agregandoAdenda.set(false);
+    this.adendaEnCorreccion.set(null);
+  }
+
+  /**
+   * Resumen de la adenda con lo corregido: el nuevo fin y los montos (con su "desde"). El resto
+   * (proyectos, forma de pago) se conserva tal cual.
+   */
+  private resumenCorregido(a: Adenda, fechaVigencia: string): string | undefined {
+    if (!a.cambios) return undefined;
+    const honorarios = this.honorariosCorreccion();
+    const nuevaFin = this.nuevaFinForm();
+    const partes = a.cambios.split(' · ')
+      .filter((p) => !(honorarios.length && (p.startsWith('Honorario ') || p.startsWith('Monto del contrato:'))))
+      .map((p) => (p.startsWith('Fin: ') && nuevaFin ? `${p.slice(0, p.lastIndexOf('→') + 1)} ${fechaCorta(nuevaFin)}` : p));
+    for (const h of honorarios) {
+      const desde = h.desde === a.fechaVigencia ? fechaVigencia : h.desde;
+      const monto = `$${Number(h.importe.replace(',', '.')).toFixed(2)} ${h.modalidad === 'Neto' ? 'neto' : 'más IVA'} desde ${fechaCorta(desde)}`;
+      partes.push(h.etiqueta === 'Monto del contrato' ? `Monto del contrato: ${monto}` : `Honorario ${h.etiqueta}: ${monto}`);
+    }
+    return partes.join(' · ');
   }
 
   protected guardarAdenda(): void {
     const d = this.detalle();
-    if (!d) return;
+    const a = this.adendaEnCorreccion();
+    if (!d || !a) return;
     this.errorAdenda.set(null);
-    if (this.errorAdendaCampo()) return;
-    const request = { nuevaFechaFin: this.nuevaFinForm() || null, observaciones: this.observacionesAdendaForm().trim() || null };
+    if (this.errorAdendaCampo() || this.errorVigenciaCorreccion()) return;
+
+    const honorarios = this.honorariosCorreccion()
+      .map((h) => ({ condicionEconomicaId: h.id, importeMensual: Number(h.importe.replace(',', '.')), modalidad: h.modalidad, h }))
+      .filter((x) => x.importeMensual !== x.h.importeOriginal || x.modalidad !== x.h.modalidadOriginal);
+    if (honorarios.some((x) => !(x.importeMensual > 0))) {
+      this.errorAdenda.set('Pon un monto mayor a 0.');
+      return;
+    }
+
+    const fechaVigencia = a.esUltima ? this.vigenciaCorreccionForm() : a.fechaVigencia;
+    const request = {
+      nuevaFechaFin: this.nuevaFinForm() || null,
+      observaciones: this.observacionesAdendaForm().trim() || null,
+      fechaVigencia: fechaVigencia !== a.fechaVigencia ? fechaVigencia : undefined,
+      cambios: this.resumenCorregido(a, fechaVigencia),
+      honorarios: honorarios.map(({ h: _, ...x }) => x),
+    };
     const adendaId = this.editandoAdendaId();
     if (!adendaId) return;
 
@@ -848,15 +930,17 @@ export class Contratos {
       next: (actualizado) => {
         this.guardandoAdenda.set(false);
         this.agregandoAdenda.set(false);
+        this.adendaEnCorreccion.set(null);
         this.detalle.set(actualizado);
-        this.avisos.ok(`Adenda corregida.${actualizado.fechaFinVigente ? ' Fin vigente: ' + fechaCorta(actualizado.fechaFinVigente) + '.' : ''}`);
+        this.avisos.ok(`Adenda corregida.${actualizado.fechaFinVigente ? ' Fin vigente: ' + fechaCorta(actualizado.fechaFinVigente) + '.' : ''}`
+          + (honorarios.length || request.fechaVigencia ? ' Si el mes ya estaba calculado, vuelve a calcularlo en Liquidaciones.' : ''));
         this.recargar$.next();
       },
       error: (e: unknown) => {
         this.guardandoAdenda.set(false);
         const err = leerErrorApi(e);
         if (err.campos['nuevaFechaFin']) this.erroresAdendaServidor.set(err.campos['nuevaFechaFin']);
-        else this.errorAdenda.set(err.mensaje);
+        else this.errorAdenda.set(err.campos['fechaVigencia'] ?? err.campos['honorarios'] ?? err.mensaje);
       },
     });
   }

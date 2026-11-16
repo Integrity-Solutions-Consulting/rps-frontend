@@ -77,6 +77,8 @@ export interface ResultadoCalculo {
   /** Ya existían y cambiaron (ej. una adenda alargó el contrato): se recalcularon. */
   honorariosRecalculados: number;
   liquidacionesGeneradas: number;
+  /** Se quedaron sin honorarios (ya no les corresponde ningún día del mes). */
+  liquidacionesEliminadas: number;
 }
 
 /** El corte de ese tipo, o null si la liquidación no lo tiene. */

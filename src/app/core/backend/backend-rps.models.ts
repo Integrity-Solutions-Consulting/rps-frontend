@@ -100,6 +100,10 @@ export interface BeAdenda {
   cambios: string | null;
   /** Desde cuándo rigen sus cambios. */
   fechaVigencia: string;
+  /** Rige desde una fecha futura: todavía no aplica. */
+  programada?: boolean;
+  /** La última del contrato: la única cuya fecha y montos se pueden corregir. */
+  esUltima?: boolean;
 }
 
 /** GET /api/colaboradores/{id}/condiciones-economicas (de la más reciente a la más antigua). */
@@ -107,6 +111,8 @@ export interface BeCondicion {
   /** proyectoId null: el contrato se paga por contrato (un solo importe fijo, sin proyecto). */
   id: string; colaboradorId: string; proyectoId: string | null; proyectoNombre: string | null; contratoId: string;
   importeMensual: number; modalidad: Modalidad; fechaInicioVigencia: string; observaciones: string | null;
+  /** Adenda que registró este cambio (null: configuración inicial del contrato). */
+  adendaId?: string | null;
 }
 
 export interface BeHonorario {
