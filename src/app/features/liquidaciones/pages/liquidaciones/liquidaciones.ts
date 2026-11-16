@@ -107,8 +107,8 @@ export class Liquidaciones {
   /** Liquidaciones que cambiaron después de calcular y todavía no se vuelven a revisar. */
   protected readonly modificadas = computed(() => this.filas().filter((l) => l.modificadaEn !== null));
 
-  /** Aviso de cambios: se puede contraer, y la X lo oculta hasta que llegue un cambio nuevo. */
-  protected readonly avisoCambiosAbierto = signal(true);
+  /** Aviso de cambios: aparece contraído y se puede expandir; la X lo oculta hasta que llegue un cambio nuevo. */
+  protected readonly avisoCambiosAbierto = signal(false);
   private readonly cambiosDescartados = signal('');
   private readonly claveCambios = computed(() => this.modificadas().map((m) => `${m.id}@${m.modificadaEn}`).join('|'));
   protected readonly mostrarAvisoCambios = computed(() =>
