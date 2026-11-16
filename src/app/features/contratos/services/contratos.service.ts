@@ -118,8 +118,8 @@ export class ContratosService {
       if (h.importeMensual === null) continue;
       pasos.push(this.http.post(`${this.be.api}/colaboradores/${colaboradorId}/condiciones-economicas`, {
         proyectoId: h.tmrProyectoId, contratoId, importeMensual: h.importeMensual, modalidad: h.modalidad,
-        mesInicioVigencia: h.mesInicioVigencia ?? diaUno(fechaInicio), observaciones: null,
-        reemplazar: !!h.mesInicioVigencia,
+        fechaInicioVigencia: h.fechaInicioVigencia ?? diaUno(fechaInicio), observaciones: null,
+        reemplazar: !!h.fechaInicioVigencia,
       }));
     }
 
@@ -156,13 +156,14 @@ export class ContratosService {
   /**
    * POST .../contratos/{id}/adendas con cualquier cambio del contrato (fin, proyectos, resumen) y,
    * en orden, los honorarios nuevos o cambiados (POST .../condiciones-economicas). La adenda rige
-   * desde hoy; el backend exige que la nueva fecha de fin no sea anterior a la vigente.
+   * desde fechaVigencia (hoy o después); el backend exige que la nueva fecha de fin no sea anterior
+   * a la vigente.
    */
   registrarAdenda(id: string, request: RegistrarAdendaCompletaRequest): Observable<ContratoDetalle> {
     return this.colaboradorDe(id).pipe(
       switchMap((colaboradorId) => this.http.post<BeAdenda>(`${this.be.api}/colaboradores/${colaboradorId}/contratos/${id}/adendas`, {
         nuevaFechaFin: request.nuevaFechaFin || null, observaciones: request.observaciones,
-        proyectoIds: request.tmrProyectoIds, cambios: request.cambios,
+        proyectoIds: request.tmrProyectoIds, cambios: request.cambios, fechaVigencia: request.fechaVigencia,
       }).pipe(
         switchMap(() => this.ejecutarEnOrden(this.pasosConfiguracion(colaboradorId, id, primerDia(periodoActual()), {
           honorarios: request.honorarios, cuentaBancaria: null, clasificacion: null, frecuencia: null,
@@ -311,7 +312,7 @@ export class ContratosService {
       .sort((x, y) => x.fechaRegistro.localeCompare(y.fechaRegistro))
       .map((a, i) => ({
         id: a.id, numero: i + 1, nuevaFechaFin: a.nuevaFechaFin, observaciones: a.observaciones, fechaRegistro: a.fechaRegistro,
-        cambios: a.cambios,
+        fechaVigencia: a.fechaVigencia ?? a.fechaRegistro, cambios: a.cambios,
       }));
     return { ...r, observaciones: d.contrato.observaciones, adendas };
   }

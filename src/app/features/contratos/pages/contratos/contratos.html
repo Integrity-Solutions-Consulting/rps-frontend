@@ -145,9 +145,11 @@
         <!-- Paso 4: fechas, referencia, observaciones -->
         @if (modoFormulario() === 'adenda') {
           <div class="field">
-            <label>Desde (fecha de la adenda)</label>
-            <input class="input" type="text" value="Hoy" disabled />
-            <span class="field__hint">La adenda rige desde el día en que se registra.</span>
+            <label for="vigencia-adenda">Rige desde</label>
+            <input id="vigencia-adenda" name="vigenciaAdenda" type="date" class="input" max="9999-12-31"
+                   [class.is-invalid]="errorContratoDe('fechaVigencia')" [min]="hoy"
+                   [ngModel]="vigenciaAdendaForm()" (ngModelChange)="vigenciaAdendaForm.set($event)" (blur)="marcarTocadoContrato('fechaVigencia')" />
+            @if (errorContratoDe('fechaVigencia'); as e) { <span class="field__error">{{ e }}</span> }
           </div>
           <div class="field">
             <label for="fin">Hasta (nueva fecha de fin del contrato)</label>
@@ -436,7 +438,7 @@
         <div class="stack-h">
           <app-estado-chip [tono]="tono(d.estado)">{{ etiquetaEstado[d.estado] }}</app-estado-chip>
           <button type="button" class="btn btn--sm" (click)="abrirEdicion(d)">
-            <app-icon name="tool" [size]="14" /> Editar contrato
+            <app-icon name="edit" [size]="14" /> Editar contrato
           </button>
         </div>
       </header>
@@ -518,7 +520,7 @@
               @for (a of d.adendas; track a.id) {
                 <tr>
                   <td class="num">{{ a.numero }}</td>
-                  <td class="num">{{ a.fechaRegistro | date: 'dd MMM yyyy' : 'UTC' }}</td>
+                  <td class="num">{{ a.fechaVigencia | date: 'dd MMM yyyy' : 'UTC' }}</td>
                   <td class="num">{{ a.nuevaFechaFin ? (a.nuevaFechaFin | date: 'dd MMM yyyy' : 'UTC') : 'Indefinido' }}</td>
                   <td>{{ a.cambios ?? '—' }}</td>
                   <td>{{ a.observaciones ?? '—' }}</td>

@@ -15,8 +15,10 @@ export interface Adenda {
   /** Fin del contrato desde esta adenda (null en contratos indefinidos). */
   nuevaFechaFin: string | null;
   observaciones: string | null;
-  /** Desde cuándo rige la adenda: el día en que se registró. */
+  /** Día en que se registró. */
   fechaRegistro: string;
+  /** Desde cuándo rigen sus cambios (el día de registro o uno posterior). */
+  fechaVigencia: string;
   /** Resumen de lo que cambió (proyectos, forma de pago, monto, fecha de fin). */
   cambios: string | null;
 }
@@ -84,9 +86,10 @@ export interface HonorarioDeRegistro {
   tmrProyectoId: string | null;
   importeMensual: number | null;
   modalidad: 'Neto' | 'MasIva';
-  /** "yyyy-MM-01". Sin valor: el mes de inicio del contrato (configuración inicial). Con valor: es
-   * un cambio de honorario (RN 19, desde el mes siguiente) y reemplaza el que ya empiece ese mes. */
-  mesInicioVigencia?: string;
+  /** "yyyy-MM-dd". Sin valor: el mes de inicio del contrato (configuración inicial). Con valor: es
+   * un cambio de honorario desde esa fecha (si cae a mitad de mes, ese mes se paga en tramos) y
+   * reemplaza el que ya empiece ese mismo día. */
+  fechaInicioVigencia?: string;
 }
 
 /** Lo que el formulario del contrato también deja configurar del colaborador (RN 05, RN 36):
@@ -129,13 +132,15 @@ export interface RegistrarAdendaRequest {
   observaciones: string | null;
 }
 
-/** Adenda con cualquier cambio del contrato: rige desde hoy hasta la nueva fecha de fin. */
+/** Adenda con cualquier cambio del contrato: rige desde fechaVigencia hasta la nueva fecha de fin. */
 export interface RegistrarAdendaCompletaRequest extends RegistrarAdendaRequest {
   /** null: los proyectos no cambian. Con valor: la lista completa nueva. */
   tmrProyectoIds: string[] | null;
   cambios: string;
-  /** Honorarios nuevos o cambiados (rigen desde el mes que trae cada uno). */
+  /** Honorarios nuevos o cambiados (rigen desde la fecha que trae cada uno). */
   honorarios: HonorarioDeRegistro[];
+  /** "yyyy-MM-dd": hoy o una fecha futura. */
+  fechaVigencia: string;
 }
 
 export const ETIQUETA_ESTADO_CONTRATO: Record<EstadoContrato, string> = {

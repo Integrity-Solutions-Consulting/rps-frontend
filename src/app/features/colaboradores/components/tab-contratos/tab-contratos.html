@@ -40,7 +40,7 @@
                 @for (a of d.adendas; track a.id) {
                   <tr>
                     <td class="num">{{ a.numero }}</td>
-                    <td class="num">{{ a.fechaRegistro | date: 'dd MMM yyyy' : 'UTC' }}</td>
+                    <td class="num">{{ a.fechaVigencia | date: 'dd MMM yyyy' : 'UTC' }}</td>
                     <td class="num">{{ a.nuevaFechaFin ? (a.nuevaFechaFin | date: 'dd MMM yyyy' : 'UTC') : 'Indefinido' }}</td>
                     <td>{{ a.cambios ?? '—' }}</td>
                     <td>{{ a.observaciones ?? '—' }}</td>
