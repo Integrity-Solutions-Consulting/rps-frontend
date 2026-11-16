@@ -98,13 +98,15 @@ export interface BeContrato {
 export interface BeAdenda {
   id: string; contratoId: string; nuevaFechaFin: string | null; fechaRegistro: string; observaciones: string | null;
   cambios: string | null;
+  /** Desde cuándo rigen sus cambios. */
+  fechaVigencia: string;
 }
 
 /** GET /api/colaboradores/{id}/condiciones-economicas (de la más reciente a la más antigua). */
 export interface BeCondicion {
   /** proyectoId null: el contrato se paga por contrato (un solo importe fijo, sin proyecto). */
   id: string; colaboradorId: string; proyectoId: string | null; proyectoNombre: string | null; contratoId: string;
-  importeMensual: number; modalidad: Modalidad; mesInicioVigencia: string; observaciones: string | null;
+  importeMensual: number; modalidad: Modalidad; fechaInicioVigencia: string; observaciones: string | null;
 }
 
 export interface BeHonorario {
