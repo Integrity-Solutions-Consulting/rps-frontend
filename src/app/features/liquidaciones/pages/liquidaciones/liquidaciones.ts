@@ -73,6 +73,15 @@ export class Liquidaciones {
 
   protected readonly seleccionadoId = signal<string | null>(this.ruta.snapshot.queryParamMap.get('liquidacion'));
   protected readonly detalle = signal<LiquidacionDetalle | null>(null);
+  /**
+   * Si todos sus proyectos son "Más IVA", el detalle muestra lo acordado (subtotal) + IVA
+   * en vez del neto. Ej.: $1.200,00 + IVA, no $1.080,00.
+   */
+  protected readonly subtotalMasIva = computed(() => {
+    const proyectos = this.detalle()?.detalleProyectos ?? [];
+    if (!proyectos.length || proyectos.some((p) => p.modalidad !== 'MasIva')) return null;
+    return sumar(proyectos.map((p) => p.subtotal));
+  });
   protected readonly cargandoDetalle = signal(false);
   protected readonly errorDetalle = signal<string | null>(null);
   protected readonly guardandoRevision = signal(false);
