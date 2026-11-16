@@ -19,6 +19,7 @@ import {
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
+import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { nombrePeriodo, periodoActual, periodoDeFecha, periodoSiguiente, primerDia } from '../../../../shared/utils/periodo';
 import { conservarDatosAlRecargar, estaActualizando } from '../../../../shared/utils/carga';
@@ -52,7 +53,7 @@ function cargaDe<T>(obs: Observable<T>): Observable<Carga<T>> {
 @Component({
   selector: 'app-contratos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, FormsModule, Icon, EstadoChip],
+  imports: [CurrencyPipe, DatePipe, FormsModule, Icon, EstadoChip, SoloNumeros],
   templateUrl: './contratos.html',
   styleUrl: './contratos.scss',
 })
@@ -257,8 +258,77 @@ export class Contratos {
   protected readonly honorarioContratoOriginal = signal<{ importe: string; modalidad: Modalidad } | null>(null);
 
   protected readonly guardandoContrato = signal(false);
+  /** Errores que solo puede dar el backend (solapamiento de fechas, duplicados, etc.). */
   protected readonly erroresContrato = signal<Record<string, string>>({});
   protected readonly errorContrato = signal<string | null>(null);
+
+  /** Campos que el usuario ya visitó (blur) o que ya intentó guardar: a partir de ahí se muestra el error en vivo. */
+  private readonly tocadosContrato = signal<ReadonlySet<string>>(new Set());
+  private readonly intentoGuardarContrato = signal(false);
+
+  /** Reglas que se pueden validar sin backend, recalculadas en cada cambio (obligatorios, rangos de fecha, montos). */
+  private readonly erroresContratoCliente = computed<Record<string, string>>(() => {
+    const errores: Record<string, string> = {};
+    const modo = this.modoFormulario();
+    const esEdicion = modo === 'editar';
+    const esAdenda = modo === 'adenda';
+
+    if (!esEdicion && !this.colaboradorElegidoId()) errores['colaborador'] = 'Elige el colaborador.';
+
+    if (!esAdenda) {
+      if (!this.inicioForm()) errores['fechaInicio'] = 'Es obligatoria.';
+      else if (!fechaEnRango(this.inicioForm())) errores['fechaInicio'] = MENSAJE_FECHA_FUERA_DE_RANGO;
+    }
+
+    if (esAdenda) {
+      if (!this.indefinidoForm()) {
+        const fin = this.finForm();
+        const d = this.contratoEnAdenda();
+        if (!fin) errores['fechaFin'] = 'Es obligatoria.';
+        else if (!fechaEnRango(fin)) errores['fechaFin'] = MENSAJE_FECHA_FUERA_DE_RANGO;
+        else if (d?.fechaFinVigente && fin < d.fechaFinVigente) errores['fechaFin'] = `No puede ser anterior al fin vigente (${fechaCorta(d.fechaFinVigente)}).`;
+      }
+    } else if (!esEdicion && !this.indefinidoForm()) {
+      const fin = this.finForm();
+      if (!fin) errores['fechaFin'] = 'Pon la fecha de fin o marca "Indefinido".';
+      else if (!fechaEnRango(fin)) errores['fechaFin'] = MENSAJE_FECHA_FUERA_DE_RANGO;
+    }
+
+    if (modo === 'crear') {
+      if (!this.clasificacionForm()) {
+        errores['clasificacion'] = this.clasificacionDesdeTmr() ? 'Falta en TMR: revisa su tipo de contrato.' : 'Es obligatorio.';
+      }
+      if (!this.frecuenciaForm()) errores['frecuencia'] = 'Es obligatoria.';
+      if (!this.numeroCuentaForm().trim() && !this.cuentaEnmascarada()) errores['numeroCuenta'] = 'Es obligatorio.';
+    }
+
+    // Honorarios: se validan salvo al editar un contrato que ya tiene uno (ahí no se muestran los campos).
+    if (!(esEdicion && this.modoOriginal())) {
+      if (this.pagoPorContrato()) {
+        const importe = this.honorarioContratoForm().importe.trim();
+        const n = importe ? Number(importe.replace(',', '.')) : null;
+        if (n === null || n <= 0) errores['honorarioContrato'] = 'Pon el monto mensual del contrato.';
+      } else {
+        for (const id of this.proyectosElegidos()) {
+          const importe = this.honorarioDe(id).importe.trim();
+          const n = importe ? Number(importe.replace(',', '.')) : null;
+          if (n === null || n <= 0) errores[`honorario-${id}`] = 'Pon el honorario de este proyecto.';
+        }
+      }
+    }
+
+    return errores;
+  });
+
+  protected marcarTocadoContrato(campo: string): void {
+    if (!this.tocadosContrato().has(campo)) this.tocadosContrato.update((t) => new Set(t).add(campo));
+  }
+
+  /** Error a mostrar para ese campo, o null si todavía no corresponde mostrarlo (no tocado ni se intentó guardar). */
+  protected errorContratoDe(campo: string): string | null {
+    if (!this.tocadosContrato().has(campo) && !this.intentoGuardarContrato()) return null;
+    return this.erroresContrato()[campo] ?? this.erroresContratoCliente()[campo] ?? null;
+  }
 
   private limpiarFormulario(): void {
     this.busquedaColaborador.set('');
@@ -292,6 +362,8 @@ export class Contratos {
     this.cargandoConfiguracion.set(false);
     this.erroresContrato.set({});
     this.errorContrato.set(null);
+    this.tocadosContrato.set(new Set());
+    this.intentoGuardarContrato.set(false);
   }
 
   protected abrirRegistro(): void {
@@ -473,31 +545,15 @@ export class Contratos {
   /** Las fechas y demás campos los valida también el backend; aquí se exige elegir a quién, poner
    * inicio y fin (o "Indefinido") al crear, y un honorario para cada proyecto elegido. */
   protected guardarContrato(): void {
+    this.intentoGuardarContrato.set(true);
     if (this.modoFormulario() === 'adenda') {
       this.guardarAdendaCompleta();
       return;
     }
+    this.errorContrato.set(null);
+    if (Object.keys(this.erroresContratoCliente()).length) return;
+
     const esEdicion = this.modoFormulario() === 'editar';
-    const tmrColaboradorId = this.colaboradorElegidoId();
-    if (!tmrColaboradorId) { this.erroresContrato.set({ colaborador: 'Elige el colaborador.' }); return; }
-
-    if (!this.inicioForm()) {
-      this.erroresContrato.set({ fechaInicio: 'Es obligatoria.' });
-      return;
-    }
-    if (!fechaEnRango(this.inicioForm())) {
-      this.erroresContrato.set({ fechaInicio: MENSAJE_FECHA_FUERA_DE_RANGO });
-      return;
-    }
-    if (!esEdicion && !this.indefinidoForm() && this.finForm() && !fechaEnRango(this.finForm())) {
-      this.erroresContrato.set({ fechaFin: MENSAJE_FECHA_FUERA_DE_RANGO });
-      return;
-    }
-
-    if (!esEdicion && !this.indefinidoForm() && !this.finForm()) {
-      this.erroresContrato.set({ fechaFin: 'Pon la fecha de fin o marca "Indefinido".' });
-      return;
-    }
 
     // Editar solo corrige: el pago (forma, monto) se cambia con una adenda. Solo si el contrato
     // todavía no tiene honorario se configura aquí, y rige desde el inicio del contrato.
@@ -508,23 +564,11 @@ export class Contratos {
       honorarios = leidos;
     }
 
-    // Al registrar, tipo de servicio, frecuencia y cuenta son obligatorios (salvo que la persona ya
-    // los tenga y vengan precargados): sin ellos el colaborador queda Pendiente y fuera del cálculo.
-    if (!esEdicion) {
-      if (this.cargandoConfiguracion()) { this.errorContrato.set('Espera a que cargue la configuración del colaborador.'); return; }
-      const faltan: Record<string, string> = {};
-      if (!this.clasificacionForm()) {
-        faltan['clasificacion'] = this.clasificacionDesdeTmr()
-          ? 'Falta en TMR: revisa su tipo de contrato.'
-          : 'Es obligatorio.';
-      }
-      if (!this.frecuenciaForm()) faltan['frecuencia'] = 'Es obligatoria.';
-      if (!this.numeroCuentaForm().trim() && !this.cuentaEnmascarada()) faltan['numeroCuenta'] = 'Es obligatorio.';
-      if (Object.keys(faltan).length) {
-        this.erroresContrato.set(faltan);
-        this.errorContrato.set('Completa tipo de servicio, frecuencia de pago y número de cuenta: sin ellos el colaborador queda Pendiente.');
-        return;
-      }
+    // Al registrar, tipo de servicio, frecuencia y cuenta son obligatorios (ya validado arriba):
+    // sin ellos el colaborador queda Pendiente y fuera del cálculo.
+    if (!esEdicion && this.cargandoConfiguracion()) {
+      this.errorContrato.set('Espera a que cargue la configuración del colaborador.');
+      return;
     }
 
     const numero = this.numeroCuentaForm().trim();
@@ -539,6 +583,7 @@ export class Contratos {
     const cuentaBancaria = numero
       ? { banco: banco || null, tipoCuenta: this.tipoCuentaForm() || null, numeroCuenta: numero }
       : null;
+    const tmrColaboradorId = this.colaboradorElegidoId();
     const clasificacionElegida = this.clasificacionForm() || null;
     const clasificacion = clasificacionElegida !== this.clasificacionActual() ? clasificacionElegida : null;
     const frecuenciaElegida = this.frecuenciaForm() || null;
@@ -553,7 +598,6 @@ export class Contratos {
 
     this.guardandoContrato.set(true);
     this.erroresContrato.set({});
-    this.errorContrato.set(null);
 
     const resultado$ = esEdicion
       ? this.api.editar(this.contratoEditandoId()!, {
@@ -589,17 +633,16 @@ export class Contratos {
     });
   }
 
-  /** Honorarios del formulario según la forma de pago; null (y el error en pantalla) si falta algo. */
+  /**
+   * Honorarios del formulario según la forma de pago; null (y el error en pantalla) si falta algo.
+   * Los montos obligatorios/positivos ya los valida `erroresContratoCliente`; acá solo queda la
+   * guardia de "elige al menos un proyecto", que se muestra aparte en el template.
+   */
   private leerHonorarios(): HonorarioDeRegistro[] | null {
     if (this.pagoPorContrato()) {
       // Pago por contrato: un solo monto fijo, sin proyecto. Vale con 0, 1 o muchos proyectos.
       const g = this.honorarioContratoForm();
-      const importeMensual = g.importe.trim() ? Number(g.importe.replace(',', '.')) : null;
-      if (importeMensual === null || importeMensual <= 0) {
-        this.errorContrato.set('Pon el monto mensual del contrato.');
-        return null;
-      }
-      return [{ tmrProyectoId: null, importeMensual, modalidad: g.modalidad }];
+      return [{ tmrProyectoId: null, importeMensual: Number(g.importe.replace(',', '.')), modalidad: g.modalidad }];
     }
 
     // Pago por proyecto: un monto por cada proyecto, que se paga solo mientras esté en él.
@@ -610,12 +653,7 @@ export class Contratos {
     const honorarios: HonorarioDeRegistro[] = [];
     for (const tmrProyectoId of this.proyectosElegidos()) {
       const h = this.honorarioDe(tmrProyectoId);
-      const importeMensual = h.importe.trim() ? Number(h.importe.replace(',', '.')) : null;
-      if (importeMensual === null || importeMensual <= 0) {
-        this.errorContrato.set('Pon el honorario de todos los proyectos elegidos.');
-        return null;
-      }
-      honorarios.push({ tmrProyectoId, importeMensual, modalidad: h.modalidad });
+      honorarios.push({ tmrProyectoId, importeMensual: Number(h.importe.replace(',', '.')), modalidad: h.modalidad });
     }
     return honorarios;
   }
@@ -672,21 +710,11 @@ export class Contratos {
   private guardarAdendaCompleta(): void {
     const d = this.contratoEnAdenda();
     if (!d) return;
-    this.erroresContrato.set({});
     this.errorContrato.set(null);
+    if (Object.keys(this.erroresContratoCliente()).length) return;
 
     // Fecha hasta: el nuevo fin del contrato (los indefinidos no tienen).
-    let nuevaFechaFin: string | null = null;
-    if (!this.indefinidoForm()) {
-      const fin = this.finForm();
-      if (!fin) { this.erroresContrato.set({ fechaFin: 'Es obligatoria.' }); return; }
-      if (!fechaEnRango(fin)) { this.erroresContrato.set({ fechaFin: MENSAJE_FECHA_FUERA_DE_RANGO }); return; }
-      if (d.fechaFinVigente && fin < d.fechaFinVigente) {
-        this.erroresContrato.set({ fechaFin: `No puede ser anterior al fin vigente (${fechaCorta(d.fechaFinVigente)}).` });
-        return;
-      }
-      nuevaFechaFin = fin;
-    }
+    const nuevaFechaFin: string | null = this.indefinidoForm() ? null : this.finForm();
 
     const leidos = this.leerHonorarios();
     if (!leidos) return;
@@ -726,6 +754,7 @@ export class Contratos {
     }
 
     this.guardandoContrato.set(true);
+    this.erroresContrato.set({});
     this.api.registrarAdenda(d.id, {
       nuevaFechaFin, observaciones, tmrProyectoIds: agregados.length || quitados.length ? [...ahora] : null,
       cambios: partes.join(' · '), honorarios,
@@ -755,15 +784,25 @@ export class Contratos {
   protected readonly nuevaFinForm = signal('');
   protected readonly observacionesAdendaForm = signal('');
   protected readonly guardandoAdenda = signal(false);
-  protected readonly errorAdendaCampo = signal<string | null>(null);
+  /** Error que solo puede dar el backend al corregir (ej. choca con otra adenda). */
+  private readonly erroresAdendaServidor = signal<string | null>(null);
   protected readonly errorAdenda = signal<string | null>(null);
+
+  /** Rango de fecha en vivo, salvo que el backend ya haya marcado un error distinto para este campo. */
+  protected readonly errorAdendaCampo = computed(() =>
+    this.erroresAdendaServidor() ?? (this.nuevaFinForm() && !fechaEnRango(this.nuevaFinForm()) ? MENSAJE_FECHA_FUERA_DE_RANGO : null));
+
+  protected cambiarNuevaFin(valor: string): void {
+    this.nuevaFinForm.set(valor);
+    this.erroresAdendaServidor.set(null);
+  }
 
   /** Corrige una adenda ya registrada (ej. se escribió mal la fecha). */
   protected abrirEditarAdenda(a: Adenda): void {
     this.editandoAdendaId.set(a.id);
     this.nuevaFinForm.set(a.nuevaFechaFin ?? '');
     this.observacionesAdendaForm.set(a.observaciones ?? '');
-    this.errorAdendaCampo.set(null);
+    this.erroresAdendaServidor.set(null);
     this.errorAdenda.set(null);
     this.agregandoAdenda.set(true);
   }
@@ -775,17 +814,14 @@ export class Contratos {
   protected guardarAdenda(): void {
     const d = this.detalle();
     if (!d) return;
-    if (this.nuevaFinForm() && !fechaEnRango(this.nuevaFinForm())) {
-      this.errorAdendaCampo.set(MENSAJE_FECHA_FUERA_DE_RANGO);
-      return;
-    }
+    this.errorAdenda.set(null);
+    if (this.errorAdendaCampo()) return;
     const request = { nuevaFechaFin: this.nuevaFinForm() || null, observaciones: this.observacionesAdendaForm().trim() || null };
     const adendaId = this.editandoAdendaId();
     if (!adendaId) return;
 
     this.guardandoAdenda.set(true);
-    this.errorAdendaCampo.set(null);
-    this.errorAdenda.set(null);
+    this.erroresAdendaServidor.set(null);
     this.api.editarAdenda(d.id, adendaId, request).subscribe({
       next: (actualizado) => {
         this.guardandoAdenda.set(false);
@@ -797,7 +833,7 @@ export class Contratos {
       error: (e: unknown) => {
         this.guardandoAdenda.set(false);
         const err = leerErrorApi(e);
-        if (err.campos['nuevaFechaFin']) this.errorAdendaCampo.set(err.campos['nuevaFechaFin']);
+        if (err.campos['nuevaFechaFin']) this.erroresAdendaServidor.set(err.campos['nuevaFechaFin']);
         else this.errorAdenda.set(err.mensaje);
       },
     });

@@ -15,16 +15,16 @@
       <div class="field identidad__campo">
         <label for="nr-nombre">Nombre del rol</label>
         <input data-foco-inicial id="nr-nombre" name="nombre" class="input" [maxlength]="maxNombre" placeholder="Por ejemplo, Auditor interno" autocomplete="off"
-               [class.is-invalid]="errores()['nombre']" [ngModel]="nombre()" (ngModelChange)="cambiarNombre($event)" />
-        @if (errores()['nombre']; as e) { <span class="field__error">{{ e }}</span> }
+               [class.is-invalid]="errorDe('nombre')" [ngModel]="nombre()" (ngModelChange)="cambiarNombre($event)" (blur)="marcarTocado('nombre')" />
+        @if (errorDe('nombre'); as e) { <span class="field__error">{{ e }}</span> }
       </div>
     </div>
 
     <div class="field">
       <label for="nr-descripcion">Descripción <span class="opcional">(opcional)</span></label>
       <input id="nr-descripcion" name="descripcion" class="input" [maxlength]="maxDescripcion" placeholder="Para qué sirve este rol" autocomplete="off"
-             [class.is-invalid]="errores()['descripcion']" [ngModel]="descripcion()" (ngModelChange)="cambiarDescripcion($event)" />
-      @if (errores()['descripcion']; as e) { <span class="field__error">{{ e }}</span> }
+             [class.is-invalid]="errorDe('descripcion')" [ngModel]="descripcion()" (ngModelChange)="cambiarDescripcion($event)" />
+      @if (errorDe('descripcion'); as e) { <span class="field__error">{{ e }}</span> }
     </div>
 
     <div class="field">
@@ -40,7 +40,7 @@
           </button>
         }
       </div>
-      @if (errores()['permisos']; as e) { <span class="field__error">{{ e }}</span> }
+      @if (errorDe('permisos'); as e) { <span class="field__error">{{ e }}</span> }
     </div>
 
     <section class="resumen" aria-live="polite">

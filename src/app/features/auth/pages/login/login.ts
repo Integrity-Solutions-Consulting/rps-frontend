@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SessionService } from '../../../../core/services/session.service';
 import { leerErrorApi } from '../../../../core/http/error-api';
@@ -22,21 +22,38 @@ export class Login {
   protected readonly verPassword = signal(false);
   protected readonly enviando = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly errores = signal<Record<string, string>>({});
+
+  /** Campos que el usuario ya visitó (blur) o que ya intentó entrar: a partir de ahí se muestra el error en vivo. */
+  private readonly tocados = signal<ReadonlySet<string>>(new Set());
+  private readonly intentoEntrar = signal(false);
+
+  private readonly erroresCliente = computed<Record<string, string>>(() => {
+    const errores: Record<string, string> = {};
+    if (!this.email().trim()) errores['email'] = 'Escribe tu correo.';
+    if (!this.password()) errores['password'] = 'Escribe tu contraseña.';
+    return errores;
+  });
 
   protected readonly expirada = this.ruta.snapshot.queryParamMap.get('motivo') === 'expirada';
 
+  protected marcarTocado(campo: string): void {
+    if (!this.tocados().has(campo)) this.tocados.update((t) => new Set(t).add(campo));
+  }
+
+  /** Error a mostrar para ese campo, o null si todavía no corresponde mostrarlo (no tocado ni se intentó entrar). */
+  protected errorDe(campo: string): string | null {
+    if (!this.tocados().has(campo) && !this.intentoEntrar()) return null;
+    return this.erroresCliente()[campo] ?? null;
+  }
+
   protected entrar(evento: Event): void {
     evento.preventDefault();
+    this.intentoEntrar.set(true);
+    this.error.set(null);
+    if (Object.keys(this.erroresCliente()).length) return;
+
     const email = this.email().trim();
     const password = this.password();
-    const faltan: Record<string, string> = {};
-    if (!email) faltan['email'] = 'Escribe tu correo.';
-    if (!password) faltan['password'] = 'Escribe tu contraseña.';
-    this.errores.set(faltan);
-    this.error.set(null);
-    if (Object.keys(faltan).length) return;
-
     this.enviando.set(true);
     this.session.iniciarSesion(email, password).subscribe({
       next: () => {
