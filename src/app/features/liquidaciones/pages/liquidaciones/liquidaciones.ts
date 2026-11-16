@@ -219,7 +219,8 @@ export class Liquidaciones {
         this.calculando.set(false);
         this.confirmandoCalculo.set(false);
         this.avisos.ok(`${this.nombreMes()}: ${r.liquidacionesGeneradas} liquidación(es) nueva(s), `
-          + `${r.honorariosGenerados} honorario(s) generado(s), ${r.honorariosOmitidos} ya existían.`);
+          + `${r.honorariosGenerados} honorario(s) generado(s), ${r.honorariosRecalculados} recalculado(s), `
+          + `${r.honorariosOmitidos} sin cambios.`);
         this.cargar(this.periodo());
         this.cargarDetalle(this.seleccionadoId());
       },

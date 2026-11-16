@@ -74,6 +74,8 @@ export interface LiquidacionesPeriodo {
 export interface ResultadoCalculo {
   honorariosGenerados: number;
   honorariosOmitidos: number;
+  /** Ya existían y cambiaron (ej. una adenda alargó el contrato): se recalcularon. */
+  honorariosRecalculados: number;
   liquidacionesGeneradas: number;
 }
 
