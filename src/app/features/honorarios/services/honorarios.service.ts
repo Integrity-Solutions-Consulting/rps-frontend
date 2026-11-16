@@ -56,7 +56,7 @@ export class HonorariosService {
     return this.be.idRps(request.tmrColaboradorId).pipe(
       switchMap((id) => this.http.post<BeCondicion>(`${this.be.api}/colaboradores/${id}/condiciones-economicas`, {
         proyectoId: request.tmrProyectoId || null, contratoId: request.contratoId || null, importeMensual: request.importe || null,
-        modalidad: request.modalidad, mesInicioVigencia: request.vigenteDesdeMes, observaciones: null,
+        modalidad: request.modalidad, fechaInicioVigencia: request.vigenteDesdeMes, observaciones: null,
       })),
       map((c) => this.aVigencia(c)),
     );
@@ -69,10 +69,12 @@ export class HonorariosService {
     return this.be.idRps(tmrColaboradorId).pipe(
       switchMap((id) => this.http.get<BeCondicion[]>(`${this.be.api}/colaboradores/${id}/condiciones-economicas`)),
       map((condiciones) => {
-        const mes = `${periodoActual()}-01`;
+        // Hoy (hora local): una condición rige desde su fecha, que puede caer a mitad de mes.
+        const d = new Date();
+        const mes = `${periodoActual()}-${String(d.getDate()).padStart(2, '0')}`;
         const contratoIds = [...new Set(condiciones.filter((c) => !c.proyectoId).map((c) => c.contratoId))].filter((contratoId) => {
           const ultimoPorContrato = condiciones.find((c) => !c.proyectoId && c.contratoId === contratoId)!;
-          return !condiciones.some((c) => c.proyectoId && c.contratoId === contratoId && c.mesInicioVigencia > ultimoPorContrato.mesInicioVigencia);
+          return !condiciones.some((c) => c.proyectoId && c.contratoId === contratoId && c.fechaInicioVigencia > ultimoPorContrato.fechaInicioVigencia);
         });
         return contratoIds.map((contratoId): HonorarioContrato => {
           // El backend ya los devuelve del más reciente al más antiguo.
@@ -96,7 +98,7 @@ export class HonorariosService {
 
   private aVigencia(c: BeCondicion): HonorarioVigencia {
     return {
-      id: c.id, importe: c.importeMensual, modalidad: c.modalidad, vigenteDesdeMes: c.mesInicioVigencia, contratoId: c.contratoId,
+      id: c.id, importe: c.importeMensual, modalidad: c.modalidad, vigenteDesdeMes: c.fechaInicioVigencia, contratoId: c.contratoId,
     };
   }
 }
