@@ -43,13 +43,6 @@
   <section class="card panel-form" aria-label="Registrar contrato">
     <header>
       <h2>{{ modoFormulario() === 'editar' ? 'Editar contrato' : modoFormulario() === 'adenda' ? 'Registrar adenda' : 'Registrar contrato' }}</h2>
-      @if (modoFormulario() === 'editar') {
-        <p>Solo para corregir datos (referencia, observaciones, una fecha mal escrita) y, si se paga por contrato, agregar proyectos. Cualquier otro cambio del contrato se hace con "Registrar adenda" desde el detalle.</p>
-      } @else if (modoFormulario() === 'adenda') {
-        <p>Cambia lo que haga falta del contrato: fecha de fin, proyectos, forma de pago o monto. La adenda rige desde hoy hasta la nueva fecha de fin; un cambio de monto rige desde el próximo mes (RN 19).</p>
-      } @else {
-        <p>Elige el colaborador y, si aplica, uno o varios proyectos de TMR. Para cambiar un contrato existente usa “Registrar adenda” en su detalle.</p>
-      }
     </header>
 
     @if (cargandoFormulario()) {
@@ -231,9 +224,6 @@
               Por proyecto
             </label>
           </div>
-          @if (modoFormulario() === 'adenda') {
-            <span class="field__hint">Si cambias el monto o la forma de pago, rige desde el próximo mes y lo actual se mantiene para los meses anteriores (RN 19).</span>
-          }
 
           @if (pagoPorContrato()) {
             <div class="form-grid">
@@ -256,9 +246,7 @@
                   <option value="MasIva">Más IVA</option>
                 </select>
               </div>
-            </div>
-            <span class="field__hint">Un solo monto fijo para todo el contrato, tenga los proyectos que tenga (o ninguno). Se paga mientras el contrato esté vigente: si se acaba un proyecto no cambia; si el contrato empieza o termina a mitad de mes, se paga el proporcional.</span>
-          } @else if (proyectosElegidos().size === 0) {
+            </div>          } @else if (proyectosElegidos().size === 0) {
             <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>Elige al menos un proyecto para pagar por proyecto.</div></div>
           } @else {
             <div class="table-wrap marco">
@@ -293,9 +281,7 @@
                   }
                 </tbody>
               </table>
-            </div>
-            <span class="field__hint">Cada proyecto se paga desde que la persona entra hasta el día que sale de él (y dentro de las fechas del contrato). Si sale de un proyecto, ese monto deja de pagarse; el dashboard avisa antes.</span>
-          }
+            </div>          }
         </div>
         }
 
