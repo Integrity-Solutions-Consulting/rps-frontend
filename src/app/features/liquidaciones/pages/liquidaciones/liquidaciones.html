@@ -114,7 +114,7 @@
           <div class="cambios__cuerpo">
             <div class="cambios__head">
               <strong id="cambios-titulo">
-                {{ modificadas().length === 1 ? 'Cambio pendiente' : 'Cambios pendientes (' + modificadas().length + ')' }}
+                Configuraciones recientes{{ modificadas().length > 1 ? ' (' + modificadas().length + ')' : '' }}
               </strong>
               <div class="cambios__acciones">
                 <button type="button" class="btn btn--ghost btn--sm" aria-controls="cambios-detalle"
