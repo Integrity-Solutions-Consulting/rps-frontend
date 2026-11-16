@@ -1,10 +1,9 @@
 <div class="fondo" (click)="!calculando() && cancelar.emit()"></div>
-<section class="dialogo" ui-dialog tituloId="calcular-titulo" descripcionId="calcular-texto"
+<section class="dialogo" ui-dialog tituloId="calcular-titulo"
          [cerrarConEscape]="!calculando()" (cerrar)="cancelar.emit()">
   <header class="dialogo__head">
     <div>
       <h2 id="calcular-titulo">{{ recalculo() ? '¿Volver a calcular ' + mesMinusculas() + '?' : '¿Calcular ' + mesMinusculas() + '?' }}</h2>
-      <p id="calcular-texto">RPS calcula los honorarios y las liquidaciones del mes con los datos de hoy.</p>
     </div>
   </header>
 
@@ -57,7 +56,6 @@
   </div>
 
   <footer class="dialogo__pie">
-    <span class="dialogo__nota">Calcular no paga ni exporta nada.</span>
     <div class="dialogo__acciones">
       <button data-foco-inicial type="button" class="btn" (click)="cancelar.emit()" [disabled]="calculando()">Cancelar</button>
       <button type="button" class="btn btn--oscuro" (click)="confirmar.emit()" [disabled]="calculando()">
