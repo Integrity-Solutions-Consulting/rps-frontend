@@ -39,8 +39,3 @@
 /* El texto nunca empuja el ítem fuera del menú: si no cabe, se corta con "…". */
 nav { min-width: 0; }
 .sidebar__text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.sidebar__foot {
-  margin-top: auto; padding-top: 12px; border-top: 1px solid #eceef2; display: grid; gap: 12px;
-  p { margin: 0; padding: 0 6px; font-size: 11px; line-height: 1.4; color: var(--rps-muted); }
-}
