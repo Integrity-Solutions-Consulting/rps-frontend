@@ -452,6 +452,9 @@
         <div><dt>Inicio</dt><dd>{{ d.fechaInicio | date: 'dd MMM yyyy' }}</dd></div>
         <div><dt>Fin original</dt><dd>{{ d.fechaFinOriginal ? (d.fechaFinOriginal | date: 'dd MMM yyyy') : 'Indefinido' }}</dd></div>
         <div><dt>Fin vigente</dt><dd><strong>{{ d.fechaFinVigente ? (d.fechaFinVigente | date: 'dd MMM yyyy') : 'Indefinido' }}</strong></dd></div>
+        @if (d.fechaTerminacion) {
+          <div><dt>Terminado</dt><dd><strong>{{ d.fechaTerminacion | date: 'dd MMM yyyy' : 'UTC' }}</strong> · {{ d.motivoTerminacion ?? 'Terminación' }}</dd></div>
+        }
         @if (d.observaciones) { <div><dt>Observaciones</dt><dd>{{ d.observaciones }}</dd></div> }
       </dl>
 
@@ -477,11 +480,14 @@
 
       <div class="adendas__head">
         <h3>Adendas</h3>
-        @if (!agregandoAdenda()) {
+        @if (!agregandoAdenda() && !d.fechaTerminacion) {
           <button type="button" class="btn btn--sm btn--primary" (click)="abrirEdicion(d, 'adenda')" [disabled]="adendaProgramada()"
                   [attr.title]="adendaProgramada() ? 'Ya hay una adenda programada: corrígela para agregar cambios.' : null">Registrar adenda</button>
         }
       </div>
+      @if (d.fechaTerminacion) {
+        <p class="field__hint">Contrato terminado: ya no admite adendas. Si el colaborador se reactiva, registra un contrato nuevo.</p>
+      }
       @if (adendaProgramada(); as p) {
         <p class="field__hint">
           Hay una adenda programada desde el {{ p.fechaVigencia | date: 'dd MMM yyyy' : 'UTC' }}. Para agregar cambios, corrígela.
@@ -574,7 +580,9 @@
                   <td>{{ a.cambios ?? '—' }}</td>
                   <td>{{ a.observaciones ?? '—' }}</td>
                   <td class="r">
-                    <button type="button" class="btn btn--sm btn--ghost" (click)="abrirEditarAdenda(a)">Corregir</button>
+                    @if (!d.fechaTerminacion) {
+                      <button type="button" class="btn btn--sm btn--ghost" (click)="abrirEditarAdenda(a)">Corregir</button>
+                    }
                   </td>
                 </tr>
               }

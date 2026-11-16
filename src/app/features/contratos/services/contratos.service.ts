@@ -304,6 +304,8 @@ export class ContratosService {
       fechaInicio: c.fechaInicio,
       fechaFinOriginal: c.fechaFin,
       fechaFinVigente: c.fechaFinVigente,
+      fechaTerminacion: c.fechaTerminacion ?? null,
+      motivoTerminacion: c.motivoTerminacion ?? null,
       estado: this.peorEstado(proyectosDelContrato.map((p) => p.estado), c.vigente),
       numeroAdendas: d.adendas.length,
     };
