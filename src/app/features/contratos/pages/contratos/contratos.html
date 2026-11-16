@@ -478,13 +478,28 @@
       <div class="adendas__head">
         <h3>Adendas</h3>
         @if (!agregandoAdenda()) {
-          <button type="button" class="btn btn--sm btn--primary" (click)="abrirEdicion(d, 'adenda')">Registrar adenda</button>
+          <button type="button" class="btn btn--sm btn--primary" (click)="abrirEdicion(d, 'adenda')" [disabled]="adendaProgramada()"
+                  [attr.title]="adendaProgramada() ? 'Ya hay una adenda programada: corrígela para agregar cambios.' : null">Registrar adenda</button>
         }
       </div>
+      @if (adendaProgramada(); as p) {
+        <p class="field__hint">
+          Hay una adenda programada desde el {{ p.fechaVigencia | date: 'dd MMM yyyy' : 'UTC' }}. Para agregar cambios, corrígela.
+        </p>
+      }
 
       @if (agregandoAdenda()) {
         <form class="adenda-form" (submit)="$event.preventDefault(); guardarAdenda()">
           <div class="form-grid">
+            @if (adendaEnCorreccion()?.esUltima) {
+            <div class="field">
+              <label for="vigencia-correccion">Rige desde</label>
+              <input id="vigencia-correccion" name="vigenciaCorreccion" type="date" class="input" max="9999-12-31"
+                     [class.is-invalid]="errorVigenciaCorreccion()"
+                     [ngModel]="vigenciaCorreccionForm()" (ngModelChange)="vigenciaCorreccionForm.set($event)" />
+              @if (errorVigenciaCorreccion(); as e) { <span class="field__error">{{ e }}</span> }
+            </div>
+            }
             @if (d.fechaFinOriginal) {
             <div class="field">
               <label for="nueva-fin">Fecha hasta (corrección)</label>
@@ -495,6 +510,37 @@
             </div>
             }
           </div>
+          @if (cargandoHonorariosCorreccion()) {
+            <p class="muted small">Cargando montos de la adenda…</p>
+          } @else if (honorariosCorreccion().length) {
+            <div class="table-wrap marco">
+              <table class="tbl">
+                <thead><tr><th>Honorario</th><th class="r">Monto mensual</th><th>Modalidad</th></tr></thead>
+                <tbody>
+                  @for (h of honorariosCorreccion(); track h.id) {
+                    <tr>
+                      <td>{{ h.etiqueta }}</td>
+                      <td class="r">
+                        <div class="dinero">
+                          <span>$</span>
+                          <input [name]="'correccion-' + h.id" class="input num" appSoloNumeros="monto" placeholder="0.00"
+                                 [attr.aria-label]="'Monto de ' + h.etiqueta"
+                                 [ngModel]="h.importe" (ngModelChange)="actualizarHonorarioCorreccion(h.id, { importe: $event })" />
+                        </div>
+                      </td>
+                      <td>
+                        <select [name]="'correccion-modalidad-' + h.id" class="select" [attr.aria-label]="'Modalidad de ' + h.etiqueta"
+                                [ngModel]="h.modalidad" (ngModelChange)="actualizarHonorarioCorreccion(h.id, { modalidad: $event })">
+                          <option value="Neto">Neto</option>
+                          <option value="MasIva">Más IVA</option>
+                        </select>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
           <div class="field">
             <label for="obs-adenda">Observaciones (opcional)</label>
             <input id="obs-adenda" name="obsAdenda" class="input" maxlength="500"
@@ -520,7 +566,10 @@
               @for (a of d.adendas; track a.id) {
                 <tr>
                   <td class="num">{{ a.numero }}</td>
-                  <td class="num">{{ a.fechaVigencia | date: 'dd MMM yyyy' : 'UTC' }}</td>
+                  <td class="num">
+                    {{ a.fechaVigencia | date: 'dd MMM yyyy' : 'UTC' }}
+                    @if (a.programada) { <app-estado-chip tono="info">Programada</app-estado-chip> }
+                  </td>
                   <td class="num">{{ a.nuevaFechaFin ? (a.nuevaFechaFin | date: 'dd MMM yyyy' : 'UTC') : 'Indefinido' }}</td>
                   <td>{{ a.cambios ?? '—' }}</td>
                   <td>{{ a.observaciones ?? '—' }}</td>

@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, concat, forkJoin, map, of, shareReplay, switchMap, tap, toArray } from 'rxjs';
 import {
-  Adenda, AsignacionDisponible, ConfiguracionColaboradorForm, ContratoDetalle, ContratoResumen, EditarContratoRequest,
-  EstadoContrato, ProyectoDeContrato, RegistrarAdendaCompletaRequest, RegistrarAdendaRequest, RegistrarContratoRequest, ResumenContratos,
+  Adenda, AsignacionDisponible, ConfiguracionColaboradorForm, ContratoDetalle, ContratoResumen, CorregirAdendaRequest, EditarContratoRequest,
+  EstadoContrato, ProyectoDeContrato, RegistrarAdendaCompletaRequest, RegistrarContratoRequest, ResumenContratos,
 } from '../models/contrato.models';
 import { BackendRps, diaUno } from '../../../core/backend/backend-rps.service';
 import { BeAdenda, BeAsignacion, BeColaborador, BeContrato, BeProyecto, BeProyectoDeContrato } from '../../../core/backend/backend-rps.models';
@@ -110,7 +110,7 @@ export class ContratosService {
 
   /** Los mismos pasos opcionales que acompañan tanto a Registrar como a Editar un contrato. */
   private pasosConfiguracion(
-    colaboradorId: string, contratoId: string, fechaInicio: string, config: ConfiguracionColaboradorForm,
+    colaboradorId: string, contratoId: string, fechaInicio: string, config: ConfiguracionColaboradorForm, adendaId: string | null = null,
   ): Observable<unknown>[] {
     const pasos: Observable<unknown>[] = [of(null)];
 
@@ -119,7 +119,7 @@ export class ContratosService {
       pasos.push(this.http.post(`${this.be.api}/colaboradores/${colaboradorId}/condiciones-economicas`, {
         proyectoId: h.tmrProyectoId, contratoId, importeMensual: h.importeMensual, modalidad: h.modalidad,
         fechaInicioVigencia: h.fechaInicioVigencia ?? diaUno(fechaInicio), observaciones: null,
-        reemplazar: !!h.fechaInicioVigencia,
+        reemplazar: !!h.fechaInicioVigencia, adendaId,
       }));
     }
 
@@ -165,20 +165,24 @@ export class ContratosService {
         nuevaFechaFin: request.nuevaFechaFin || null, observaciones: request.observaciones,
         proyectoIds: request.tmrProyectoIds, cambios: request.cambios, fechaVigencia: request.fechaVigencia,
       }).pipe(
-        switchMap(() => this.ejecutarEnOrden(this.pasosConfiguracion(colaboradorId, id, primerDia(periodoActual()), {
+        // Cada honorario queda ligado a la adenda: al corregirla se corrige también su monto.
+        switchMap((adenda) => this.ejecutarEnOrden(this.pasosConfiguracion(colaboradorId, id, primerDia(periodoActual()), {
           honorarios: request.honorarios, cuentaBancaria: null, clasificacion: null, frecuencia: null,
-        }))),
+        }, adenda.id))),
       )),
       tap(() => (this.cache = null)),
       switchMap(() => this.obtener(id)),
     );
   }
 
-  /** PUT .../contratos/{id}/adendas/{adendaId}: corrige una adenda ya registrada (ej. fecha mal escrita). */
-  editarAdenda(id: string, adendaId: string, request: RegistrarAdendaRequest): Observable<ContratoDetalle> {
+  /** PUT .../contratos/{id}/adendas/{adendaId}: corrige una adenda mal registrada (fin, observaciones;
+   * en la última, también "rige desde" y montos). */
+  editarAdenda(id: string, adendaId: string, request: CorregirAdendaRequest): Observable<ContratoDetalle> {
     return this.colaboradorDe(id).pipe(
-      switchMap((colaboradorId) => this.http.put<BeAdenda>(`${this.be.api}/colaboradores/${colaboradorId}/contratos/${id}/adendas/${adendaId}`,
-        { nuevaFechaFin: request.nuevaFechaFin || null, observaciones: request.observaciones })),
+      switchMap((colaboradorId) => this.http.put<BeAdenda>(`${this.be.api}/colaboradores/${colaboradorId}/contratos/${id}/adendas/${adendaId}`, {
+        nuevaFechaFin: request.nuevaFechaFin || null, observaciones: request.observaciones,
+        fechaVigencia: request.fechaVigencia ?? null, cambios: request.cambios ?? null, honorarios: request.honorarios ?? null,
+      })),
       tap(() => (this.cache = null)),
       switchMap(() => this.obtener(id)),
     );
@@ -313,6 +317,7 @@ export class ContratosService {
       .map((a, i) => ({
         id: a.id, numero: i + 1, nuevaFechaFin: a.nuevaFechaFin, observaciones: a.observaciones, fechaRegistro: a.fechaRegistro,
         fechaVigencia: a.fechaVigencia ?? a.fechaRegistro, cambios: a.cambios,
+        programada: !!a.programada, esUltima: !!a.esUltima,
       }));
     return { ...r, observaciones: d.contrato.observaciones, adendas };
   }

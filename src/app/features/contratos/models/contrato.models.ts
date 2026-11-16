@@ -19,6 +19,10 @@ export interface Adenda {
   fechaRegistro: string;
   /** Desde cuándo rigen sus cambios (el día de registro o uno posterior). */
   fechaVigencia: string;
+  /** Rige desde una fecha futura: sus cambios todavía no aplican. */
+  programada: boolean;
+  /** La última del contrato: la única cuya fecha "rige desde" y montos se pueden corregir. */
+  esUltima: boolean;
   /** Resumen de lo que cambió (proyectos, forma de pago, monto, fecha de fin). */
   cambios: string | null;
 }
@@ -130,6 +134,15 @@ export interface RegistrarAdendaRequest {
   /** Vacío/null en contratos indefinidos. */
   nuevaFechaFin: string | null;
   observaciones: string | null;
+}
+
+/** Corrección de una adenda: fin y observaciones; en la última, también "rige desde" y montos. */
+export interface CorregirAdendaRequest extends RegistrarAdendaRequest {
+  fechaVigencia?: string;
+  /** Resumen actualizado de lo que cambió. */
+  cambios?: string;
+  /** Montos corregidos de los honorarios que registró la adenda. */
+  honorarios?: { condicionEconomicaId: string; importeMensual: number; modalidad: 'Neto' | 'MasIva' }[];
 }
 
 /** Adenda con cualquier cambio del contrato: rige desde fechaVigencia hasta la nueva fecha de fin. */
