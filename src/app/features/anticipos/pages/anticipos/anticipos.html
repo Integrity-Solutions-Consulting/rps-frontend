@@ -147,7 +147,7 @@
           } @else if (r.cortesPermitidos.length === 1) {
             <p class="muted small">Cobra solo a fin de mes: la cuota se descuenta en el pago de fin de mes.</p>
           }
-          @if (errorPlan(); as e) {
+          @if (errorPlanMostrado(); as e) {
             <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
           }
           <div class="form-actions">

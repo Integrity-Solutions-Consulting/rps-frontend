@@ -219,8 +219,8 @@ export class Anticipos {
     return this.resumen()?.topesPorCorte?.find((t) => t.corte === corte)?.valorBase ?? null;
   }
 
-  /** El mismo aviso que da el backend, antes de enviar. */
-  private errorDeCortes(): string | null {
+  /** El mismo aviso que da el backend, recalculado en vivo con cada cambio del plan. */
+  protected readonly erroresCuotasCliente = computed<string | null>(() => {
     const permitidos = this.resumen()?.cortesPermitidos ?? ['FinDeMes'];
     const fueraDeCorte = this.cuotas().find((c) => !permitidos.includes(c.corte) && !this.cuotaYaPagada(c));
     if (fueraDeCorte) {
@@ -248,7 +248,10 @@ export class Anticipos {
       }
     }
     return null;
-  }
+  });
+
+  /** Error en vivo si lo hay; si no, el que haya dado el backend al guardar. */
+  protected readonly errorPlanMostrado = computed(() => this.erroresCuotasCliente() ?? this.errorPlan());
 
   protected cambiarCuota(clave: number, cambio: Partial<CuotaForm>): void {
     this.cuotas.update((l) => l.map((c) => (c.clave === clave ? { ...c, ...cambio } : c)));
@@ -262,9 +265,8 @@ export class Anticipos {
   protected guardarPlan(): void {
     const id = this.planDe();
     if (!id) return;
+    if (this.erroresCuotasCliente()) return; // ya se ve en vivo bajo la tabla
     const periodo = primerDia(this.periodo());
-    const errorCortes = this.errorDeCortes();
-    if (errorCortes) { this.errorPlan.set(errorCortes); return; }
     this.guardandoPlan.set(true);
     this.errorPlan.set(null);
     this.api.registrarPlan(this.colaboradorId(), id,
