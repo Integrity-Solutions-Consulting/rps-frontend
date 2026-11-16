@@ -18,8 +18,8 @@
       <div class="field identidad__campo">
         <label for="nu-nombre">Nombre</label>
         <input data-foco-inicial id="nu-nombre" name="nombre" class="input" placeholder="Nombre y apellido" autocomplete="off"
-               [class.is-invalid]="errores()['nombre']" [ngModel]="nombre()" (ngModelChange)="nombre.set($event); limpiar('nombre')" />
-        @if (errores()['nombre']; as e) { <span class="field__error">{{ e }}</span> }
+               [class.is-invalid]="errorDe('nombre')" [ngModel]="nombre()" (ngModelChange)="nombre.set($event); limpiar('nombre')" (blur)="marcarTocado('nombre')" />
+        @if (errorDe('nombre'); as e) { <span class="field__error">{{ e }}</span> }
       </div>
     </div>
 
@@ -27,18 +27,18 @@
       <div class="field">
         <label for="nu-email">Correo</label>
         <input id="nu-email" name="email" type="email" class="input" placeholder="nombre@integritysolutions.com.ec" autocomplete="off"
-               [class.is-invalid]="errores()['email']" [ngModel]="email()" (ngModelChange)="email.set($event); limpiar('email')" />
-        @if (errores()['email']; as e) { <span class="field__error">{{ e }}</span> }
+               [class.is-invalid]="errorDe('email')" [ngModel]="email()" (ngModelChange)="email.set($event); limpiar('email')" (blur)="marcarTocado('email')" />
+        @if (errorDe('email'); as e) { <span class="field__error">{{ e }}</span> }
       </div>
       <div class="field">
         <label for="nu-password">Contraseña</label>
         <div class="clave">
           <input id="nu-password" name="password" class="input" autocomplete="new-password" placeholder="Mínimo 10 caracteres"
                  [type]="verPassword() ? 'text' : 'password'"
-                 [class.is-invalid]="errores()['password']" [ngModel]="password()" (ngModelChange)="password.set($event); limpiar('password')" />
+                 [class.is-invalid]="errorDe('password')" [ngModel]="password()" (ngModelChange)="password.set($event); limpiar('password')" (blur)="marcarTocado('password')" />
           <button type="button" class="clave__ver" [attr.aria-pressed]="verPassword()" (click)="verPassword.set(!verPassword())">{{ verPassword() ? 'Ocultar' : 'Mostrar' }}</button>
         </div>
-        @if (errores()['password']; as e) { <span class="field__error">{{ e }}</span> }
+        @if (errorDe('password'); as e) { <span class="field__error">{{ e }}</span> }
         @else { <span class="field__hint">Con letras y números.</span> }
       </div>
     </div>
@@ -50,12 +50,12 @@
       </div>
       <div class="chips" role="radiogroup" aria-labelledby="nu-rol">
         @for (r of roles(); track r) {
-          <button type="button" role="radio" class="chip-op" [class.is-on]="rol() === r" [attr.aria-checked]="rol() === r" (click)="elegirRol(r)">{{ r }}</button>
+          <button type="button" role="radio" class="chip-op" [class.is-on]="rol() === r" [attr.aria-checked]="rol() === r" (click)="elegirRol(r); marcarTocado('rol')">{{ r }}</button>
         } @empty {
           <span class="field__hint">Cargando roles…</span>
         }
       </div>
-      @if (errores()['rol']; as e) { <span class="field__error">{{ e }}</span> }
+      @if (errorDe('rol'); as e) { <span class="field__error">{{ e }}</span> }
     </div>
 
     <section class="resumen" aria-live="polite">

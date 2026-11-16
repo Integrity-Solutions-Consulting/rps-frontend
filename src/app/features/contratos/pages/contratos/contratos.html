@@ -45,7 +45,9 @@
       <h2>{{ modoFormulario() === 'editar' ? 'Editar contrato' : modoFormulario() === 'adenda' ? 'Registrar adenda' : 'Registrar contrato' }}</h2>
       @if (modoFormulario() === 'editar') {
         <p>Solo para corregir datos (referencia, observaciones, una fecha mal escrita) y, si se paga por contrato, agregar proyectos. Cualquier otro cambio del contrato se hace con "Registrar adenda" desde el detalle.</p>
-      } @else if (modoFormulario() !== 'adenda') {
+      } @else if (modoFormulario() === 'adenda') {
+        <p>Cambia lo que haga falta del contrato: fecha de fin, proyectos, forma de pago o monto. La adenda rige desde hoy hasta la nueva fecha de fin; un cambio de monto rige desde el próximo mes (RN 19).</p>
+      } @else {
         <p>Elige el colaborador y, si aplica, uno o varios proyectos de TMR. Para cambiar un contrato existente usa “Registrar adenda” en su detalle.</p>
       }
     </header>
@@ -64,9 +66,9 @@
           <div class="field campo-ancho combo" [class.is-open]="listaColaboradorAbierta()">
             <label for="buscar-colaborador">Colaborador</label>
             <input id="buscar-colaborador" name="colaborador" type="text" class="input" autocomplete="off"
-                   placeholder="Busca por nombre…" [class.is-invalid]="erroresContrato()['colaborador']"
+                   placeholder="Busca por nombre…" [class.is-invalid]="errorContratoDe('colaborador')"
                    [ngModel]="busquedaColaborador()" (ngModelChange)="buscarColaborador($event)"
-                   (focus)="listaColaboradorAbierta.set(true)" (blur)="cerrarListaColaboradorConRetraso()" />
+                   (focus)="listaColaboradorAbierta.set(true)" (blur)="cerrarListaColaboradorConRetraso(); marcarTocadoContrato('colaborador')" />
             @if (listaColaboradorAbierta()) {
               <ul class="combo__lista" role="listbox">
                 @if (colaboradoresFiltrados().length === 0) {
@@ -80,7 +82,7 @@
                 }
               </ul>
             }
-            @if (erroresContrato()['colaborador']; as e) { <span class="field__error">{{ e }}</span> }
+            @if (errorContratoDe('colaborador'); as e) { <span class="field__error">{{ e }}</span> }
           </div>
         }
 
@@ -115,27 +117,27 @@
         <!-- Paso 3: configuración del colaborador (precargada con lo que ya tiene; obligatoria al registrar) -->
         <div class="field">
           <label for="clasificacion">Tipo de servicio</label>
-          <select id="clasificacion" name="clasificacion" class="select" [class.is-invalid]="erroresContrato()['clasificacion']"
+          <select id="clasificacion" name="clasificacion" class="select" [class.is-invalid]="errorContratoDe('clasificacion')"
                   [disabled]="cargandoConfiguracion() || clasificacionDesdeTmr()"
-                  [ngModel]="clasificacionForm()" (ngModelChange)="clasificacionForm.set($event)">
+                  [ngModel]="clasificacionForm()" (ngModelChange)="clasificacionForm.set($event)" (blur)="marcarTocadoContrato('clasificacion')">
             <option value="">Sin definir</option>
             <option value="Profesional">Servicios profesionales</option>
             <option value="Junior">Servicios junior</option>
           </select>
-          @if (erroresContrato()['clasificacion']; as e) { <span class="field__error">{{ e }}</span> }
+          @if (errorContratoDe('clasificacion'); as e) { <span class="field__error">{{ e }}</span> }
           @else if (clasificacionDesdeTmr()) { @if (modoFormulario() !== 'editar') { <span class="field__hint">Viene de su tipo de contrato en TMR; se cambia allí.</span> } }
           @else { <span class="field__hint">Medio tiempo o consultor externo en TMR: elige si factura como profesional o junior.</span> }
         </div>
         <div class="field">
           <label for="frecuencia">Frecuencia de pago</label>
-          <select id="frecuencia" name="frecuencia" class="select" [class.is-invalid]="erroresContrato()['frecuencia']"
+          <select id="frecuencia" name="frecuencia" class="select" [class.is-invalid]="errorContratoDe('frecuencia')"
                   [disabled]="cargandoConfiguracion()"
-                  [ngModel]="frecuenciaForm()" (ngModelChange)="frecuenciaForm.set($event)">
+                  [ngModel]="frecuenciaForm()" (ngModelChange)="frecuenciaForm.set($event)" (blur)="marcarTocadoContrato('frecuencia')">
             <option value="">Sin definir</option>
             <option value="DosPagos">Quincena y fin de mes</option>
             <option value="FinDeMes">Solo fin de mes</option>
           </select>
-          @if (erroresContrato()['frecuencia']; as e) {
+          @if (errorContratoDe('frecuencia'); as e) {
             <span class="field__error">{{ e }}</span>
           } @else if (frecuenciaActual() && frecuenciaForm() === frecuenciaActual()!.frecuencia) {
             <span class="field__hint">Vigente desde {{ frecuenciaActual()!.vigenteDesdeMes | date: 'MM/yyyy' : 'UTC' }}.</span>
@@ -152,16 +154,19 @@
           <div class="field">
             <label>Desde (fecha de la adenda)</label>
             <input class="input" type="text" value="Hoy" disabled />
+            <span class="field__hint">La adenda rige desde el día en que se registra.</span>
           </div>
           <div class="field">
             <label for="fin">Hasta (nueva fecha de fin del contrato)</label>
             @if (indefinidoForm()) {
               <input class="input" type="text" value="Indefinido" disabled />
+              <span class="field__hint">El contrato es indefinido: no tiene fecha de fin.</span>
             } @else {
-              <input id="fin" name="fin" type="date" class="input" max="9999-12-31" [class.is-invalid]="erroresContrato()['fechaFin']"
-                     [min]="finForm() || '2000-01-01'" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
+              <input id="fin" name="fin" type="date" class="input" max="9999-12-31" [class.is-invalid]="errorContratoDe('fechaFin')"
+                     [min]="finForm() || '2000-01-01'" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" (blur)="marcarTocadoContrato('fechaFin')" />
+              @if (!errorContratoDe('fechaFin')) { <span class="field__hint">Igual o posterior al fin vigente; déjala igual si no cambia.</span> }
             }
-            @if (erroresContrato()['fechaFin']; as e) { <span class="field__error">{{ e }}</span> }
+            @if (errorContratoDe('fechaFin'); as e) { <span class="field__error">{{ e }}</span> }
           </div>
           <div class="field campo-ancho">
             <label for="obs-adenda-form">Observaciones de la adenda (opcional)</label>
@@ -171,23 +176,23 @@
         } @else {
           <div class="field">
             <label for="inicio">Inicio</label>
-            <input id="inicio" name="inicio" type="date" class="input" min="2000-01-01" max="9999-12-31" [class.is-invalid]="erroresContrato()['fechaInicio']"
-                   [ngModel]="inicioForm()" (ngModelChange)="inicioForm.set($event)" />
-            @if (erroresContrato()['fechaInicio']; as e) { <span class="field__error">{{ e }}</span> }
+            <input id="inicio" name="inicio" type="date" class="input" min="2000-01-01" max="9999-12-31" [class.is-invalid]="errorContratoDe('fechaInicio')"
+                   [ngModel]="inicioForm()" (ngModelChange)="inicioForm.set($event)" (blur)="marcarTocadoContrato('fechaInicio')" />
+            @if (errorContratoDe('fechaInicio'); as e) { <span class="field__error">{{ e }}</span> }
           </div>
           <div class="field">
             <label for="fin">Fin</label>
             @if (modoFormulario() === 'editar') {
               <input class="input" [value]="indefinidoForm() ? 'Indefinido' : finForm()" [attr.type]="indefinidoForm() ? 'text' : 'date'" disabled />
             } @else {
-              <input id="fin" name="fin" type="date" class="input" max="9999-12-31" [class.is-invalid]="erroresContrato()['fechaFin']"
-                     [disabled]="indefinidoForm()" [min]="inicioForm() || '2000-01-01'" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
+              <input id="fin" name="fin" type="date" class="input" max="9999-12-31" [class.is-invalid]="errorContratoDe('fechaFin')"
+                     [disabled]="indefinidoForm()" [min]="inicioForm() || '2000-01-01'" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" (blur)="marcarTocadoContrato('fechaFin')" />
               <label class="check check--inline">
                 <input type="checkbox" name="indefinido" [ngModel]="indefinidoForm()" (ngModelChange)="indefinidoForm.set($event)" />
                 <span>Indefinido (sin fecha de fin)</span>
               </label>
             }
-            @if (erroresContrato()['fechaFin']; as e) { <span class="field__error">{{ e }}</span> }
+            @if (errorContratoDe('fechaFin'); as e) { <span class="field__error">{{ e }}</span> }
           </div>
           <div class="field">
             <label for="referencia">Referencia (opcional)</label>
@@ -226,6 +231,9 @@
               Por proyecto
             </label>
           </div>
+          @if (modoFormulario() === 'adenda') {
+            <span class="field__hint">Si cambias el monto o la forma de pago, rige desde el próximo mes y lo actual se mantiene para los meses anteriores (RN 19).</span>
+          }
 
           @if (pagoPorContrato()) {
             <div class="form-grid">
@@ -233,9 +241,12 @@
                 <label for="importe-contrato">Monto mensual del contrato</label>
                 <div class="dinero">
                   <span>$</span>
-                  <input id="importe-contrato" name="importeContrato" class="input num" placeholder="0.00"
-                         [ngModel]="honorarioContratoForm().importe" (ngModelChange)="actualizarHonorarioContratoImporte($event)" />
+                  <input id="importe-contrato" name="importeContrato" class="input num" appSoloNumeros="monto" placeholder="0.00"
+                         [class.is-invalid]="errorContratoDe('honorarioContrato')"
+                         [ngModel]="honorarioContratoForm().importe" (ngModelChange)="actualizarHonorarioContratoImporte($event)"
+                         (blur)="marcarTocadoContrato('honorarioContrato')" />
                 </div>
+                @if (errorContratoDe('honorarioContrato'); as e) { <span class="field__error">{{ e }}</span> }
               </div>
               <div class="field">
                 <label for="modalidad-contrato">Modalidad</label>
@@ -246,7 +257,7 @@
                 </select>
               </div>
             </div>
-            @if (modoFormulario() !== 'adenda') { <span class="field__hint">Un solo monto fijo para todo el contrato, tenga los proyectos que tenga (o ninguno). Se paga mientras el contrato esté vigente: si se acaba un proyecto no cambia; si el contrato empieza o termina a mitad de mes, se paga el proporcional.</span> }
+            <span class="field__hint">Un solo monto fijo para todo el contrato, tenga los proyectos que tenga (o ninguno). Se paga mientras el contrato esté vigente: si se acaba un proyecto no cambia; si el contrato empieza o termina a mitad de mes, se paga el proporcional.</span>
           } @else if (proyectosElegidos().size === 0) {
             <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>Elige al menos un proyecto para pagar por proyecto.</div></div>
           } @else {
@@ -261,10 +272,13 @@
                         <td class="r">
                           <div class="dinero">
                             <span>$</span>
-                            <input [name]="'importe-' + a.tmrProyectoId" class="input num" placeholder="0.00"
+                            <input [name]="'importe-' + a.tmrProyectoId" class="input num" appSoloNumeros="monto" placeholder="0.00"
+                                   [class.is-invalid]="errorContratoDe('honorario-' + a.tmrProyectoId)"
                                    [ngModel]="honorarioDe(a.tmrProyectoId).importe"
-                                   (ngModelChange)="actualizarImporte(a.tmrProyectoId, $event)" />
+                                   (ngModelChange)="actualizarImporte(a.tmrProyectoId, $event)"
+                                   (blur)="marcarTocadoContrato('honorario-' + a.tmrProyectoId)" />
                           </div>
+                          @if (errorContratoDe('honorario-' + a.tmrProyectoId); as e) { <span class="field__error">{{ e }}</span> }
                         </td>
                         <td>
                           <select [name]="'modalidad-' + a.tmrProyectoId" class="select"
@@ -280,7 +294,7 @@
                 </tbody>
               </table>
             </div>
-            @if (modoFormulario() !== 'adenda') { <span class="field__hint">Cada proyecto se paga desde que la persona entra hasta el día que sale de él (y dentro de las fechas del contrato). Si sale de un proyecto, ese monto deja de pagarse; el dashboard avisa antes.</span> }
+            <span class="field__hint">Cada proyecto se paga desde que la persona entra hasta el día que sale de él (y dentro de las fechas del contrato). Si sale de un proyecto, ese monto deja de pagarse; el dashboard avisa antes.</span>
           }
         </div>
         }
@@ -307,11 +321,11 @@
         </div>
         <div class="field">
           <label for="numero-cuenta">Número de cuenta</label>
-          <input id="numero-cuenta" name="numeroCuenta" class="input num" maxlength="30"
-                 [class.is-invalid]="erroresContrato()['numeroCuenta']" [disabled]="cargandoConfiguracion()"
+          <input id="numero-cuenta" name="numeroCuenta" class="input num" appSoloNumeros="entero" maxlength="30"
+                 [class.is-invalid]="errorContratoDe('numeroCuenta')" [disabled]="cargandoConfiguracion()"
                  [placeholder]="cuentaEnmascarada() ?? 'Solo dígitos'"
-                 [ngModel]="numeroCuentaForm()" (ngModelChange)="numeroCuentaForm.set($event)" />
-          @if (erroresContrato()['numeroCuenta']; as e) {
+                 [ngModel]="numeroCuentaForm()" (ngModelChange)="numeroCuentaForm.set($event)" (blur)="marcarTocadoContrato('numeroCuenta')" />
+          @if (errorContratoDe('numeroCuenta'); as e) {
             <span class="field__error">{{ e }}</span>
           } @else if (cuentaEnmascarada(); as c) {
             <span class="field__hint">Registrada: {{ c }}. Déjalo vacío para mantenerla.</span>
@@ -487,7 +501,7 @@
             <div class="field">
               <label for="nueva-fin">Fecha hasta (corrección)</label>
               <input id="nueva-fin" name="nuevaFin" type="date" class="input" min="2000-01-01" max="9999-12-31" [class.is-invalid]="errorAdendaCampo()"
-                     [ngModel]="nuevaFinForm()" (ngModelChange)="nuevaFinForm.set($event)" />
+                     [ngModel]="nuevaFinForm()" (ngModelChange)="cambiarNuevaFin($event)" />
               @if (errorAdendaCampo(); as e) { <span class="field__error">{{ e }}</span> }
               @else { <span class="field__hint">Fin vigente actual: {{ d.fechaFinVigente | date: 'dd MMM yyyy' }}.</span> }
             </div>

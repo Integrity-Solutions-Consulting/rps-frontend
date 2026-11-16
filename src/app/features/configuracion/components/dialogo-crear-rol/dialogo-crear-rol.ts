@@ -34,11 +34,33 @@ export class DialogoCrearRol {
   protected readonly nombre = signal('');
   protected readonly descripcion = signal('');
   protected readonly permisos = signal<Permisos>(permisosDesdeLista([]));
-  protected readonly errores = signal<Record<string, string>>({});
+  /** Errores que solo puede dar el backend (nombre duplicado, largos exactos, etc.). */
+  private readonly erroresServidor = signal<Record<string, string>>({});
   protected readonly error = signal<string | null>(null);
   protected readonly guardando = signal(false);
   protected readonly todos = computed(() => this.modulos.every((m) => this.permisos()[m.clave]));
   protected readonly elegidos = computed(() => this.modulos.filter((m) => this.permisos()[m.clave]).length);
+
+  /** Campos que el usuario ya visitó (blur) o que ya intentó guardar: a partir de ahí se muestra el error en vivo. */
+  private readonly tocados = signal<ReadonlySet<string>>(new Set());
+  private readonly intentoGuardar = signal(false);
+
+  /** Reglas que se pueden validar sin backend, recalculadas en cada cambio. */
+  private readonly erroresCliente = computed<Record<string, string>>(() => {
+    const errores: Record<string, string> = {};
+    if (!this.nombre().trim()) errores['nombre'] = 'Escribe el nombre del rol.';
+    return errores;
+  });
+
+  protected marcarTocado(campo: string): void {
+    if (!this.tocados().has(campo)) this.tocados.update((t) => new Set(t).add(campo));
+  }
+
+  /** Error a mostrar para ese campo, o null si todavía no corresponde mostrarlo (no tocado ni se intentó guardar). */
+  protected errorDe(campo: string): string | null {
+    if (!this.tocados().has(campo) && !this.intentoGuardar()) return null;
+    return this.erroresServidor()[campo] ?? this.erroresCliente()[campo] ?? null;
+  }
 
   protected cambiarNombre(valor: string): void {
     this.nombre.set(valor);
@@ -60,20 +82,18 @@ export class DialogoCrearRol {
   }
 
   protected crear(): void {
+    this.intentoGuardar.set(true);
+    this.error.set(null);
+    if (Object.keys(this.erroresCliente()).length) return;
     const nombre = this.nombre().trim();
     const descripcion = this.descripcion().trim();
-    this.error.set(null);
-    if (!nombre) {
-      this.errores.set({ nombre: 'Escribe el nombre del rol.' });
-      return;
-    }
     this.guardando.set(true);
     this.api.crear(nombre, listaDesdePermisos(this.permisos()), descripcion || null).subscribe({
       next: (r) => { this.guardando.set(false); this.creado.emit(r); },
       error: (e: unknown) => {
         this.guardando.set(false);
         const err = leerErrorApi(e);
-        this.errores.set(err.campos);
+        this.erroresServidor.set(err.campos);
         // Si el error no es de un campo que se muestra aquí, va como aviso general.
         if (!['nombre', 'descripcion', 'permisos'].some((c) => err.campos[c])) this.error.set(err.mensaje);
       },
@@ -81,6 +101,6 @@ export class DialogoCrearRol {
   }
 
   private limpiar(campo: string): void {
-    if (this.errores()[campo]) this.errores.update(({ [campo]: _, ...resto }) => resto);
+    if (this.erroresServidor()[campo]) this.erroresServidor.update(({ [campo]: _, ...resto }) => resto);
   }
 }

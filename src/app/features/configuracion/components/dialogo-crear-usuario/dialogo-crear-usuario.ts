@@ -35,9 +35,27 @@ export class DialogoCrearUsuario {
   protected readonly password = signal('');
   protected readonly verPassword = signal(false);
   protected readonly rol = signal<RolSistema | null>(null);
-  protected readonly errores = signal<Record<string, string>>({});
+  /** Errores que solo puede dar el backend (correo ya usado, rol inexistente, etc.). */
+  private readonly erroresServidor = signal<Record<string, string>>({});
   protected readonly error = signal<string | null>(null);
   protected readonly guardando = signal(false);
+
+  /** Campos que el usuario ya visitó (blur) o que ya intentó guardar: a partir de ahí se muestra el error en vivo. */
+  private readonly tocados = signal<ReadonlySet<string>>(new Set());
+  private readonly intentoGuardar = signal(false);
+
+  /** Reglas que se pueden validar sin backend, recalculadas en cada cambio. */
+  private readonly erroresCliente = computed<Record<string, string>>(() => {
+    const errores: Record<string, string> = {};
+    const email = this.email().trim();
+    const password = this.password();
+    if (!this.nombre().trim()) errores['nombre'] = 'Escribe el nombre del usuario.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errores['email'] = 'Escribe un correo válido.';
+    if (password.length < 10 || !/[a-zA-Z]/.test(password) || !/\d/.test(password))
+      errores['password'] = 'Mínimo 10 caracteres, con letras y números.';
+    if (!this.rol()) errores['rol'] = 'Elige un rol.';
+    return errores;
+  });
 
   protected readonly iniciales = computed(() => (this.nombre().trim() ? iniciales(this.nombre()) : ''));
 
@@ -58,7 +76,17 @@ export class DialogoCrearUsuario {
   }
 
   protected limpiar(campo: string): void {
-    if (this.errores()[campo]) this.errores.update(({ [campo]: _, ...resto }) => resto);
+    if (this.erroresServidor()[campo]) this.erroresServidor.update(({ [campo]: _, ...resto }) => resto);
+  }
+
+  protected marcarTocado(campo: string): void {
+    if (!this.tocados().has(campo)) this.tocados.update((t) => new Set(t).add(campo));
+  }
+
+  /** Error a mostrar para ese campo, o null si todavía no corresponde mostrarlo (no tocado ni se intentó guardar). */
+  protected errorDe(campo: string): string | null {
+    if (!this.tocados().has(campo) && !this.intentoGuardar()) return null;
+    return this.erroresServidor()[campo] ?? this.erroresCliente()[campo] ?? null;
   }
 
   protected elegirRol(r: RolSistema): void {
@@ -67,25 +95,19 @@ export class DialogoCrearUsuario {
   }
 
   protected crear(): void {
-    const errores: Record<string, string> = {};
+    this.intentoGuardar.set(true);
+    this.error.set(null);
+    if (Object.keys(this.erroresCliente()).length) return;
+
     const email = this.email().trim();
     const password = this.password();
-    if (!this.nombre().trim()) errores['nombre'] = 'Escribe el nombre del usuario.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errores['email'] = 'Escribe un correo válido.';
-    if (password.length < 10 || !/[a-zA-Z]/.test(password) || !/\d/.test(password))
-      errores['password'] = 'Mínimo 10 caracteres, con letras y números.';
-    if (!this.rol()) errores['rol'] = 'Elige un rol.';
-    this.errores.set(errores);
-    this.error.set(null);
-    if (Object.keys(errores).length) return;
-
     this.guardando.set(true);
     this.api.crear({ nombre: this.nombre().trim(), email, password, rol: this.rol()! }).subscribe({
       next: () => { this.guardando.set(false); this.creado.emit(email); },
       error: (e: unknown) => {
         this.guardando.set(false);
         const err = leerErrorApi(e);
-        if (Object.keys(err.campos).length) this.errores.set(err.campos);
+        if (Object.keys(err.campos).length) this.erroresServidor.set(err.campos);
         else this.error.set(err.mensaje);
       },
     });
