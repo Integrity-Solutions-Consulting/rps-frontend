@@ -45,9 +45,7 @@
       <h2>{{ modoFormulario() === 'editar' ? 'Editar contrato' : modoFormulario() === 'adenda' ? 'Registrar adenda' : 'Registrar contrato' }}</h2>
       @if (modoFormulario() === 'editar') {
         <p>Solo para corregir datos (referencia, observaciones, una fecha mal escrita) y, si se paga por contrato, agregar proyectos. Cualquier otro cambio del contrato se hace con "Registrar adenda" desde el detalle.</p>
-      } @else if (modoFormulario() === 'adenda') {
-        <p>Cambia lo que haga falta del contrato: fecha de fin, proyectos, forma de pago o monto. La adenda rige desde hoy hasta la nueva fecha de fin; un cambio de monto rige desde el próximo mes (RN 19).</p>
-      } @else {
+      } @else if (modoFormulario() !== 'adenda') {
         <p>Elige el colaborador y, si aplica, uno o varios proyectos de TMR. Para cambiar un contrato existente usa “Registrar adenda” en su detalle.</p>
       }
     </header>
@@ -90,13 +88,6 @@
         @if (colaboradorElegidoId()) {
           <div class="field campo-ancho">
             <label>Proyectos que cubre este contrato (opcional)</label>
-            @if (modoFormulario() === 'editar') {
-              <span class="field__hint">
-                {{ modoOriginal() === 'proyecto'
-                  ? 'Se paga por proyecto: para agregar o quitar proyectos registra una adenda.'
-                  : 'Puedes agregar proyectos (no cambia el pago). Para quitar uno, registra una adenda.' }}
-              </span>
-            }
             @if (asignacionesDelColaborador().length === 0) {
               <p class="field__hint">Sin asignaciones disponibles en TMR: este contrato queda sin proyecto (ej. personal de RR. HH.).</p>
             } @else {
@@ -132,7 +123,7 @@
             <option value="Junior">Servicios junior</option>
           </select>
           @if (erroresContrato()['clasificacion']; as e) { <span class="field__error">{{ e }}</span> }
-          @else if (clasificacionDesdeTmr()) { <span class="field__hint">Viene de su tipo de contrato en TMR; se cambia allí.</span> }
+          @else if (clasificacionDesdeTmr()) { @if (modoFormulario() !== 'editar') { <span class="field__hint">Viene de su tipo de contrato en TMR; se cambia allí.</span> } }
           @else { <span class="field__hint">Medio tiempo o consultor externo en TMR: elige si factura como profesional o junior.</span> }
         </div>
         <div class="field">
@@ -150,7 +141,7 @@
             <span class="field__hint">Vigente desde {{ frecuenciaActual()!.vigenteDesdeMes | date: 'MM/yyyy' : 'UTC' }}.</span>
           } @else if (frecuenciaActual()) {
             <span class="field__hint">El cambio rige desde el próximo mes; este mes se mantiene la actual.</span>
-          } @else {
+          } @else if (modoFormulario() !== 'editar') {
             <span class="field__hint">Rige desde este mismo mes.</span>
           }
         </div>
@@ -161,17 +152,14 @@
           <div class="field">
             <label>Desde (fecha de la adenda)</label>
             <input class="input" type="text" value="Hoy" disabled />
-            <span class="field__hint">La adenda rige desde el día en que se registra.</span>
           </div>
           <div class="field">
             <label for="fin">Hasta (nueva fecha de fin del contrato)</label>
             @if (indefinidoForm()) {
               <input class="input" type="text" value="Indefinido" disabled />
-              <span class="field__hint">El contrato es indefinido: no tiene fecha de fin.</span>
             } @else {
               <input id="fin" name="fin" type="date" class="input" max="9999-12-31" [class.is-invalid]="erroresContrato()['fechaFin']"
                      [min]="finForm() || '2000-01-01'" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
-              @if (!erroresContrato()['fechaFin']) { <span class="field__hint">Igual o posterior al fin vigente; déjala igual si no cambia.</span> }
             }
             @if (erroresContrato()['fechaFin']; as e) { <span class="field__error">{{ e }}</span> }
           </div>
@@ -191,7 +179,6 @@
             <label for="fin">Fin</label>
             @if (modoFormulario() === 'editar') {
               <input class="input" [value]="indefinidoForm() ? 'Indefinido' : finForm()" [attr.type]="indefinidoForm() ? 'text' : 'date'" disabled />
-              <span class="field__hint">No se edita aquí (RN 12): para cambiarlo, registra una adenda desde el detalle.</span>
             } @else {
               <input id="fin" name="fin" type="date" class="input" max="9999-12-31" [class.is-invalid]="erroresContrato()['fechaFin']"
                      [disabled]="indefinidoForm()" [min]="inicioForm() || '2000-01-01'" [ngModel]="finForm()" (ngModelChange)="finForm.set($event)" />
@@ -206,7 +193,7 @@
             <label for="referencia">Referencia (opcional)</label>
             <input id="referencia" name="referencia" class="input" maxlength="100" placeholder="Ej. CT-2026-031"
                    [ngModel]="referenciaForm()" (ngModelChange)="referenciaForm.set($event)" />
-            <span class="field__hint">El número o código con el que Contabilidad archiva este documento.</span>
+            @if (modoFormulario() !== 'editar') { <span class="field__hint">El número o código con el que Contabilidad archiva este documento.</span> }
           </div>
           <div class="field campo-ancho">
             <label for="observaciones">Observaciones (opcional)</label>
@@ -224,7 +211,6 @@
             } @else {
               <p class="valor-fijo">Por proyecto (un monto por cada proyecto).</p>
             }
-            <span class="field__hint">El monto o la forma de pago se cambian con una adenda.</span>
           </div>
         } @else {
         <!-- Paso 4: cómo se paga el contrato y cuánto -->
@@ -240,9 +226,6 @@
               Por proyecto
             </label>
           </div>
-          @if (modoFormulario() === 'adenda') {
-            <span class="field__hint">Si cambias el monto o la forma de pago, rige desde el próximo mes y lo actual se mantiene para los meses anteriores (RN 19).</span>
-          }
 
           @if (pagoPorContrato()) {
             <div class="form-grid">
@@ -263,7 +246,7 @@
                 </select>
               </div>
             </div>
-            <span class="field__hint">Un solo monto fijo para todo el contrato, tenga los proyectos que tenga (o ninguno). Se paga mientras el contrato esté vigente: si se acaba un proyecto no cambia; si el contrato empieza o termina a mitad de mes, se paga el proporcional.</span>
+            @if (modoFormulario() !== 'adenda') { <span class="field__hint">Un solo monto fijo para todo el contrato, tenga los proyectos que tenga (o ninguno). Se paga mientras el contrato esté vigente: si se acaba un proyecto no cambia; si el contrato empieza o termina a mitad de mes, se paga el proporcional.</span> }
           } @else if (proyectosElegidos().size === 0) {
             <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>Elige al menos un proyecto para pagar por proyecto.</div></div>
           } @else {
@@ -297,7 +280,7 @@
                 </tbody>
               </table>
             </div>
-            <span class="field__hint">Cada proyecto se paga desde que la persona entra hasta el día que sale de él (y dentro de las fechas del contrato). Si sale de un proyecto, ese monto deja de pagarse; el dashboard avisa antes.</span>
+            @if (modoFormulario() !== 'adenda') { <span class="field__hint">Cada proyecto se paga desde que la persona entra hasta el día que sale de él (y dentro de las fechas del contrato). Si sale de un proyecto, ese monto deja de pagarse; el dashboard avisa antes.</span> }
           }
         </div>
         }
