@@ -39,8 +39,7 @@
 /* Recuadro gris de resumen con mini tarjetas */
 .resumen { display: grid; gap: 14px; padding: 16px; border: 1px solid #e6ebf0; border-radius: 12px; background: #f5f7f9; }
 .resumen__head { display: flex; align-items: center; gap: 12px;
-  strong { display: block; font-size: 14px; }
-  span { display: block; font-size: 12.5px; color: var(--rps-muted); } }
+  > div { strong { display: block; font-size: 14px; } span { display: block; font-size: 12.5px; color: var(--rps-muted); } } }
 .resumen__icono { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 8px;
   background: var(--rps-surface); border: 1px solid #e6ebf0; color: var(--rps-teal); }
 .resumen__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
