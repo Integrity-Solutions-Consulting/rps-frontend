@@ -31,10 +31,6 @@
       <section class="card vacio-grande" aria-labelledby="vacio-titulo">
         <span class="vacio-grande__icono"><app-icon name="calculator" [size]="26" /></span>
         <h2 id="vacio-titulo">{{ nombreMes() }} todavía no se calcula</h2>
-        <p>
-          Al calcular, RPS arma la liquidación de cada colaborador con los días que trabajó en sus proyectos del mes,
-          sus impuestos y los cortes de pago (RN 17 a 25). Después la revisas y la exportas.
-        </p>
 
         <div class="requisitos">
           <h3>Antes de calcular</h3>
@@ -348,9 +344,13 @@
             </div>
 
             <div class="neto">
-              <span>Neto del período</span>
-              <strong class="importe-grande">{{ det.netoConsolidado | dinero }}</strong>
-              <small class="muted">Neto consolidado que calculó el backend, antes de anticipos.</small>
+              @if (subtotalMasIva(); as subtotal) {
+                <span>Honorario del período</span>
+                <strong class="importe-grande">{{ subtotal | dinero }} + IVA</strong>
+              } @else {
+                <span>Neto del período</span>
+                <strong class="importe-grande">{{ det.netoConsolidado | dinero }}</strong>
+              }
             </div>
 
             <!-- Proyecto por proyecto (RN 17, RN 28) -->
@@ -362,7 +362,7 @@
                   <app-estado-chip tono="info">{{ etiquetaModalidad[p.modalidad] }}</app-estado-chip>
                 </header>
                 <dl class="desglose">
-                  <div><dt>Proporcional acordado ({{ p.diasReconocidos }}/{{ p.diasReales }} días)</dt><dd>{{ p.proporcionalAcordado | dinero }}</dd></div>
+                  <div><dt>Proporcional acordado</dt><dd>{{ p.proporcionalAcordado | dinero }}</dd></div>
                   <div><dt>Subtotal</dt><dd>{{ p.subtotal | dinero }}</dd></div>
                   <div><dt>IVA</dt><dd>{{ p.iva | dinero }}</dd></div>
                   <div><dt>Total del documento</dt><dd>{{ p.totalDocumento | dinero }}</dd></div>
@@ -410,10 +410,9 @@
             <div class="revision">
               @if (det.revisado) {
                 <app-estado-chip tono="ok">Revisada para envío</app-estado-chip>
-                <small class="muted">
-                  @if (det.revisadoEn) { El {{ det.revisadoEn | date: 'dd MMM yyyy, HH:mm' }}@if (det.revisadoPorMi) { , por ti }. }
-                  No confirma una transferencia.
-                </small>
+                @if (det.revisadoEn) {
+                  <small class="muted">El {{ det.revisadoEn | date: 'dd MMM yyyy, HH:mm' }}@if (det.revisadoPorMi) { , por ti }.</small>
+                }
                 <!-- Seguir revisando sin volver a la lista -->
                 @if (siguientePendiente(); as sig) {
                   <button type="button" class="btn btn--primary siguiente" (click)="irASiguiente()">
@@ -429,7 +428,6 @@
                 <button type="button" class="btn btn--primary" (click)="pedirRevision([det])" [disabled]="guardandoRevision()">
                   <app-icon name="check" [size]="17" /> {{ guardandoRevision() ? 'Guardando…' : 'Marcar revisada para envío' }}
                 </button>
-                <small class="muted">No confirma una transferencia; solo indica que la información fue revisada.</small>
               }
             </div>
 
