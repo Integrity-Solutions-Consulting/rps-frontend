@@ -129,7 +129,12 @@ export class Liquidaciones {
   protected readonly totales = computed(() => {
     const filas = this.filasVisibles();
     const de = (corte: 'Quincena' | 'FinDeMes', campo: 'descuento' | 'valor') =>
-      sumar(filas.map((l) => corteDe(l, corte)?.[campo] ?? 0));
+      sumar(filas.map((l) => {
+        const c = corteDe(l, corte);
+        if (!c) return 0;
+        // "Desc." junta anticipos y préstamos, igual que la columna de la tabla.
+        return campo === 'descuento' ? c.descuento + c.prestamos : c.valor;
+      }));
     return {
       neto: sumar(filas.map((l) => l.netoConsolidado)),
       descQuincena: de('Quincena', 'descuento'), valorQuincena: de('Quincena', 'valor'),

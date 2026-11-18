@@ -35,6 +35,8 @@ export interface CorteLiquidacion {
   recuperacionNoAplicada: number;
   /** > 0: la quincena se redujo porque el mes resultó más corto de lo previsto (salida a mitad de mes). */
   ajustePorProrrateo: number;
+  /** Cuotas de préstamos descontadas en el corte (ya restadas de valor). */
+  prestamos: number;
 }
 
 export interface LiquidacionResumen {

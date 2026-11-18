@@ -1,0 +1,306 @@
+<div class="pagina">
+  <header class="pagina__head">
+    <div>
+      <h1>Préstamos</h1>
+      <p class="muted">Dinero entregado completo al colaborador y devuelto en las fechas que se acuerden.</p>
+    </div>
+    @if (resumen() && editando() === null) {
+      <button type="button" class="btn btn--primary" (click)="nuevo()" [disabled]="!resumen()!.activo">
+        <app-icon name="plus" [size]="16" /> Registrar préstamo
+      </button>
+    }
+  </header>
+
+  <!-- ── Colaborador ──────────────────────────────────────────────── -->
+  <section class="card colaborador">
+    <div class="field">
+      <label for="colaborador">Colaborador</label>
+      <app-buscador inputId="colaborador" [opciones]="opciones()" [valor]="colaboradorId()" (elegir)="elegirColaborador($event)"
+                    [placeholder]="opciones().length ? 'Escribe nombre o apellido…' : 'Sin colaboradores activos'"
+                    textoVacio="Ningún colaborador coincide con lo escrito." />
+    </div>
+    @if (resumen(); as r) {
+      <div class="colaborador__dato">
+        <span class="muted small">Frecuencia de pago</span>
+        <strong>{{ r.cobraEnQuincena ? 'Quincena y fin de mes' : 'Solo fin de mes' }}</strong>
+      </div>
+    }
+    @if (colaboradorId()) {
+      <a class="ficha" [routerLink]="['/colaboradores', colaboradorId()]">Ver ficha</a>
+    }
+  </section>
+
+  @if (errorCarga()) {
+    <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ errorCarga() }}</div></div>
+  }
+
+  @if (cargando() && !resumen()) {
+    <div class="indicadores">@for (i of [1, 2, 3, 4]; track i) { <div class="card skeleton" style="height: 82px"></div> }</div>
+  } @else if (resumen(); as r) {
+    <!-- ── Indicadores (GET .../prestamos/resumen) ────────────────── -->
+    <section class="indicadores" aria-label="Resumen de préstamos">
+      <article class="card indicador">
+        <span class="indicador__icono"><app-icon name="cash" [size]="22" /></span>
+        <div class="indicador__cuerpo">
+          <span class="indicador__etiqueta">Préstamos activos</span>
+          <strong class="indicador__valor num">{{ r.prestamosActivos }}</strong>
+          <span class="indicador__ayuda">Con saldo por cobrar</span>
+        </div>
+      </article>
+      <article class="card indicador">
+        <span class="indicador__icono"><app-icon name="coins" [size]="22" /></span>
+        <div class="indicador__cuerpo">
+          <span class="indicador__etiqueta">Total prestado</span>
+          <strong class="indicador__valor num">{{ r.totalPrestado | dinero }}</strong>
+          <span class="indicador__ayuda">Entregado completo</span>
+        </div>
+      </article>
+      <article class="card indicador" [class.indicador--warn]="r.saldoPendiente > 0">
+        <span class="indicador__icono indicador__icono--warn"><app-icon name="file" [size]="22" /></span>
+        <div class="indicador__cuerpo">
+          <span class="indicador__etiqueta">Saldo pendiente</span>
+          <strong class="indicador__valor num">{{ r.saldoPendiente | dinero }}</strong>
+          <span class="indicador__ayuda">{{ r.cobrado | dinero }} ya cobrado en liquidaciones</span>
+        </div>
+      </article>
+      <article class="card indicador indicador--ok">
+        <span class="indicador__icono indicador__icono--ok"><app-icon name="calendar" [size]="22" /></span>
+        <div class="indicador__cuerpo">
+          <span class="indicador__etiqueta">Próximo cobro</span>
+          <strong class="indicador__valor num">{{ r.proximoCobroFecha ? (r.proximoCobroImporte | dinero) : '—' }}</strong>
+          <span class="indicador__ayuda">{{ r.proximoCobroFecha ? (r.proximoCobroFecha | date: 'dd MMM yyyy') : 'Sin cobros programados' }}</span>
+        </div>
+      </article>
+    </section>
+
+    @if (!r.activo) {
+      <div class="aviso aviso--warn"><app-icon name="alert" [size]="18" /><div>El colaborador está desactivado en RPS: no se le pueden registrar préstamos.</div></div>
+    }
+
+    <!-- ── Registrar / editar (POST o PUT) ────────────────────────── -->
+    @if (editando() !== null) {
+      <form class="dos-columnas" (submit)="$event.preventDefault(); guardar()">
+        <section class="card formulario">
+          <h2>{{ prestamoEditado() ? 'Editar préstamo' : '1. Datos del préstamo' }}</h2>
+          <div class="field">
+            <label for="monto">Monto prestado</label>
+            <div class="con-prefijo"><span>$</span>
+              <input id="monto" name="monto" class="input num" appSoloNumeros="monto" placeholder="0,00"
+                     [ngModel]="monto()" (ngModelChange)="monto.set($event)" />
+            </div>
+            <span class="muted small">Puede ser mayor que su honorario: se entrega completo.</span>
+          </div>
+          @if (prestamoEditado(); as p) {
+            <div class="field">
+              <span class="field__label">Fecha de entrega</span>
+              <strong class="num">{{ p.fecha | date: 'dd MMM yyyy' }}</strong>
+            </div>
+          } @else {
+            <div class="field">
+              <label for="entrega">Fecha de entrega</label>
+              <input id="entrega" name="entrega" type="date" class="input" [ngModel]="fechaEntrega()"
+                     (ngModelChange)="cambiarFechaEntrega($event)" />
+            </div>
+          }
+          <div class="field">
+            <label for="obs">Observaciones (opcional)</label>
+            <textarea id="obs" name="obs" class="input area" maxlength="500" rows="3"
+                      [ngModel]="observaciones()" (ngModelChange)="observaciones.set($event)"></textarea>
+          </div>
+        </section>
+
+        <section class="card formulario">
+          <div class="plan__head">
+            <h2>{{ prestamoEditado() ? 'Plan de pagos' : '2. Plan de pagos' }}</h2>
+            <span class="muted small">Desde {{ nombrePeriodo(primerMes()).toLowerCase() }} · quincena (15) o fin de mes</span>
+          </div>
+
+          <!-- Atajo opcional: llena la tabla y luego se edita a mano. -->
+          <div class="repartir">
+            <div class="field">
+              <label for="rep-meses">Repartir en</label>
+              <select id="rep-meses" name="rep-meses" class="select" [ngModel]="repartirMeses()" (ngModelChange)="repartirMeses.set($event)">
+                @for (n of [1, 2, 3, 4, 5, 6, 8, 10, 12]; track n) { <option [value]="'' + n">{{ n }} {{ n === 1 ? 'mes' : 'meses' }}</option> }
+              </select>
+            </div>
+            <div class="field">
+              <label for="rep-modo">Cobrar en</label>
+              <select id="rep-modo" name="rep-modo" class="select" [ngModel]="cobraEnQuincena() ? repartirModo() : 'fin'"
+                      (ngModelChange)="repartirModo.set($event)" [disabled]="!cobraEnQuincena()">
+                <option value="ambos">Quincena y fin de mes</option>
+                <option value="quincena">Solo quincena</option>
+                <option value="fin">Solo fin de mes</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="rep-desde">Desde</label>
+              <input id="rep-desde" name="rep-desde" type="month" class="input" [min]="primerMes()"
+                     [ngModel]="repartirDesde()" (ngModelChange)="repartirDesde.set($event)" />
+            </div>
+            <button type="button" class="btn" (click)="repartir()" [disabled]="!montoNumero()">
+              Repartir {{ montoNumero() ? (montoNumero()! | dinero) : '' }}
+            </button>
+          </div>
+
+          <div class="table-wrap plan">
+            <table class="tbl">
+              <thead>
+                <tr><th>Mes</th><th>Corte</th><th>Fecha de cobro</th><th class="r">Valor</th><th><span class="sr-only">Quitar</span></th></tr>
+              </thead>
+              <tbody>
+                @for (c of cuotas(); track c.clave; let i = $index) {
+                  <tr [class.is-fija]="c.bloqueada">
+                    <td>
+                      <input type="month" class="input" [name]="'mes-' + c.clave" [attr.aria-label]="'Mes del cobro ' + (i + 1)"
+                             [min]="primerMes()" [disabled]="c.bloqueada"
+                             [ngModel]="c.periodo" (ngModelChange)="cambiarCuota(c.clave, { periodo: $event })" />
+                    </td>
+                    <td>
+                      <select class="select" [name]="'corte-' + c.clave" [attr.aria-label]="'Corte del cobro ' + (i + 1)" [disabled]="c.bloqueada"
+                              [ngModel]="c.corte" (ngModelChange)="cambiarCuota(c.clave, { corte: $event })">
+                        <option value="Quincena" [disabled]="!cobraEnQuincena() && c.corte !== 'Quincena'">Quincena</option>
+                        <option value="FinDeMes">Fin de mes</option>
+                      </select>
+                    </td>
+                    <td class="num">
+                      @if (fechaDe(c); as f) { {{ f | date: 'dd MMM yyyy' }} } @else { — }
+                      @if (c.bloqueada) { <span class="muted small fija">Fecha ya llegó · fijo</span> }
+                    </td>
+                    <td>
+                      <div class="con-prefijo"><span>$</span>
+                        <input class="input num" appSoloNumeros="monto" placeholder="0,00" [name]="'valor-' + c.clave"
+                               [attr.aria-label]="'Valor del cobro ' + (i + 1)" [disabled]="c.bloqueada"
+                               [ngModel]="c.importe" (ngModelChange)="cambiarCuota(c.clave, { importe: $event })" />
+                      </div>
+                    </td>
+                    <td class="r">
+                      <button type="button" class="btn btn--ghost btn--sm" (click)="quitarCuota(c.clave)" [disabled]="c.bloqueada"
+                              [attr.aria-label]="'Quitar el cobro ' + (i + 1)">
+                        <app-icon name="trash" [size]="16" />
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="5" class="muted">Sin fechas todavía. Agrega una o usa “Repartir”.</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <button type="button" class="btn btn--sm agregar" (click)="agregarCuota()">
+            <app-icon name="plus" [size]="15" /> Agregar fecha
+          </button>
+
+          <p class="muted small">
+            No hay tope por cobro: si en un pago no alcanza, lo que falta se cobra en el siguiente pago. El pago nunca queda negativo
+            y la deuda se cobra hasta quedar en $0,00.
+          </p>
+
+          <div class="totales">
+            <div><span class="muted small">Monto prestado</span><strong class="num">{{ (montoNumero() ?? 0) | dinero }}</strong></div>
+            <div><span class="muted small">Suma del plan</span><strong class="num">{{ sumaPlan() | dinero }}</strong></div>
+            <div><span class="muted small">Falta asignar</span>
+              <strong class="num" [class.t-ok]="faltaAsignar() === 0" [class.t-danger]="faltaAsignar() !== 0">{{ faltaAsignar() | dinero }}</strong>
+            </div>
+          </div>
+
+          @if (errorMostrado(); as e) {
+            <div class="aviso aviso--danger"><app-icon name="alert" [size]="18" /><div>{{ e }}</div></div>
+          }
+          <div class="form-actions">
+            <button type="button" class="btn" (click)="cerrarFormulario()" [disabled]="guardando()">Cancelar</button>
+            <button type="submit" class="btn btn--primary" [disabled]="guardando() || !!errorPlan()">
+              {{ guardando() ? 'Guardando…' : prestamoEditado() ? 'Guardar cambios' : 'Registrar préstamo' }}
+            </button>
+          </div>
+        </section>
+      </form>
+    }
+
+    <!-- ── Préstamos registrados (GET .../prestamos) ───────────────── -->
+    <section class="card">
+      <header class="bloque__head registrados__head"><h2>Préstamos registrados</h2></header>
+      @if (prestamos().length === 0) {
+        <p class="vacio registrados__vacio">Este colaborador no tiene préstamos.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>Entregado</th><th class="r">Monto</th><th class="r">Cobrado</th><th class="r">Saldo</th>
+                <th>Avance</th><th>Próximo cobro</th><th>Estado</th><th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of prestamos(); track p.id) {
+                <tr [class.is-sel]="editando() === p.id">
+                  <td class="num">{{ p.fecha | date: 'dd MMM yyyy' }}</td>
+                  <td class="r num"><strong>{{ p.monto | dinero }}</strong></td>
+                  <td class="r num">{{ p.cobrado | dinero }}</td>
+                  <td class="r num">{{ p.saldo | dinero }}</td>
+                  <td>
+                    <div class="avance">
+                      <div class="barra" role="img" [attr.aria-label]="avance(p) + ' % cobrado'"><span [style.width.%]="avance(p)"></span></div>
+                      <span class="muted small">{{ cobrosHechos(p) }} de {{ p.cuotas.length }}</span>
+                    </div>
+                  </td>
+                  <td class="num">
+                    @if (p.proximoCobro) { {{ p.proximoCobro | date: 'dd MMM yyyy' }} · {{ importeProximo(p) | dinero }} } @else { — }
+                  </td>
+                  <td>
+                    @if (p.pagado) {
+                      <app-estado-chip tono="ok">Pagado</app-estado-chip>
+                    } @else {
+                      <app-estado-chip tono="info">Pendiente</app-estado-chip>
+                    }
+                  </td>
+                  <td class="acciones">
+                    <button type="button" class="btn btn--sm" (click)="alternarPlan(p.id)" [attr.aria-expanded]="planVisible().has(p.id)">
+                      {{ planVisible().has(p.id) ? 'Ocultar plan' : 'Ver plan' }}
+                    </button>
+                    @if (!p.pagado) {
+                      <button type="button" class="btn btn--sm" (click)="editar(p)" [disabled]="editando() === p.id">Editar</button>
+                    }
+                    @if (!empezoACobrarse(p)) {
+                      <button type="button" class="btn btn--sm btn--danger" (click)="eliminar(p)"
+                              [attr.aria-label]="'Eliminar préstamo de ' + (p.monto | dinero) + ' del ' + (p.fecha | date: 'dd MMM yyyy')">Eliminar</button>
+                    }
+                  </td>
+                </tr>
+                @if (planVisible().has(p.id)) {
+                  <tr class="plan-fila">
+                    <td colspan="8">
+                      <ul class="cobros">
+                        @for (c of p.cuotas; track c.id) {
+                          <li>
+                            <span class="num">{{ c.fechaCobro | date: 'dd MMM yyyy' }}</span>
+                            <span class="muted">{{ etiquetaCorte[c.corte] }}</span>
+                            <strong class="num">{{ c.importe | dinero }}</strong>
+                            @if (c.cobrado >= c.importe) {
+                              <app-estado-chip tono="ok">Cobrado</app-estado-chip>
+                            } @else if (c.cobrado > 0) {
+                              <app-estado-chip tono="warn">Cobrado {{ c.cobrado | dinero }}</app-estado-chip>
+                            } @else if (c.bloqueada) {
+                              <app-estado-chip tono="warn">Pendiente de liquidación</app-estado-chip>
+                            } @else {
+                              <app-estado-chip tono="neutral">Programado</app-estado-chip>
+                            }
+                          </li>
+                        }
+                      </ul>
+                      @if (p.observaciones) { <p class="muted small obs">{{ p.observaciones }}</p> }
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+</div>
+
+@if (porEliminar(); as p) {
+  <app-dialogo-eliminar-prestamo [prestamo]="p" [colaborador]="nombreColaborador()" [eliminando]="eliminando()"
+                                 (cancelar)="cancelarEliminar()" (confirmar)="confirmarEliminar()" />
+}

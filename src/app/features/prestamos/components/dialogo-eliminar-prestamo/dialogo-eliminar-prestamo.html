@@ -1,0 +1,30 @@
+<div class="fondo" (click)="cancelar.emit()"></div>
+<section class="dialogo" ui-dialog rol="alertdialog" tituloId="eliminar-prestamo-titulo" descripcionId="eliminar-prestamo-texto"
+         (cerrar)="cancelar.emit()">
+  <div class="dialogo__cuerpo confirmar">
+    <span class="confirmar__icono" aria-hidden="true"><app-icon name="trash" [size]="22" /></span>
+    <div class="confirmar__texto">
+      <h2 id="eliminar-prestamo-titulo">¿Eliminar el préstamo de {{ prestamo().monto | dinero }}?</h2>
+      <p id="eliminar-prestamo-texto">
+        Se quitará de los préstamos{{ colaborador() ? ' de ' + colaborador() : '' }} junto con su plan de pagos.
+        No se puede deshacer.
+      </p>
+      <dl class="detalle">
+        <div><dt>Entregado</dt><dd class="num">{{ prestamo().fecha | date: 'dd MMM yyyy' }}</dd></div>
+        <div><dt>Monto</dt><dd class="num">{{ prestamo().monto | dinero }}</dd></div>
+        <div><dt>Cobros programados</dt><dd>{{ prestamo().cuotas.length }}</dd></div>
+        @if (prestamo().observaciones; as obs) {
+          <div class="detalle__ancho"><dt>Observaciones</dt><dd>{{ obs }}</dd></div>
+        }
+      </dl>
+    </div>
+  </div>
+  <footer class="dialogo__pie">
+    <div class="dialogo__acciones">
+      <button data-foco-inicial type="button" class="btn" (click)="cancelar.emit()" [disabled]="eliminando()">Cancelar</button>
+      <button type="button" class="btn btn--peligro" (click)="confirmar.emit()" [disabled]="eliminando()">
+        {{ eliminando() ? 'Eliminando…' : 'Eliminar préstamo' }}
+      </button>
+    </div>
+  </footer>
+</section>

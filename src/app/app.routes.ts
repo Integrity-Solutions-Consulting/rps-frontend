@@ -43,6 +43,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/anticipos/anticipos.routes').then((r) => r.ANTICIPOS_ROUTES),
       },
       {
+        path: 'prestamos',
+        loadChildren: () => import('./features/prestamos/prestamos.routes').then((r) => r.PRESTAMOS_ROUTES),
+      },
+      {
         path: 'liquidaciones',
         loadChildren: () => import('./features/liquidaciones/liquidaciones.routes').then((r) => r.LIQUIDACIONES_ROUTES),
       },

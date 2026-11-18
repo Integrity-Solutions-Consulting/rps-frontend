@@ -19,6 +19,8 @@ export const MENU: ItemMenu[] = [
     descripcion: 'Contratos por colaborador y proyecto, adendas y vencimientos.' },
   { ruta: 'anticipos', titulo: 'Anticipos', icono: 'card', disponible: true,
     descripcion: 'Anticipos adicionales, límite disponible y plan de recuperación.' },
+  { ruta: 'prestamos', titulo: 'Préstamos', icono: 'cash', disponible: true,
+    descripcion: 'Préstamos a colaboradores y su plan de pagos en quincenas y fines de mes.' },
   { ruta: 'liquidaciones', titulo: 'Liquidaciones', icono: 'calculator', disponible: true,
     descripcion: 'Cálculo por período, detalle por proyecto y cortes, revisión.' },
   { ruta: 'exportaciones', titulo: 'Exportaciones', icono: 'upload', disponible: true,

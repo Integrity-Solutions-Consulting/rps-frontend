@@ -6,7 +6,7 @@ export const ROL_ADMINISTRADOR_CONTABLE = 'Administrador Contable';
 export const ROL_ASISTENTE_CONTABLE = 'Asistente Contable';
 
 /** Módulos de RPS que se pueden permitir por rol (mismas claves que PermisosModulo del backend). */
-export type ModuloPermiso = 'colaboradores' | 'contratos' | 'anticipos' | 'liquidaciones' | 'exportaciones';
+export type ModuloPermiso = 'colaboradores' | 'contratos' | 'anticipos' | 'prestamos' | 'liquidaciones' | 'exportaciones';
 
 export type Permisos = Record<ModuloPermiso, boolean>;
 
@@ -14,6 +14,7 @@ export const MODULOS_PERMISO: { clave: ModuloPermiso; etiqueta: string }[] = [
   { clave: 'colaboradores', etiqueta: 'Colaboradores' },
   { clave: 'contratos', etiqueta: 'Contratos' },
   { clave: 'anticipos', etiqueta: 'Anticipos' },
+  { clave: 'prestamos', etiqueta: 'Préstamos' },
   { clave: 'liquidaciones', etiqueta: 'Liquidaciones' },
   { clave: 'exportaciones', etiqueta: 'Exportaciones' },
 ];

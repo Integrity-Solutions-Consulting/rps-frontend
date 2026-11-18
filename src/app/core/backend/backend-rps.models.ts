@@ -131,6 +131,8 @@ export interface BeCorte {
   recuperacionNoAplicada: number;
   /** > 0: la quincena se redujo porque el mes resultó más corto de lo previsto (salida, RN 27). */
   ajustePorProrrateo: number;
+  /** Cuotas de préstamos descontadas en el corte (ya restadas de valorPreparado). */
+  descuentoPrestamos: number;
 }
 
 export interface BeLiquidacion {
@@ -163,6 +165,25 @@ export interface BeResumenAnticipos {
 
 /** valorBase: quincena = 50 % del subtotal; fin de mes = neto − quincena (o neto completo si cobra solo a fin de mes). */
 export interface BeTopeCorte { corte: TipoCorte; valorBase: number; comprometido: number; disponible: number }
+
+/** Un cobro del plan de un préstamo. fechaCobro: el 15 (quincena) o el último día (fin de mes). bloqueada: su fecha ya llegó. */
+export interface BeCuotaPrestamo {
+  id: string; periodo: string; corte: TipoCorte; fechaCobro: string; importe: number; cobrado: number; bloqueada: boolean;
+}
+
+/** GET /api/colaboradores/{id}/prestamos */
+export interface BePrestamo {
+  id: string; colaboradorId: string; monto: number; fecha: string; observaciones: string | null;
+  cobrado: number; saldo: number; pagado: boolean; proximoCobro: string | null;
+  cuotas: BeCuotaPrestamo[]; creadoPor: string; creadoEn: string; actualizadoEn: string | null;
+}
+
+/** GET /api/colaboradores/{id}/prestamos/resumen */
+export interface BeResumenPrestamos {
+  colaboradorId: string; activo: boolean; cobraEnQuincena: boolean; primerMesDeCobro: string;
+  prestamosActivos: number; totalPrestado: number; cobrado: number; saldoPendiente: number;
+  proximoCobroFecha: string | null; proximoCobroImporte: number;
+}
 
 export interface BeConfiguracion {
   id: string; razonSocial: string; ruc: string; moneda: string;
