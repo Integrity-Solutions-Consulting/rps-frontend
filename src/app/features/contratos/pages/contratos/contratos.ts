@@ -310,7 +310,7 @@ export class Contratos {
 
     if (modo === 'crear') {
       if (!this.clasificacionForm()) {
-        errores['clasificacion'] = this.clasificacionDesdeTmr() ? 'Falta en TMR: revisa su tipo de contrato.' : 'Es obligatorio.';
+        errores['clasificacion'] = 'Es obligatorio.';
       }
       if (!this.frecuenciaForm()) errores['frecuencia'] = 'Es obligatoria.';
       if (!this.numeroCuentaForm().trim() && !this.cuentaEnmascarada()) errores['numeroCuenta'] = 'Es obligatorio.';
@@ -523,22 +523,6 @@ export class Contratos {
   private cargaConfiguracion?: Subscription;
   protected readonly cargandoConfiguracion = signal(false);
 
-  protected alternarProyecto(a: AsignacionDisponible): void {
-    const actual = new Set(this.proyectosElegidos());
-    if (actual.has(a.tmrProyectoId)) {
-      actual.delete(a.tmrProyectoId);
-      const honorarios = { ...this.honorariosForm() };
-      delete honorarios[a.tmrProyectoId];
-      this.honorariosForm.set(honorarios);
-    } else {
-      actual.add(a.tmrProyectoId);
-      // Al elegir el primer proyecto, propone como inicio su fecha de ingreso en TMR.
-      if (actual.size === 1 && a.fechaAsignacion && !this.inicioForm()) this.inicioForm.set(a.fechaAsignacion);
-      this.honorariosForm.update((h) => ({ ...h, [a.tmrProyectoId]: h[a.tmrProyectoId] ?? { importe: '', modalidad: 'Neto' } }));
-    }
-    this.proyectosElegidos.set(actual);
-  }
-
   protected honorarioDe(tmrProyectoId: string): { importe: string; modalidad: Modalidad } {
     return this.honorariosForm()[tmrProyectoId] ?? { importe: '', modalidad: 'Neto' };
   }
@@ -700,14 +684,6 @@ export class Contratos {
       .map((h) => ({ ...h, fechaInicioVigencia: cambiaDeModo || originales[h.tmrProyectoId!]?.importe ? fechaDelCambio : fechaNuevos }));
   }
 
-  /** Editar: un proyecto del contrato no se puede quitar, y solo se agregan si se paga por contrato. */
-  protected proyectoBloqueado(a: AsignacionDisponible): boolean {
-    if (a.tieneContratoVigente) return true;
-    if (this.modoFormulario() !== 'editar') return false;
-    if (this.proyectosOriginales().has(a.tmrProyectoId)) return true;
-    return this.modoOriginal() === 'proyecto';
-  }
-
   /** Proyectos que tenía el contrato al abrir editar o la adenda. */
   private readonly proyectosOriginales = computed(() => {
     const d = this.contratoEnAdenda() ?? this.detalle();
@@ -766,7 +742,7 @@ export class Contratos {
 
     const observaciones = this.observacionesAdendaForm().trim() || null;
     if (partes.length === 0 && !observaciones) {
-      this.errorContrato.set('La adenda no cambia nada del contrato: cambia la fecha de fin, los proyectos o el honorario.');
+      this.errorContrato.set('La adenda no cambia nada del contrato: cambia la fecha de fin o el honorario.');
       return;
     }
 

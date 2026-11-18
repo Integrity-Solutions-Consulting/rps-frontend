@@ -43,6 +43,8 @@
 .check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; cursor: pointer;
   &.is-disabled { color: var(--rps-muted); cursor: not-allowed; } }
 .check--inline { margin-top: 6px; }
+.lista-proyectos { list-style: none; margin: 0; padding: 10px 12px; display: grid; gap: 6px; max-height: 220px; overflow-y: auto;
+  border: 1px solid var(--rps-border, #d8dde3); border-radius: 12px; background: var(--rps-subtle); font-size: 13.5px; }
 .valor-fijo { margin: 0; padding: 9px 12px; border: 1px solid var(--rps-border, #d8dde3); border-radius: 10px; background: var(--rps-subtle); font-size: 13px; }
 
 /* Colaborador: buscador + selector en un solo cuadro */

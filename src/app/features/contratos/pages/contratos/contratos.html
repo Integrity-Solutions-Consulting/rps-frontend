@@ -79,29 +79,25 @@
           </div>
         }
 
-        <!-- Paso 2: proyectos (0, 1 o varios) -->
+        <!-- Paso 2: proyectos del colaborador en TMR, solo informativo (no se eligen ni se guardan en el contrato) -->
         @if (colaboradorElegidoId()) {
           <div class="field campo-ancho">
-            <label>Proyectos que cubre este contrato (opcional)</label>
+            <label>Proyectos del colaborador en TMR</label>
             @if (asignacionesDelColaborador().length === 0) {
-              <p class="field__hint">Sin asignaciones disponibles en TMR: este contrato queda sin proyecto (ej. personal de RR. HH.).</p>
+              <p class="field__hint">Sin asignaciones en TMR.</p>
             } @else {
-              <div class="lista-checks">
+              <ul class="lista-proyectos">
                 @for (a of asignacionesDelColaborador(); track a.tmrProyectoId) {
-                  <label class="check" [class.is-disabled]="proyectoBloqueado(a)">
-                    <input type="checkbox" [checked]="proyectosElegidos().has(a.tmrProyectoId)" [disabled]="proyectoBloqueado(a)"
-                           (change)="alternarProyecto(a)" />
-                    <span>
-                      {{ a.proyecto }}
-                      <small class="muted">
-                        · en TMR desde {{ a.fechaAsignacion ? (a.fechaAsignacion | date: 'dd MMM yyyy') : 'sin fecha' }}
-                        {{ a.fechaFinAsignacion ? 'hasta ' + (a.fechaFinAsignacion | date: 'dd MMM yyyy') : '· sin fecha de salida' }}
-                        {{ a.tieneContratoVigente ? ' · ya tiene contrato vigente' : '' }}
-                      </small>
-                    </span>
-                  </label>
+                  <li>
+                    {{ a.proyecto }}
+                    <small class="muted">
+                      · en TMR desde {{ a.fechaAsignacion ? (a.fechaAsignacion | date: 'dd MMM yyyy') : 'sin fecha' }}
+                      {{ a.fechaFinAsignacion ? 'hasta ' + (a.fechaFinAsignacion | date: 'dd MMM yyyy') : '· sin fecha de salida' }}
+                    </small>
+                  </li>
                 }
-              </div>
+              </ul>
+              <span class="field__hint">Solo informativo: vienen de TMR y no se eligen en el contrato.</span>
             }
           </div>
         }
@@ -111,14 +107,14 @@
         <div class="field">
           <label for="clasificacion">Tipo de servicio</label>
           <select id="clasificacion" name="clasificacion" class="select" [class.is-invalid]="errorContratoDe('clasificacion')"
-                  [disabled]="cargandoConfiguracion() || clasificacionDesdeTmr()"
+                  [disabled]="cargandoConfiguracion()"
                   [ngModel]="clasificacionForm()" (ngModelChange)="clasificacionForm.set($event)" (blur)="marcarTocadoContrato('clasificacion')">
             <option value="">Sin definir</option>
             <option value="Profesional">Servicios profesionales</option>
             <option value="Junior">Servicios junior</option>
           </select>
           @if (errorContratoDe('clasificacion'); as e) { <span class="field__error">{{ e }}</span> }
-          @else if (clasificacionDesdeTmr()) { @if (modoFormulario() !== 'editar') { <span class="field__hint">Viene de su tipo de contrato en TMR; se cambia allí.</span> } }
+          @else if (clasificacionDesdeTmr()) { <span class="field__hint">Según su tipo de contrato en TMR; puedes cambiarlo.</span> }
           @else { <span class="field__hint">Medio tiempo o consultor externo en TMR: elige si factura como profesional o junior.</span> }
         </div>
         <div class="field">
@@ -215,6 +211,8 @@
         } @else {
         <!-- Paso 4: cómo se paga el contrato y cuánto -->
         <div class="field campo-ancho">
+          <!-- "Por proyecto" solo en contratos que ya tienen proyectos (los nuevos se registran sin proyecto) -->
+          @if (proyectosElegidos().size > 0) {
           <label>¿Cómo se paga este contrato?</label>
           <div class="selector" role="radiogroup" aria-label="Cómo se paga el contrato">
             <label class="selector__opcion" [class.is-on]="pagoPorContrato()">
@@ -226,6 +224,7 @@
               Por proyecto
             </label>
           </div>
+          }
 
           @if (pagoPorContrato()) {
             <div class="form-grid">
