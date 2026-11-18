@@ -193,7 +193,7 @@
             <p class="aviso aviso--info nota-cortes">
               <app-icon name="info" [size]="18" />
               <span>Quincena ({{ rangoCorte('Quincena', periodo()) }}) y fin de mes ({{ rangoCorte('FinDeMes', periodo()) }}).
-              "Desc." son las cuotas de anticipos adicionales de ese corte.</span>
+              "Desc." son las cuotas de anticipos adicionales y de préstamos de ese corte.</span>
             </p>
           }
           <div class="table-wrap">
@@ -247,13 +247,13 @@
                       <td><strong>{{ l.colaborador }}</strong></td>
                       <td class="r num">{{ l.netoConsolidado | dinero }}</td>
                       @if (corteDe(l, 'Quincena'); as q) {
-                        <td class="r num">{{ q.descuento | dinero }}</td>
+                        <td class="r num">{{ q.descuento + q.prestamos | dinero }}</td>
                         <td class="r num">{{ q.valor | dinero }}</td>
                       } @else {
                         <td class="r muted" colspan="2">Sin corte de quincena</td>
                       }
                       @if (corteDe(l, 'FinDeMes'); as f) {
-                        <td class="r num">{{ f.descuento | dinero }}</td>
+                        <td class="r num">{{ f.descuento + f.prestamos | dinero }}</td>
                         <td class="r num">{{ f.valor | dinero }}</td>
                       } @else {
                         <td class="r muted" colspan="2">Sin corte de fin de mes</td>
@@ -399,6 +399,9 @@
                   }
                   <div><dt>Base del corte</dt><dd>{{ c.base | dinero }}</dd></div>
                   <div><dt>Cuotas de anticipos</dt><dd>− {{ c.descuento | dinero }}</dd></div>
+                  @if (c.prestamos > 0) {
+                    <div><dt>Cuotas de préstamos</dt><dd>− {{ c.prestamos | dinero }}</dd></div>
+                  }
                   <div class="desglose__total"><dt>Valor preparado</dt><dd>{{ c.valor | dinero }}</dd></div>
                 </dl>
                 @if (c.ajustePorProrrateo > 0) {

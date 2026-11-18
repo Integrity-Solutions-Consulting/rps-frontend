@@ -88,6 +88,7 @@ export class LiquidacionesService {
       cortes: l.cortes.map((x) => ({
         corte: x.tipo, base: x.valorBase, descuento: x.recuperacionAdicional, valor: x.valorPreparado,
         recuperacionNoAplicada: x.recuperacionNoAplicada, ajustePorProrrateo: x.ajustePorProrrateo,
+        prestamos: x.descuentoPrestamos ?? 0,
       })),
       revisado: l.revisado, revisadoEn: l.revisadoEn,
       revisadoPorMi: l.revisadoPorUsuarioId !== null && l.revisadoPorUsuarioId === this.sesion.usuario()?.id,
