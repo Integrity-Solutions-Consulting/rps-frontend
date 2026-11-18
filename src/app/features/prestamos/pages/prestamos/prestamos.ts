@@ -165,9 +165,6 @@ export class Prestamos {
       if (fechaDeCobro(c.periodo, c.corte) <= this.hoy) {
         return `El pago del ${formatDate(fechaDeCobro(c.periodo, c.corte), 'dd MMM yyyy', this.locale)} ya se hizo: elige una fecha posterior a hoy.`;
       }
-      if (c.corte === 'Quincena' && !this.cobraEnQuincena()) {
-        return 'Este colaborador cobra solo a fin de mes: no se le puede cobrar en la quincena porque ese día no se le paga.';
-      }
     }
 
     const falta = this.faltaAsignar();
@@ -278,7 +275,7 @@ export class Prestamos {
     const porRepartir = centavos(monto) - fijas.reduce((t, c) => t + centavos(aNumero(c.importe) ?? 0), 0);
     if (porRepartir <= 0) return;
 
-    const modo: ModoRepartir = this.cobraEnQuincena() ? this.repartirModo() : 'fin';
+    const modo: ModoRepartir = this.repartirModo();
     const cortes: TipoCorte[] = modo === 'ambos' ? ['Quincena', 'FinDeMes'] : modo === 'quincena' ? ['Quincena'] : ['FinDeMes'];
     const ocupadas = new Set(fijas.map((c) => `${c.periodo}|${c.corte}`));
     const huecos: { periodo: string; corte: TipoCorte }[] = [];
