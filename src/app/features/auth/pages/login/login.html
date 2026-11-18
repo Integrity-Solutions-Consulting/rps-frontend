@@ -5,18 +5,9 @@
 
   <form class="login__card" (submit)="entrar($event)" novalidate>
     <header class="login__head">
-      <!-- Logo de RPS Contabilidad (mismo recibo del menú lateral, en versión clara) -->
+      <!-- Logo de RPS en blanco para la tarjeta oscura (public/logo-rps-blanco.png) -->
       <span class="login__logo">
-        <svg class="login__logo-icono" viewBox="0 0 40 46" aria-hidden="true">
-          <path d="M5 0h30a5 5 0 0 1 5 5v41l-5-4-5 4-5-4-5 4-5-4-5 4-5-4-5 4V5a5 5 0 0 1 5-5z" fill="#ffffff" />
-          <rect x="9" y="9" width="22" height="4" rx="2" fill="#0c2a52" />
-          <rect x="9" y="18" width="16" height="4" rx="2" fill="#0c2a52" />
-          <rect x="9" y="28" width="22" height="4.5" rx="2.25" fill="#3d8be0" />
-        </svg>
-        <span class="login__logo-txt">
-          <strong>RPS</strong>
-          <small>Contabilidad</small>
-        </span>
+        <img class="login__logo-img" src="/logo-rps-blanco.png" alt="RPS Risk Process Solutions S.A." />
       </span>
       <h1>Iniciar sesión</h1>
       <p>Preparación de honorarios para Contabilidad.</p>
