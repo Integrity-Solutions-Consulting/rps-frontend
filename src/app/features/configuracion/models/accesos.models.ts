@@ -15,7 +15,7 @@ export const MODULOS_PERMISO: { clave: ModuloPermiso; etiqueta: string }[] = [
   { clave: 'contratos', etiqueta: 'Contratos' },
   { clave: 'anticipos', etiqueta: 'Anticipos' },
   { clave: 'prestamos', etiqueta: 'Préstamos' },
-  { clave: 'liquidaciones', etiqueta: 'Liquidaciones' },
+  { clave: 'liquidaciones', etiqueta: 'Pagos del mes' },
   { clave: 'exportaciones', etiqueta: 'Exportaciones' },
 ];
 

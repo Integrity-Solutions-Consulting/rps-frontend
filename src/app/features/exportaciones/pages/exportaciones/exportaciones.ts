@@ -84,8 +84,8 @@ export class Exportaciones {
   }
 
   protected readonly opciones: OpcionExportacion[] = [
-    { clave: 'liquidaciones-consolidado', tipo: 'liquidaciones', vista: 'consolidado', titulo: 'Liquidaciones · Consolidado', detalle: 'Todos los colaboradores en una sola tabla: neto consolidado, quincena, fin de mes, cuotas de anticipos, a pagar y totales.', icono: 'calculator', porMes: true },
-    { clave: 'liquidaciones-colaborador', tipo: 'liquidaciones', vista: 'porColaborador', titulo: 'Liquidaciones · Por colaborador', detalle: 'Un solo archivo con el detalle de cada colaborador: sus honorarios (proporcional, IVA, retenciones, neto) y sus cortes (base, cuotas de anticipos, valor preparado).', icono: 'users', porMes: true },
+    { clave: 'liquidaciones-consolidado', tipo: 'liquidaciones', vista: 'consolidado', titulo: 'Pagos del mes · Consolidado', detalle: 'Todos los colaboradores en una sola tabla: neto consolidado, quincena, fin de mes, cuotas de anticipos, a pagar y totales.', icono: 'calculator', porMes: true },
+    { clave: 'liquidaciones-colaborador', tipo: 'liquidaciones', vista: 'porColaborador', titulo: 'Pagos del mes · Por colaborador', detalle: 'Un solo archivo con el detalle de cada colaborador: sus honorarios (proporcional, IVA, retenciones, neto) y sus cortes (base, cuotas de anticipos, valor preparado).', icono: 'users', porMes: true },
     { clave: 'honorarios', tipo: 'honorarios', titulo: 'Honorarios', detalle: 'Honorarios calculados por proyecto (o por contrato), con impuestos, retenciones y totales.', icono: 'cash', porMes: true },
     { clave: 'colaboradores', tipo: 'colaboradores', titulo: 'Colaboradores', detalle: 'Colaboradores registrados en RPS: identificación, clasificación, frecuencia y estado.', icono: 'users', porMes: false },
   ];

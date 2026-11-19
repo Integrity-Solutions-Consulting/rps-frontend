@@ -21,7 +21,7 @@ export const MENU: ItemMenu[] = [
     descripcion: 'Anticipos adicionales, límite disponible y plan de recuperación.' },
   { ruta: 'prestamos', titulo: 'Préstamos', icono: 'cash', disponible: true,
     descripcion: 'Préstamos a colaboradores y su plan de pagos en quincenas y fines de mes.' },
-  { ruta: 'liquidaciones', titulo: 'Liquidaciones', icono: 'calculator', disponible: true,
+  { ruta: 'liquidaciones', titulo: 'Pagos del mes', icono: 'calculator', disponible: true,
     descripcion: 'Cálculo por período, detalle por proyecto y cortes, revisión.' },
   { ruta: 'exportaciones', titulo: 'Exportaciones', icono: 'upload', disponible: true,
     descripcion: 'Reportes en Excel y PDF de liquidaciones, honorarios y colaboradores.' },
