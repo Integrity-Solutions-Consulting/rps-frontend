@@ -62,6 +62,26 @@ const sumarMeses = (periodo: string, n: number): string => {
 
 const ordenCorte = (c: TipoCorte): number => (c === 'Quincena' ? 0 : 1);
 
+const cortesDe = (modo: ModoRepartir): TipoCorte[] =>
+  modo === 'ambos' ? ['Quincena', 'FinDeMes'] : modo === 'quincena' ? ['Quincena'] : ['FinDeMes'];
+
+/** Meses de "desde" a "hasta" ("yyyy-MM"): de noviembre a enero son 2. */
+const mesesEntre = (desde: string, hasta: string): number => {
+  const [a1, m1] = desde.split('-').map(Number);
+  const [a2, m2] = hasta.split('-').map(Number);
+  return (a2 * 12 + m2) - (a1 * 12 + m1);
+};
+
+/** 3 → "3 meses", 12 → "1 año", 14 → "1 año y 2 meses". */
+const textoPlazo = (meses: number): string => {
+  if (meses <= 0) return 'Sin fechas';
+  const m = (n: number) => `${n} ${n === 1 ? 'mes' : 'meses'}`;
+  if (meses < 12) return m(meses);
+  const anios = Math.floor(meses / 12);
+  const resto = meses % 12;
+  return `${anios} ${anios === 1 ? 'año' : 'años'}${resto ? ` y ${m(resto)}` : ''}`;
+};
+
 /**
  * Préstamos a colaboradores. Sigue las reglas de rps-backend:
  *   - Uno o más préstamos en el mismo mes; el monto puede ser mayor que su honorario y se entrega completo.
@@ -114,8 +134,7 @@ export class Prestamos {
   protected readonly errorGuardar = signal<string | null>(null);
   private siguienteClave = 1;
 
-  // Atajo "Repartir": llena la tabla y después se edita a mano.
-  protected readonly repartirMeses = signal('3');
+  // "Cobrar en" y "Desde" guían a "Agregar fecha"; "Repartir" divide el monto entre las fechas de la tabla.
   protected readonly repartirModo = signal<ModoRepartir>('ambos');
   protected readonly repartirDesde = signal('');
 
@@ -132,6 +151,18 @@ export class Prestamos {
   });
 
   protected readonly cobraEnQuincena = computed(() => this.resumen()?.cobraEnQuincena ?? false);
+
+  /**
+   * Plazo del plan (solo lectura): meses desde el mes de entrega hasta el último cobro de la tabla.
+   * Se actualiza solo al agregar o cambiar fechas: 1 mes, 2 meses… 1 año y 2 meses.
+   */
+  protected readonly plazo = computed(() => {
+    const ultimo = this.cuotas().map((c) => c.periodo).filter(Boolean).sort().pop();
+    return textoPlazo(ultimo ? mesesEntre(sumarMeses(this.primerMes(), -1), ultimo) : 0);
+  });
+
+  /** Filas a las que "Repartir" les puede poner valor (las de fecha ya llegada quedan fijas). */
+  protected readonly cuotasEditables = computed(() => this.cuotas().filter((c) => !c.bloqueada && c.periodo).length);
 
   protected readonly montoNumero = computed(() => aNumero(this.monto()));
   protected readonly sumaPlan = computed(() =>
@@ -235,18 +266,29 @@ export class Prestamos {
     if (!this.repartirDesde() || this.repartirDesde() < this.primerMes()) this.repartirDesde.set(this.primerMes());
   }
 
-  /** Nueva fila: el siguiente cobro después del último de la tabla (o el primero permitido). */
+  /**
+   * Nueva fila: el siguiente cobro libre después del último de la tabla, según "Cobrar en"
+   * (quincena y fin de mes, solo quincena o solo fin de mes). Sin filas, empieza en "Desde".
+   * Nunca en una fecha que ya pasó ni repetida.
+   */
   protected agregarCuota(): void {
-    const ultima = [...this.cuotas()].sort((a, b) =>
+    const cortes = cortesDe(this.repartirModo());
+    const clave = (periodo: string, corte: TipoCorte) => `${periodo}|${corte}`;
+    const ocupadas = new Set(this.cuotas().map((c) => clave(c.periodo, c.corte)));
+    const ultima = [...this.cuotas()].filter((c) => c.periodo).sort((a, b) =>
       a.periodo.localeCompare(b.periodo) || ordenCorte(a.corte) - ordenCorte(b.corte)).pop();
-    let periodo = this.primerMes();
-    let corte: TipoCorte = this.cobraEnQuincena() ? 'Quincena' : 'FinDeMes';
-    if (ultima) {
-      if (ultima.corte === 'Quincena') { periodo = ultima.periodo; corte = 'FinDeMes'; }
-      else { periodo = sumarMeses(ultima.periodo, 1); }
+    const desde = this.repartirDesde() > this.primerMes() ? this.repartirDesde() : this.primerMes();
+
+    let periodo = ultima ? ultima.periodo : desde;
+    for (let intento = 0; intento < 600; intento++, periodo = sumarMeses(periodo, 1)) {
+      for (const corte of cortes) {
+        const despuesDeUltima = !ultima || periodo > ultima.periodo || ordenCorte(corte) > ordenCorte(ultima.corte);
+        if (!despuesDeUltima || periodo < this.primerMes() || fechaDeCobro(periodo, corte) <= this.hoy
+          || ocupadas.has(clave(periodo, corte))) continue;
+        this.cuotas.update((l) => [...l, { clave: this.siguienteClave++, periodo, corte, importe: '', bloqueada: false }]);
+        return;
+      }
     }
-    while (fechaDeCobro(periodo, corte) <= this.hoy) periodo = sumarMeses(periodo, 1);
-    this.cuotas.update((l) => [...l, { clave: this.siguienteClave++, periodo, corte, importe: '', bloqueada: false }]);
   }
 
   protected cambiarCuota(clave: number, cambio: Partial<CuotaForm>): void {
@@ -262,38 +304,27 @@ export class Prestamos {
   }
 
   /**
-   * Atajo: reparte lo que falta cobrar (monto menos los cobros que ya quedaron fijos) en partes iguales
-   * entre los cobros de N meses. Reemplaza las filas que se pueden editar; los centavos que sobran van al último.
+   * Reparte lo que falta cobrar (monto menos los cobros que ya quedaron fijos) en partes iguales entre
+   * las fechas de la tabla que se pueden editar. No agrega ni quita fechas: solo pone los valores.
+   * Los centavos que sobran van a la última fecha.
    */
   protected repartir(): void {
     const monto = this.montoNumero();
-    const meses = Math.trunc(Number(this.repartirMeses()));
-    const desde = this.repartirDesde() < this.primerMes() ? this.primerMes() : this.repartirDesde();
-    if (monto === null || monto <= 0 || !Number.isFinite(meses) || meses < 1 || !desde) return;
+    if (monto === null || monto <= 0) return;
 
     const fijas = this.cuotas().filter((c) => c.bloqueada);
     const porRepartir = centavos(monto) - fijas.reduce((t, c) => t + centavos(aNumero(c.importe) ?? 0), 0);
     if (porRepartir <= 0) return;
 
-    const modo: ModoRepartir = this.repartirModo();
-    const cortes: TipoCorte[] = modo === 'ambos' ? ['Quincena', 'FinDeMes'] : modo === 'quincena' ? ['Quincena'] : ['FinDeMes'];
-    const ocupadas = new Set(fijas.map((c) => `${c.periodo}|${c.corte}`));
-    const huecos: { periodo: string; corte: TipoCorte }[] = [];
-    for (let i = 0; i < meses; i++) {
-      const periodo = sumarMeses(desde, i);
-      for (const corte of cortes) {
-        if (fechaDeCobro(periodo, corte) <= this.hoy || ocupadas.has(`${periodo}|${corte}`)) continue;
-        huecos.push({ periodo, corte });
-      }
-    }
-    if (huecos.length === 0) return;
+    const editables = this.cuotas()
+      .filter((c) => !c.bloqueada && c.periodo)
+      .sort((a, b) => a.periodo.localeCompare(b.periodo) || ordenCorte(a.corte) - ordenCorte(b.corte));
+    if (editables.length === 0) return;
 
-    const parte = Math.floor(porRepartir / huecos.length);
-    const nuevas: CuotaForm[] = huecos.map((h, i) => ({
-      clave: this.siguienteClave++, periodo: h.periodo, corte: h.corte, bloqueada: false,
-      importe: aTexto((i === huecos.length - 1 ? porRepartir - parte * (huecos.length - 1) : parte) / 100),
-    }));
-    this.cuotas.set([...fijas, ...nuevas]);
+    const parte = Math.floor(porRepartir / editables.length);
+    const valores = new Map(editables.map((c, i) => [c.clave,
+      aTexto((i === editables.length - 1 ? porRepartir - parte * (editables.length - 1) : parte) / 100)]));
+    this.cuotas.update((l) => l.map((c) => (valores.has(c.clave) ? { ...c, importe: valores.get(c.clave)! } : c)));
   }
 
   protected guardar(): void {

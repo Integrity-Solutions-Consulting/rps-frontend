@@ -27,9 +27,11 @@
 .plan__head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 
 /* Atajo "Repartir" */
-.repartir { display: grid; grid-template-columns: 130px minmax(160px, 220px) 170px auto; gap: 12px; align-items: end;
+.repartir { display: grid; grid-template-columns: 165px minmax(160px, 220px) 170px auto; gap: 12px; align-items: end;
   padding: 14px; border-radius: 12px; background: var(--rps-subtle); }
 @media (max-width: 820px) { .repartir { grid-template-columns: minmax(0, 1fr); } }
+// Plazo: solo lectura, se calcula con las fechas de la tabla.
+.repartir input[readonly] { cursor: default; color: var(--rps-muted, inherit); }
 
 .plan { border: 1px solid #eceef2; border-radius: 12px;
   td { padding: 8px 12px; vertical-align: middle; }

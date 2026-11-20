@@ -116,13 +116,12 @@
               @if (!cobraEnQuincena()) { · cobra solo a fin de mes: lo de la quincena se descuenta en ese pago }</span>
           </div>
 
-          <!-- Atajo opcional: llena la tabla y luego se edita a mano. -->
+          <!-- Plazo: solo lectura, sale de las fechas de la tabla. "Cobrar en" y "Desde" guían a "Agregar fecha". -->
           <div class="repartir">
             <div class="field">
-              <label for="rep-meses">Repartir en</label>
-              <select id="rep-meses" name="rep-meses" class="select" [ngModel]="repartirMeses()" (ngModelChange)="repartirMeses.set($event)">
-                @for (n of [1, 2, 3, 4, 5, 6, 8, 10, 12]; track n) { <option [value]="'' + n">{{ n }} {{ n === 1 ? 'mes' : 'meses' }}</option> }
-              </select>
+              <label for="rep-plazo">Plazo</label>
+              <input id="rep-plazo" class="input" readonly tabindex="-1" [value]="plazo()"
+                     title="Se calcula solo: desde la entrega hasta la última fecha de cobro" />
             </div>
             <div class="field">
               <label for="rep-modo">Cobrar en</label>
@@ -138,7 +137,8 @@
               <input id="rep-desde" name="rep-desde" type="month" class="input" [min]="primerMes()"
                      [ngModel]="repartirDesde()" (ngModelChange)="repartirDesde.set($event)" />
             </div>
-            <button type="button" class="btn" (click)="repartir()" [disabled]="!montoNumero()">
+            <button type="button" class="btn" (click)="repartir()" [disabled]="!montoNumero() || !cuotasEditables()"
+                    [title]="cuotasEditables() ? 'Divide el monto en partes iguales entre las fechas de la tabla' : 'Agrega fechas primero'">
               Repartir {{ montoNumero() ? (montoNumero()! | dinero) : '' }}
             </button>
           </div>
@@ -182,7 +182,7 @@
                     </td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="5" class="muted">Sin fechas todavía. Agrega una o usa “Repartir”.</td></tr>
+                  <tr><td colspan="5" class="muted">Sin fechas todavía. Agrega las fechas de cobro y usa “Repartir” para dividir el monto.</td></tr>
                 }
               </tbody>
             </table>
