@@ -11,7 +11,7 @@
 
   <nav aria-label="Menú principal">
     <ul class="sidebar__menu">
-      @for (item of menu; track item.ruta) {
+      @for (item of menu(); track item.ruta) {
         <li>
           <a class="sidebar__item" [routerLink]="'/' + item.ruta" routerLinkActive="is-active">
             <app-icon [name]="item.icono" [size]="19" />

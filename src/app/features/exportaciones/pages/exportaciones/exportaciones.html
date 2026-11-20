@@ -112,7 +112,7 @@
           <label for="filtro-tipo">Reporte</label>
           <select id="filtro-tipo" class="select" [value]="filtroTipo() ?? ''" (change)="cambiarTipo($any($event.target).value)">
             <option value="">Todos</option>
-            <option value="liquidaciones">Pagos del mes</option>
+            <option value="liquidaciones">Rol a pagar</option>
             <option value="honorarios">Honorarios</option>
             <option value="colaboradores">Colaboradores</option>
           </select>

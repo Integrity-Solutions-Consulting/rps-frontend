@@ -24,7 +24,7 @@
       <div class="contadores">
         <button type="button" class="card contador" [class.is-on]="tipo() === 'Liquidación'" (click)="tipo.set(tipo() === 'Liquidación' ? '' : 'Liquidación')">
           <span class="contador__icono contador__icono--ok"><app-icon name="calculator" [size]="20" /></span>
-          <span><small>Pagos del mes</small><strong>{{ contadores().liquidaciones }}</strong></span>
+          <span><small>Rol a pagar</small><strong>{{ contadores().liquidaciones }}</strong></span>
         </button>
         <button type="button" class="card contador" [class.is-on]="tipo() === 'Anticipo'" (click)="tipo.set(tipo() === 'Anticipo' ? '' : 'Anticipo')">
           <span class="contador__icono contador__icono--info"><app-icon name="card" [size]="20" /></span>

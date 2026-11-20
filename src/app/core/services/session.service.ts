@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, catchError, finalize, map, of, shareReplay, tap, throwError } from 'rxjs';
+import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 /** Usuario que devuelve el backend (UsuarioResponse de Features/Auth). */
@@ -26,6 +26,8 @@ interface SesionGuardada {
   refreshToken: string;
   expiraEn: string;
   usuario: UsuarioBackend;
+  /** Módulos que permite el rol (GET /api/auth/permisos). null mientras no se han pedido. */
+  permisos?: string[] | null;
 }
 
 const CLAVE = 'rps.sesion';
@@ -56,10 +58,36 @@ export class SessionService {
   /** Roles del usuario en sesión (Administrador, Administrador Contable, Asistente Contable). */
   readonly roles = computed(() => this.sesion()?.usuario.roles ?? []);
 
+  /** Módulos permitidos (colaboradores, liquidaciones, configuracion...). null: todavía no se pidieron. */
+  readonly permisos = computed(() => this.sesion()?.permisos ?? null);
+
+  tienePermiso(modulo: string): boolean {
+    return this.permisos()?.includes(modulo) ?? false;
+  }
+
+  /**
+   * GET /api/auth/permisos. El backend los lee de la base, así que un cambio en Configuración > Roles
+   * se nota al volver a pedirlos (al iniciar sesión, al renovar el token o al recargar la página).
+   * Solo sirven para el menú y las rutas: quien de verdad bloquea es el backend.
+   */
+  cargarPermisos(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.base}/permisos`).pipe(
+      tap((permisos) => {
+        const s = this.sesion();
+        if (!s) return;
+        const nueva = { ...s, permisos };
+        this.sesion.set(nueva);
+        escribir(nueva);
+      }),
+    );
+  }
+
   /** POST /api/auth/login */
   iniciarSesion(email: string, password: string): Observable<void> {
     return this.http.post<RespuestaAuth>(`${this.base}/login`, { email, password }).pipe(
       tap((r) => this.guardar(r)),
+      // Si fallan los permisos, el login sigue: el guard de cada ruta los vuelve a pedir.
+      switchMap(() => this.cargarPermisos().pipe(catchError(() => of(null)))),
       map(() => undefined),
     );
   }
@@ -70,6 +98,8 @@ export class SessionService {
     if (!refreshToken) return throwError(() => new Error('Sin sesión'));
     this.renovando$ ??= this.http.post<RespuestaAuth>(`${this.base}/refresh-token`, { refreshToken }).pipe(
       tap((r) => this.guardar(r)),
+      // Al renovar se actualizan también los permisos, por si cambiaron en Configuración > Roles.
+      tap(() => this.cargarPermisos().subscribe({ error: () => undefined })),
       map((r) => r.accessToken),
       catchError((e: unknown) => {
         this.terminar('expirada');
@@ -98,7 +128,10 @@ export class SessionService {
   }
 
   private guardar(r: RespuestaAuth): void {
-    const s: SesionGuardada = { accessToken: r.accessToken, refreshToken: r.refreshToken, expiraEn: r.accessTokenExpiraEn, usuario: r.usuario };
+    // Se conservan los permisos ya cargados de este mismo usuario (los de otro usuario no).
+    const previos = this.sesion();
+    const permisos = previos?.usuario.id === r.usuario.id ? (previos.permisos ?? null) : null;
+    const s: SesionGuardada = { accessToken: r.accessToken, refreshToken: r.refreshToken, expiraEn: r.accessTokenExpiraEn, usuario: r.usuario, permisos };
     this.sesion.set(s);
     escribir(s);
   }
