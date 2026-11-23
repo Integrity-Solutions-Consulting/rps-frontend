@@ -118,3 +118,19 @@ td.col-check { cursor: default; }
 .cambios__lista { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 .cambios__estado { font-weight: 600; }
 .link { background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+
+/* ── Factura del mes, días descontados y observaciones ─────────────── */
+.factura__acciones { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.factura .subtitulo, .dias .subtitulo { margin: 0; }
+.dias__resumen { display: flex; align-items: center; gap: 10px; margin: 0; padding: 10px 12px; border-radius: 10px;
+  background: var(--rps-subtle); color: var(--rps-muted);
+  strong { color: var(--rps-text); font-size: 14px; } }
+.dias__resumen--con-descuento { background: var(--rps-warn-50); color: var(--rps-warn);
+  strong { color: var(--rps-warn); } }
+.dias__stepper { display: flex; align-items: center; gap: 6px;
+  .input { width: 64px; text-align: center; }
+  .btn { min-width: 40px; justify-content: center; } }
+.dias__observacion { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--rps-subtle);
+  font-size: 13.5px; line-height: 1.5; white-space: pre-line; }
+.dias-descontados { color: var(--rps-warn); font-weight: 600; }
+.con-observacion { margin-left: 6px; color: var(--rps-muted); vertical-align: -2px; }

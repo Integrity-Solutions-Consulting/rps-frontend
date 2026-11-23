@@ -104,7 +104,46 @@
               <strong class="indicador__valor num">{{ i.liquidaciones.revisadas }} <small class="muted">de {{ i.liquidaciones.revisadas + i.liquidaciones.sinRevisar }}</small></strong>
             </div>
           </article>
+          @if (hayControlFactura()) {
+            <article class="card indicador">
+              <span class="indicador__icono indicador__icono--info"><app-icon name="file" [size]="22" /></span>
+              <div class="indicador__cuerpo">
+                <span class="indicador__etiqueta">Facturas recibidas</span>
+                <strong class="indicador__valor num">{{ facturasRecibidas() }} <small class="muted">de {{ filas().length }}</small></strong>
+                <span class="indicador__ayuda">
+                  @switch (facturacion()!.fase) {
+                    @case ('Abierto') { Plazo hasta el {{ diaLimite() }}, 23:59 · gracia hasta el {{ diaFinGracia() }} }
+                    @case ('Gracia') { Días de gracia hasta el {{ diaFinGracia() }}, 23:59 }
+                    @default { Plazo cerrado el {{ diaFinGracia() }}, 23:59 }
+                  }
+                </span>
+              </div>
+            </article>
+          }
         </section>
+      }
+
+      <!-- ── Factura del mes: días de gracia y quincenas por ajustar ── -->
+      @if (facturacion(); as f) {
+        @if (f.fase === 'Gracia') {
+          <section class="aviso aviso--warn" role="status">
+            <app-icon name="clock" [size]="18" />
+            <div>
+              <strong>Días de gracia hasta el {{ diaFinGracia() }}, 23:59.</strong>
+              El plazo normal cerró el {{ diaLimite() }}. Las facturas que se marquen ahora quedan registradas como "En gracia",
+              pero ese colaborador cobra todo el mes a fin de mes.
+            </div>
+          </section>
+        }
+        @if (f.quincenasPorAjustar > 0) {
+          <section class="aviso aviso--warn" role="status">
+            <app-icon name="alert" [size]="18" />
+            <div>
+              <strong>{{ f.quincenasPorAjustar }} {{ f.quincenasPorAjustar === 1 ? 'liquidación tiene' : 'liquidaciones tienen' }} quincena sin factura a tiempo.</strong>
+              Pulsa <strong>Calcular período</strong> para pasarlas a fin de mes antes de exportar.
+            </div>
+          </section>
+        }
       }
 
       <!-- ── Cambios después de calcular (anticipo nuevo, honorarios tardíos…) ── -->
@@ -159,6 +198,10 @@
                       (click)="filtroRevision.set('todas')">Todas <span class="contador num">{{ filas().length }}</span></button>
               <button type="button" [class.is-on]="filtroRevision() === 'porRevisar'" [attr.aria-pressed]="filtroRevision() === 'porRevisar'"
                       (click)="filtroRevision.set('porRevisar')">Por revisar <span class="contador num">{{ totalPorRevisar() }}</span></button>
+              @if (hayControlFactura()) {
+                <button type="button" [class.is-on]="filtroRevision() === 'sinFactura'" [attr.aria-pressed]="filtroRevision() === 'sinFactura'"
+                        (click)="filtroRevision.set('sinFactura')">Sin factura <span class="contador num">{{ totalSinFactura() }}</span></button>
+              }
             </div>
           </div>
 
@@ -209,7 +252,8 @@
                            [attr.aria-label]="todasSeleccionadas() ? 'Quitar todas las liquidaciones por revisar mostradas' : 'Elegir todas las liquidaciones por revisar mostradas'" />
                   </th>
                   @if (vista() === 'resumen') {
-                    <th scope="col">Colaborador</th><th class="r" scope="col">Neto del mes</th><th scope="col">Revisión</th>
+                    <th scope="col">Colaborador</th><th scope="col">Factura</th><th scope="col">Días</th>
+                    <th class="r" scope="col">Neto del mes</th><th scope="col">Revisión</th>
                   } @else {
                     <th scope="col">Colaborador</th><th class="r" scope="col">Neto</th>
                     <th class="r" scope="col">Desc. quincena</th><th class="r" scope="col">Valor quincena</th>
@@ -242,6 +286,21 @@
                           <span class="persona__txt"><strong>{{ l.colaborador }}</strong></span>
                         </div>
                       </td>
+                      @if (controlDe(l.colaboradorId); as c) {
+                        <td>
+                          <app-estado-chip [tono]="etiquetaFactura[c.estadoFactura].tono">{{ etiquetaFactura[c.estadoFactura].texto }}</app-estado-chip>
+                        </td>
+                        <td class="num">
+                          @if (c.diasDescontados > 0) { <span class="dias-descontados">−{{ c.diasDescontados }} días</span> }
+                          @else { <span class="muted">—</span> }
+                          @if (c.observaciones) {
+                            <app-icon name="edit" [size]="14" class="con-observacion" [attr.title]="c.observaciones" />
+                            <span class="sr-only">Tiene observación</span>
+                          }
+                        </td>
+                      } @else {
+                        <td class="muted">—</td><td class="muted">—</td>
+                      }
                       <td class="r num"><strong>{{ l.netoConsolidado | dinero }}</strong></td>
                     } @else {
                       <td><strong>{{ l.colaborador }}</strong></td>
@@ -270,9 +329,11 @@
                   </tr>
                 } @empty {
                   <tr>
-                    <td class="sin-resultados" [attr.colspan]="vista() === 'resumen' ? 4 : 8">
+                    <td class="sin-resultados" [attr.colspan]="vista() === 'resumen' ? 6 : 8">
                       @if (busqueda().trim()) {
                         Ningún colaborador de {{ nombreMes() }} coincide con “{{ busqueda().trim() }}”@if (filtroRevision() === 'porRevisar') { entre los que faltan revisar}.
+                      } @else if (filtroRevision() === 'sinFactura') {
+                        Todos los colaboradores de {{ nombreMes() }} entregaron su factura.
                       } @else {
                         Todas las liquidaciones de {{ nombreMes() }} están revisadas.
                       }
@@ -284,7 +345,7 @@
               @if (filasVisibles().length) {
                 <tfoot>
                   <tr class="fila-total">
-                    <th scope="row" colspan="2" class="total__etiqueta">
+                    <th scope="row" [attr.colspan]="vista() === 'resumen' ? 4 : 2" class="total__etiqueta">
                       {{ hayFiltros() ? 'Total de lo mostrado' : 'Total del período' }}
                       <span class="total__cuantos">· {{ filasVisibles().length }} {{ filasVisibles().length === 1 ? 'colaborador' : 'colaboradores' }}</span>
                     </th>
@@ -341,6 +402,102 @@
                 </div>
               </div>
             }
+
+            <!-- ── Factura del mes (plazo día 7; gracia hasta el 14) ── -->
+            @if (controlDetalle(); as c) {
+              @if (c.estadoFactura !== 'NoAplica') {
+                <section class="bloque-sm factura" aria-labelledby="factura-titulo">
+                  <header class="proyecto__head">
+                    <h3 id="factura-titulo" class="subtitulo">Factura del mes</h3>
+                    <app-estado-chip [tono]="etiquetaFactura[c.estadoFactura].tono">{{ etiquetaFactura[c.estadoFactura].texto }}</app-estado-chip>
+                  </header>
+                  @if (c.facturaRecibidaEn) {
+                    <small class="muted">
+                      Recibida el {{ c.facturaRecibidaEn | date: 'dd MMM, HH:mm' }}@if (c.facturaMarcadaPor) { · marcada por {{ c.facturaMarcadaPor }}}.
+                      @if (c.estadoFactura === 'EnGracia') { Llegó en días de gracia: este mes se paga todo a fin de mes. }
+                    </small>
+                  } @else {
+                    <small class="muted">
+                      @switch (c.estadoFactura) {
+                        @case ('Pendiente') {
+                          Hasta el {{ diaLimite() }}, 23:59 cobra la quincena{{ c.frecuencia === 'FinDeMes' ? ' (este colaborador cobra solo a fin de mes; queda como registro)' : '' }}.
+                          Del {{ diaLimite() + 1 }} al {{ diaFinGracia() }} se puede marcar en gracia, pero el mes se paga a fin de mes.
+                        }
+                        @case ('PendienteEnGracia') { Días de gracia hasta el {{ diaFinGracia() }}, 23:59: se registra, pero el mes se paga a fin de mes. }
+                        @default { Pasaron los días de gracia: el mes se paga a fin de mes. }
+                      }
+                    </small>
+                  }
+                  @if (c.quincenaPorAjustar) {
+                    <app-estado-chip tono="warn">Quincena por ajustar: pulsa Calcular período</app-estado-chip>
+                  }
+                  <div class="factura__acciones">
+                    @if (c.puedeMarcarFactura) {
+                      <button type="button" class="btn btn--sm" (click)="marcarFactura(det)" [disabled]="guardandoFactura()">
+                        <app-icon name="check" [size]="16" />
+                        {{ guardandoFactura() ? 'Guardando…' : (c.estadoFactura === 'PendienteEnGracia' ? 'Marcar factura (gracia)' : 'Marcar factura recibida') }}
+                      </button>
+                    }
+                    @if (c.puedeQuitarFactura) {
+                      <button type="button" class="btn btn--ghost btn--sm" (click)="quitarFactura(det)" [disabled]="guardandoFactura()">Quitar factura</button>
+                    }
+                  </div>
+                </section>
+              }
+            }
+
+            <!-- ── Días descontados y observaciones (por ahora no cambian el valor a pagar) ── -->
+            <section class="bloque-sm dias" aria-labelledby="dias-titulo">
+              <header class="proyecto__head">
+                <h3 id="dias-titulo" class="subtitulo">Días y observaciones</h3>
+                @if (!editandoDias()) {
+                  <button type="button" class="btn btn--ghost btn--sm" (click)="editandoDias.set(true)" [disabled]="!facturacion()">
+                    <app-icon name="edit" [size]="15" /> Editar
+                  </button>
+                }
+              </header>
+              @let descontados = editandoDias() ? diasForm() : (controlDetalle()?.diasDescontados ?? 0);
+              @if (pagoPorContrato(); as p) {
+                <p class="dias__resumen" [class.dias__resumen--con-descuento]="descontados > 0">
+                  <app-icon name="calendar" [size]="18" />
+                  <strong>Pago por contrato: {{ p.diasReconocidos - descontados < 0 ? 0 : p.diasReconocidos - descontados }} de {{ p.diasReales }} días</strong>
+                </p>
+              } @else if (descontados > 0) {
+                <p class="dias__resumen dias__resumen--con-descuento"><app-icon name="calendar" [size]="18" /> <strong>{{ descontados }} días descontados</strong></p>
+              }
+              @if (editandoDias()) {
+                <div class="field">
+                  <label for="dias-descontar">Días a descontar</label>
+                  <div class="dias__stepper">
+                    <button type="button" class="btn btn--sm" aria-label="Un día menos" (click)="cambiarDias(-1)" [disabled]="diasForm() <= 0">−</button>
+                    <input id="dias-descontar" class="input num" inputmode="numeric" [value]="diasForm()" (input)="escribirDias($any($event.target).value)" />
+                    <button type="button" class="btn btn--sm" aria-label="Un día más" (click)="cambiarDias(1)" [disabled]="diasForm() >= diasDelMes()">+</button>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="dias-observaciones">Observaciones</label>
+                  <textarea id="dias-observaciones" class="input area" rows="3" maxlength="1000"
+                            [value]="obsForm()" (input)="obsForm.set($any($event.target).value)"></textarea>
+                  <span class="field__hint">Se puede guardar una observación aunque no se descuenten días.</span>
+                </div>
+                <small class="muted">Por ahora los días solo se registran: no cambian el valor a pagar ni salen en las exportaciones.</small>
+                <div class="factura__acciones">
+                  <button type="button" class="btn btn--ghost btn--sm" (click)="cancelarDias()" [disabled]="guardandoDias()">Cancelar</button>
+                  <button type="button" class="btn btn--primary btn--sm" (click)="guardarDias(det)" [disabled]="guardandoDias()">
+                    {{ guardandoDias() ? 'Guardando…' : 'Guardar' }}
+                  </button>
+                </div>
+              } @else {
+                @if (controlDetalle()?.observaciones; as obs) {
+                  <p class="dias__observacion">{{ obs }}</p>
+                } @else if (!descontados) {
+                  <small class="muted">Sin días descontados ni observaciones este mes.</small>
+                }
+                @if (controlDetalle()?.diasActualizadoEn; as cuando) {
+                  <small class="muted">Guardado el {{ cuando | date: 'dd MMM, HH:mm' }}@if (controlDetalle()?.diasActualizadoPor; as quien) { por {{ quien }}}.</small>
+                }
+              }
+            </section>
 
             <!-- Días por proyecto: cada proyecto cuenta los suyos (RN 25) -->
             <div class="resumen-proyectos">

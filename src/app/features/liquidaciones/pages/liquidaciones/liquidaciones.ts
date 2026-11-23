@@ -6,7 +6,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { LiquidacionesService } from '../../services/liquidaciones.service';
 import {
-  LiquidacionDetalle, LiquidacionResumen, LiquidacionesPeriodo, corteDe,
+  ControlMensual, ETIQUETA_FACTURA, FacturacionPeriodo, LiquidacionDetalle, LiquidacionResumen, LiquidacionesPeriodo, corteDe, sinFactura,
 } from '../../models/liquidacion.models';
 import { ETIQUETA_MODALIDAD } from '../../../honorarios/models/honorario.models';
 import { DashboardService } from '../../../dashboard/services/dashboard.service';
@@ -24,7 +24,7 @@ import { DialogoRevisar } from '../../components/dialogo-revisar/dialogo-revisar
 import { coincide } from '../../../../shared/utils/texto';
 
 type Vista = 'resumen' | 'cortes';
-type FiltroRevision = 'todas' | 'porRevisar';
+type FiltroRevision = 'todas' | 'porRevisar' | 'sinFactura';
 
 /** Suma de importes en centavos, para que el total no arrastre decimales de coma flotante. */
 const sumar = (valores: number[]): number => valores.reduce((t, v) => t + Math.round(v * 100), 0) / 100;
@@ -54,6 +54,7 @@ export class Liquidaciones {
   protected readonly etiquetaModalidad = ETIQUETA_MODALIDAD;
   protected readonly corteDe = corteDe;
   protected readonly rangoCorte = rangoCorte;
+  protected readonly etiquetaFactura = ETIQUETA_FACTURA;
 
   // ── Estado de la pantalla ────────────────────────────────────────────
   protected readonly periodo = signal(this.periodoInicial());
@@ -100,10 +101,45 @@ export class Liquidaciones {
     const q = this.busqueda();
     return this.filas().filter((l) => coincide(`${l.colaborador} ${l.identificacion} ${l.tmrColaboradorId}`, q));
   });
-  protected readonly filasVisibles = computed(() =>
-    this.filtroRevision() === 'porRevisar' ? this.filasBuscadas().filter((l) => !l.revisado) : this.filasBuscadas());
+  protected readonly filasVisibles = computed(() => {
+    const filtro = this.filtroRevision();
+    if (filtro === 'porRevisar') return this.filasBuscadas().filter((l) => !l.revisado);
+    if (filtro === 'sinFactura') return this.filasBuscadas().filter((l) => this.esSinFactura(l.colaboradorId));
+    return this.filasBuscadas();
+  });
   protected readonly hayFiltros = computed(() => this.busqueda().trim() !== '' || this.filtroRevision() !== 'todas');
   protected readonly totalPorRevisar = computed(() => this.filas().filter((l) => !l.revisado).length);
+
+  // ── Factura del mes, días descontados y observaciones ────────────────
+  /** GET /api/liquidaciones/facturacion. null si no cargó (la pantalla sigue funcionando sin esto). */
+  protected readonly facturacion = signal<FacturacionPeriodo | null>(null);
+  private readonly controles = computed(() =>
+    new Map((this.facturacion()?.colaboradores ?? []).map((c) => [c.colaboradorId, c] as const)));
+  /** El control de facturas aplica a este mes (desde diciembre de 2026). */
+  protected readonly hayControlFactura = computed(() => !!this.facturacion() && this.facturacion()!.fase !== 'NoAplica');
+  protected readonly totalSinFactura = computed(() => this.filas().filter((l) => this.esSinFactura(l.colaboradorId)).length);
+  protected readonly facturasRecibidas = computed(() => this.filas().filter((l) => {
+    const e = this.controlDe(l.colaboradorId)?.estadoFactura;
+    return e === 'ATiempo' || e === 'EnGracia';
+  }).length);
+  /** Día límite y último día de gracia, leídos del backend ("2026-12-08T00:00:00" → 7). */
+  protected readonly diaLimite = computed(() => Number(this.facturacion()?.cierreATiempo.slice(8, 10) ?? 8) - 1);
+  protected readonly diaFinGracia = computed(() => Number(this.facturacion()?.cierreGracia.slice(8, 10) ?? 15) - 1);
+
+  protected readonly guardandoFactura = signal(false);
+  protected readonly editandoDias = signal(false);
+  protected readonly guardandoDias = signal(false);
+  protected readonly diasForm = signal(0);
+  protected readonly obsForm = signal('');
+  /** Control del colaborador abierto en el detalle (si el mes ya tiene facturación cargada). */
+  protected readonly controlDetalle = computed<ControlMensual | null>(() => {
+    const det = this.detalle();
+    return det ? this.controlDe(det.colaboradorId) : null;
+  });
+  /** "Pago por contrato: 30 de 30 días": el honorario sin proyecto (pago por contrato), si lo tiene. */
+  protected readonly pagoPorContrato = computed(() => this.detalle()?.detalleProyectos.find((p) => p.proyectoId === null) ?? null);
+  /** Tope de días a descontar: los del mes. */
+  protected readonly diasDelMes = computed(() => this.detalle()?.detalleProyectos[0]?.diasReales ?? 31);
   /** Liquidaciones que cambiaron después de calcular y todavía no se vuelven a revisar. */
   protected readonly modificadas = computed(() => this.filas().filter((l) => l.modificadaEn !== null));
 
@@ -200,6 +236,15 @@ export class Liquidaciones {
     effect(() => {
       const id = this.seleccionadoId();
       untracked(() => this.cargarDetalle(id));
+    });
+    // Al abrir otro colaborador (o recargar), el formulario de días vuelve a lo guardado.
+    effect(() => {
+      const c = this.controlDetalle();
+      untracked(() => {
+        this.editandoDias.set(false);
+        this.diasForm.set(c?.diasDescontados ?? 0);
+        this.obsForm.set(c?.observaciones ?? '');
+      });
     });
     effect(() => {
       const titulo = this.tituloDetalle();
@@ -339,6 +384,82 @@ export class Liquidaciones {
     });
   }
 
+  // ── Factura, días y observaciones ────────────────────────────────────
+  protected controlDe(colaboradorId: string): ControlMensual | null {
+    return this.controles().get(colaboradorId) ?? null;
+  }
+
+  private esSinFactura(colaboradorId: string): boolean {
+    const c = this.controlDe(colaboradorId);
+    return !!c && sinFactura(c.estadoFactura);
+  }
+
+  /** POST …/factura · marca la factura del mes como recibida ahora. */
+  protected marcarFactura(det: LiquidacionResumen): void {
+    if (this.guardandoFactura()) return;
+    this.guardandoFactura.set(true);
+    this.api.marcarFactura(det.colaboradorId, this.periodo()).subscribe({
+      next: (c) => {
+        this.guardandoFactura.set(false);
+        this.reemplazarControl(c);
+        this.avisos.ok(c.estadoFactura === 'EnGracia'
+          ? `Factura de ${det.colaborador} registrada en días de gracia: este mes se paga a fin de mes.`
+          : `Factura de ${det.colaborador} registrada a tiempo.`);
+      },
+      error: (e: unknown) => { this.guardandoFactura.set(false); this.avisos.error(leerErrorApi(e).mensaje); this.cargarFacturacion(this.periodo()); },
+    });
+  }
+
+  /** DELETE …/factura · solo mientras el plazo lo permite (el backend decide). */
+  protected quitarFactura(det: LiquidacionResumen): void {
+    if (this.guardandoFactura()) return;
+    this.guardandoFactura.set(true);
+    this.api.quitarFactura(det.colaboradorId, this.periodo()).subscribe({
+      next: (c) => { this.guardandoFactura.set(false); this.reemplazarControl(c); this.avisos.ok(`Se quitó la factura de ${det.colaborador}.`); },
+      error: (e: unknown) => { this.guardandoFactura.set(false); this.avisos.error(leerErrorApi(e).mensaje); this.cargarFacturacion(this.periodo()); },
+    });
+  }
+
+  protected cambiarDias(delta: number): void {
+    this.diasForm.update((d) => Math.min(this.diasDelMes(), Math.max(0, d + delta)));
+  }
+
+  protected escribirDias(valor: string): void {
+    const n = Number.parseInt(valor.replace(/\D/g, ''), 10);
+    this.diasForm.set(Number.isNaN(n) ? 0 : Math.min(this.diasDelMes(), Math.max(0, n)));
+  }
+
+  protected cancelarDias(): void {
+    const c = this.controlDetalle();
+    this.diasForm.set(c?.diasDescontados ?? 0);
+    this.obsForm.set(c?.observaciones ?? '');
+    this.editandoDias.set(false);
+  }
+
+  /** PUT …/dias · días descontados (solo se registran) y observaciones del mes. */
+  protected guardarDias(det: LiquidacionResumen): void {
+    if (this.guardandoDias()) return;
+    this.guardandoDias.set(true);
+    this.api.guardarDias(det.colaboradorId, this.periodo(), this.diasForm(), this.obsForm()).subscribe({
+      next: (c) => {
+        this.guardandoDias.set(false);
+        this.reemplazarControl(c);
+        this.editandoDias.set(false);
+        this.avisos.ok(`Días y observaciones de ${det.colaborador} guardados.`);
+      },
+      error: (e: unknown) => { this.guardandoDias.set(false); this.avisos.error(leerErrorApi(e).mensaje); },
+    });
+  }
+
+  private reemplazarControl(c: ControlMensual): void {
+    this.facturacion.update((f) => f && {
+      ...f,
+      colaboradores: f.colaboradores.some((x) => x.colaboradorId === c.colaboradorId)
+        ? f.colaboradores.map((x) => (x.colaboradorId === c.colaboradorId ? c : x))
+        : [...f.colaboradores, c],
+    });
+  }
+
   // ── Presentación ─────────────────────────────────────────────────────
   protected iniciales(nombre: string): string {
     return nombre.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
@@ -350,9 +471,17 @@ export class Liquidaciones {
     this.cargando.set(true);
     this.error.set(null);
     this.tablero.indicadores(periodo).pipe(catchError(() => of(null))).subscribe((i) => this.indicadores.set(i));
+    this.cargarFacturacion(periodo);
     this.api.listar(periodo).subscribe({
       next: (d) => { this.datos.set(d); this.cargando.set(false); },
       error: (e: unknown) => { this.cargando.set(false); this.error.set(leerErrorApi(e).mensaje); },
+    });
+  }
+
+  /** Si falla, la pantalla sigue sin la columna de factura (no bloquea el rol a pagar). */
+  private cargarFacturacion(periodo: string): void {
+    this.api.facturacion(periodo).pipe(catchError(() => of(null))).subscribe((f) => {
+      if (periodo === this.periodo()) this.facturacion.set(f);
     });
   }
 

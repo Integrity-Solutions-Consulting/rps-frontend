@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, map, switchMap } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import {
-  LiquidacionDetalle, LiquidacionResumen, LiquidacionesPeriodo, ResultadoCalculo,
+  ControlMensual, FacturacionPeriodo, LiquidacionDetalle, LiquidacionResumen, LiquidacionesPeriodo, ResultadoCalculo,
 } from '../models/liquidacion.models';
 import { BackendRps, diaUno, mesDe } from '../../../core/backend/backend-rps.service';
 import { SessionService } from '../../../core/services/session.service';
@@ -75,6 +75,30 @@ export class LiquidacionesService {
   /** POST /api/liquidaciones/{id}/revisar · "Revisado para envío" (RN 49). */
   marcarRevisado(id: string): Observable<void> {
     return this.http.post<BeLiquidacion>(`${this.base}/${id}/revisar`, {}).pipe(map(() => undefined));
+  }
+
+  // ── Factura del mes, días descontados y observaciones ────────────────
+  /** GET /api/liquidaciones/facturacion?periodo=2026-12-01 */
+  facturacion(periodo: string): Observable<FacturacionPeriodo> {
+    const params = new HttpParams().set('periodo', diaUno(periodo));
+    return this.http.get<FacturacionPeriodo>(`${this.base}/facturacion`, { params });
+  }
+
+  /** POST /api/liquidaciones/facturacion/{colaboradorId}/factura */
+  marcarFactura(colaboradorId: string, periodo: string): Observable<ControlMensual> {
+    return this.http.post<ControlMensual>(`${this.base}/facturacion/${colaboradorId}/factura`, { periodo: diaUno(periodo) });
+  }
+
+  /** DELETE /api/liquidaciones/facturacion/{colaboradorId}/factura?periodo=… */
+  quitarFactura(colaboradorId: string, periodo: string): Observable<ControlMensual> {
+    const params = new HttpParams().set('periodo', diaUno(periodo));
+    return this.http.delete<ControlMensual>(`${this.base}/facturacion/${colaboradorId}/factura`, { params });
+  }
+
+  /** PUT /api/liquidaciones/facturacion/{colaboradorId}/dias · por ahora solo se registran (no cambian el valor). */
+  guardarDias(colaboradorId: string, periodo: string, diasDescontados: number, observaciones: string): Observable<ControlMensual> {
+    return this.http.put<ControlMensual>(`${this.base}/facturacion/${colaboradorId}/dias`,
+      { periodo: diaUno(periodo), diasDescontados, observaciones: observaciones.trim() || null });
   }
 
   private aResumen(l: BeLiquidacion, colaboradores: BeColaborador[], nombres: Map<string, TmrColaborador>): LiquidacionResumen {
