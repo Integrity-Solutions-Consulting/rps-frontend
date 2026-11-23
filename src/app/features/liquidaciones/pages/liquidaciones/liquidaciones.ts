@@ -113,6 +113,7 @@ export class Liquidaciones {
   // ── Factura del mes, días descontados y observaciones ────────────────
   /** GET /api/liquidaciones/facturacion. null si no cargó (la pantalla sigue funcionando sin esto). */
   protected readonly facturacion = signal<FacturacionPeriodo | null>(null);
+  protected readonly errorFacturacion = signal<string | null>(null);
   private readonly controles = computed(() =>
     new Map((this.facturacion()?.colaboradores ?? []).map((c) => [c.colaboradorId, c] as const)));
   /** El control de facturas aplica a este mes (desde diciembre de 2026). */
@@ -420,6 +421,16 @@ export class Liquidaciones {
     });
   }
 
+  /** Días del pago por contrato menos los descontados (los del formulario mientras se edita). */
+  protected diasContrato(diasReconocidos: number): number {
+    const descontados = this.editandoDias() ? this.diasForm() : (this.controlDetalle()?.diasDescontados ?? 0);
+    return Math.max(0, diasReconocidos - descontados);
+  }
+
+  protected reintentarFacturacion(): void {
+    this.cargarFacturacion(this.periodo());
+  }
+
   protected cambiarDias(delta: number): void {
     this.diasForm.update((d) => Math.min(this.diasDelMes(), Math.max(0, d + delta)));
   }
@@ -480,7 +491,11 @@ export class Liquidaciones {
 
   /** Si falla, la pantalla sigue sin la columna de factura (no bloquea el rol a pagar). */
   private cargarFacturacion(periodo: string): void {
-    this.api.facturacion(periodo).pipe(catchError(() => of(null))).subscribe((f) => {
+    this.errorFacturacion.set(null);
+    this.api.facturacion(periodo).pipe(catchError((e: unknown) => {
+      if (periodo === this.periodo()) this.errorFacturacion.set(leerErrorApi(e).mensaje);
+      return of(null);
+    })).subscribe((f) => {
       if (periodo === this.periodo()) this.facturacion.set(f);
     });
   }

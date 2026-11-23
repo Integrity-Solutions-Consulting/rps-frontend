@@ -457,15 +457,25 @@
                 }
               </header>
               @let descontados = editandoDias() ? diasForm() : (controlDetalle()?.diasDescontados ?? 0);
-              @if (pagoPorContrato(); as p) {
-                <p class="dias__resumen" [class.dias__resumen--con-descuento]="descontados > 0">
-                  <app-icon name="calendar" [size]="18" />
-                  <strong>Pago por contrato: {{ p.diasReconocidos - descontados < 0 ? 0 : p.diasReconocidos - descontados }} de {{ p.diasReales }} días</strong>
-                </p>
-              } @else if (descontados > 0) {
+              @if (!facturacion()) {
+                <div class="aviso aviso--danger" role="alert">
+                  <app-icon name="alert" [size]="18" />
+                  <div>
+                    No se pudo cargar la facturación del mes{{ errorFacturacion() ? ': ' + errorFacturacion() : '' }}.
+                    Revisa que el backend esté actualizado y con la migración <strong>ControlMensual</strong> aplicada.
+                    <button type="button" class="btn btn--sm" (click)="reintentarFacturacion()">Reintentar</button>
+                  </div>
+                </div>
+              } @else if (descontados > 0 && !pagoPorContrato()) {
                 <p class="dias__resumen dias__resumen--con-descuento"><app-icon name="calendar" [size]="18" /> <strong>{{ descontados }} días descontados</strong></p>
               }
               @if (editandoDias()) {
+                @if (pagoPorContrato(); as p) {
+                  <p class="dias__resumen" [class.dias__resumen--con-descuento]="descontados > 0">
+                    <app-icon name="calendar" [size]="18" />
+                    <strong>Quedará: pago por contrato {{ diasContrato(p.diasReconocidos) }} de {{ p.diasReales }} días</strong>
+                  </p>
+                }
                 <div class="field">
                   <label for="dias-descontar">Días a descontar</label>
                   <div class="dias__stepper">
@@ -490,7 +500,7 @@
               } @else {
                 @if (controlDetalle()?.observaciones; as obs) {
                   <p class="dias__observacion">{{ obs }}</p>
-                } @else if (!descontados) {
+                } @else if (!descontados && facturacion()) {
                   <small class="muted">Sin días descontados ni observaciones este mes.</small>
                 }
                 @if (controlDetalle()?.diasActualizadoEn; as cuando) {
@@ -505,7 +515,10 @@
                 <div class="resumen-proyectos__item">
                   <app-icon name="calendar" [size]="18" />
                   <div>
-                    <strong>{{ p.proyecto }}: {{ p.diasReconocidos }} de {{ p.diasReales }} días</strong>
+                    <strong>{{ p.proyecto }}: {{ p.proyectoId === null ? diasContrato(p.diasReconocidos) : p.diasReconocidos }} de {{ p.diasReales }} días</strong>
+                    @if (p.proyectoId === null && (controlDetalle()?.diasDescontados ?? 0) > 0) {
+                      <small>{{ controlDetalle()!.diasDescontados }} días descontados (solo registro, no cambia el valor)</small>
+                    }
                     @if (p.cliente) { <small>{{ p.cliente }}</small> }
                   </div>
                 </div>
