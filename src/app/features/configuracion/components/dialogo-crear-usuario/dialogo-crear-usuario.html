@@ -39,7 +39,7 @@
           <button type="button" class="clave__ver" [attr.aria-pressed]="verPassword()" (click)="verPassword.set(!verPassword())">{{ verPassword() ? 'Ocultar' : 'Mostrar' }}</button>
         </div>
         @if (errorDe('password'); as e) { <span class="field__error">{{ e }}</span> }
-        @else { <span class="field__hint">Con letras y números.</span> }
+        @else { <span class="field__hint">Puede tener letras, números o símbolos; no es obligatorio combinarlos.</span> }
       </div>
     </div>
 

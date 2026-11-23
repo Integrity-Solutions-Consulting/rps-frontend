@@ -51,8 +51,7 @@ export class DialogoCrearUsuario {
     const password = this.password();
     if (!this.nombre().trim()) errores['nombre'] = 'Escribe el nombre del usuario.';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errores['email'] = 'Escribe un correo válido.';
-    if (password.length < 10 || !/[a-zA-Z]/.test(password) || !/\d/.test(password))
-      errores['password'] = 'Mínimo 10 caracteres, con letras y números.';
+    if (password.length < 10) errores['password'] = 'Mínimo 10 caracteres.';
     if (!this.rol()) errores['rol'] = 'Elige un rol.';
     return errores;
   });
