@@ -26,8 +26,8 @@
 
     <div class="login__campo">
       <label for="email">Correo</label>
-      <input id="email" class="login__input" type="email" autocomplete="username" [value]="email()"
-             (input)="email.set($any($event.target).value)" (blur)="marcarTocado('email')" [attr.aria-invalid]="!!errorDe('email')"
+      <input id="email" class="login__input" type="email" autocomplete="username" maxlength="150" [value]="email()"
+             (input)="escribirEmail($event)" (blur)="marcarTocado('email')" [attr.aria-invalid]="!!errorDe('email')"
              [attr.aria-describedby]="errorDe('email') ? 'email-error' : null" />
       @if (errorDe('email'); as e) { <span id="email-error" class="login__error">{{ e }}</span> }
     </div>

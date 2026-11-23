@@ -28,9 +28,20 @@ interface SesionGuardada {
   usuario: UsuarioBackend;
   /** Módulos que permite el rol (GET /api/auth/permisos). null mientras no se han pedido. */
   permisos?: string[] | null;
+  /** Momento del login (ms). No cambia al renovar el token: marca el tope de 8 h. */
+  inicio: number;
 }
 
 const CLAVE = 'rps.sesion';
+const CLAVE_ACTIVIDAD = 'rps.actividad';
+
+/** Igual que el backend (Jwt:SesionInactividadMinutos y Jwt:SesionDuracionMaximaHoras). */
+const INACTIVIDAD_MS = 40 * 60_000;
+const DURACION_MAXIMA_MS = 8 * 3_600_000;
+/** Cada cuánto se revisa la sesión y cada cuánto, si hay uso sin llamadas al backend, se le avisa. */
+const REVISION_MS = 30_000;
+const AVISO_BACKEND_MS = 10 * 60_000;
+const EVENTOS_USO = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'wheel'] as const;
 
 /**
  * Sesión del usuario (RC 01: solo usuarios autorizados de Contabilidad).
@@ -46,6 +57,11 @@ export class SessionService {
   private readonly sesion = signal<SesionGuardada | null>(leer());
   /** Renovación en curso: si varias llamadas reciben 401 a la vez, todas esperan la misma. */
   private renovando$: Observable<string> | null = null;
+  /** Último uso del usuario (ms), compartido entre recargas de la pestaña. */
+  private ultimaActividad = leerActividad();
+  /** Última llamada al backend (ms): el backend cuenta la inactividad por peticiones. */
+  private ultimaPeticion = Date.now();
+  private vigilando = false;
 
   readonly token = computed(() => this.sesion()?.accessToken ?? null);
   readonly autenticado = computed(() => this.sesion() !== null);
@@ -82,6 +98,49 @@ export class SessionService {
     );
   }
 
+  /**
+   * Cierra la sesión tras 40 min sin uso o 8 h desde el login (el backend aplica lo mismo).
+   * Se llama una vez al arrancar la app (App).
+   */
+  vigilarInactividad(): void {
+    if (this.vigilando || typeof window === 'undefined') return;
+    this.vigilando = true;
+    let ultimoRegistro = 0;
+    const registrarUso = () => {
+      const ahora = Date.now();
+      if (ahora - ultimoRegistro < 5_000) return;
+      ultimoRegistro = ahora;
+      this.ultimaActividad = ahora;
+      escribirActividad(ahora);
+    };
+    for (const e of EVENTOS_USO) window.addEventListener(e, registrarUso, { passive: true });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') this.revisarVigencia();
+    });
+    setInterval(() => this.revisarVigencia(), REVISION_MS);
+    this.revisarVigencia();
+  }
+
+  /** Lo llama el interceptor en cada petición al backend. */
+  registrarPeticion(): void {
+    this.ultimaPeticion = Date.now();
+  }
+
+  private revisarVigencia(): void {
+    const s = this.sesion();
+    if (!s) return;
+    const ahora = Date.now();
+    if (ahora - this.ultimaActividad > INACTIVIDAD_MS || ahora - (s.inicio ?? 0) > DURACION_MAXIMA_MS) {
+      this.cerrarSesion('expirada');
+      return;
+    }
+    // Está usando la app pero sin llamar al backend (p. ej. leyendo una tabla): se le avisa
+    // al backend para que no cuente esos minutos como inactividad.
+    if (ahora - this.ultimaActividad < REVISION_MS * 2 && ahora - this.ultimaPeticion > AVISO_BACKEND_MS) {
+      this.http.get(`${this.base}/me`).pipe(catchError(() => of(null))).subscribe();
+    }
+  }
+
   /** POST /api/auth/login */
   iniciarSesion(email: string, password: string): Observable<void> {
     return this.http.post<RespuestaAuth>(`${this.base}/login`, { email, password }).pipe(
@@ -112,11 +171,11 @@ export class SessionService {
   }
 
   /** POST /api/auth/logout (invalida el token en el backend) y vuelve al login. */
-  cerrarSesion(): void {
+  cerrarSesion(motivo?: 'expirada'): void {
     const refreshToken = this.sesion()?.refreshToken ?? null;
-    if (!this.token()) return this.terminar();
+    if (!this.token()) return this.terminar(motivo);
     this.http.post(`${this.base}/logout`, { refreshToken }).pipe(catchError(() => of(null)))
-      .subscribe(() => this.terminar());
+      .subscribe(() => this.terminar(motivo));
   }
 
   /** Borra la sesión del navegador y lleva al login, recordando a dónde volver. */
@@ -131,7 +190,13 @@ export class SessionService {
     // Se conservan los permisos ya cargados de este mismo usuario (los de otro usuario no).
     const previos = this.sesion();
     const permisos = previos?.usuario.id === r.usuario.id ? (previos.permisos ?? null) : null;
-    const s: SesionGuardada = { accessToken: r.accessToken, refreshToken: r.refreshToken, expiraEn: r.accessTokenExpiraEn, usuario: r.usuario, permisos };
+    // Al renovar se conserva el inicio original: renovar no alarga el tope de 8 h.
+    const inicio = previos?.usuario.id === r.usuario.id ? (previos.inicio ?? Date.now()) : Date.now();
+    if (!previos) {
+      this.ultimaActividad = Date.now();
+      escribirActividad(this.ultimaActividad);
+    }
+    const s: SesionGuardada = { accessToken: r.accessToken, refreshToken: r.refreshToken, expiraEn: r.accessTokenExpiraEn, usuario: r.usuario, permisos, inicio };
     this.sesion.set(s);
     escribir(s);
   }
@@ -149,6 +214,22 @@ function leer(): SesionGuardada | null {
     return texto ? (JSON.parse(texto) as SesionGuardada) : null;
   } catch {
     return null;
+  }
+}
+
+function leerActividad(): number {
+  try {
+    return Number(sessionStorage.getItem(CLAVE_ACTIVIDAD)) || Date.now();
+  } catch {
+    return Date.now();
+  }
+}
+
+function escribirActividad(ms: number): void {
+  try {
+    sessionStorage.setItem(CLAVE_ACTIVIDAD, String(ms));
+  } catch {
+    /* sin almacenamiento: se cuenta solo en memoria */
   }
 }
 

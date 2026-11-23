@@ -17,6 +17,7 @@ export const authTokenInterceptor: HttpInterceptorFn = (req, next) => {
   if (!req.url.startsWith(environment.apiUrl)) return next(req);
   const ruta = req.url.slice(environment.apiUrl.length);
   if (SIN_TOKEN.some((r) => ruta.startsWith(r))) return next(req);
+  session.registrarPeticion();
 
   const conToken = (r: HttpRequest<unknown>, token: string | null) =>
     token ? r.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : r;
