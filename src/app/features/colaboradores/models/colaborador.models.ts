@@ -125,10 +125,31 @@ export const DETALLE_CLASIFICACION: Record<Clasificacion, string> = {
 
 export const TIPOS_CUENTA = ['Ahorros', 'Corriente'] as const;
 
+/** Los bancos más usados: salen directo en la lista del formulario de contrato, en este orden. */
+export const BANCOS_PRINCIPALES: readonly string[] = [
+  'Banco Guayaquil',
+  'Banco Pichincha',
+  'Banco Bolivariano',
+  'Banco del Pacífico',
+];
+
 /**
- * Bancos que se pueden elegir para la cuenta del colaborador. Para agregar uno nuevo, se suma
- * aquí y aparece en la lista del formulario de contrato.
+ * Todos los bancos que se pueden elegir para la cuenta del colaborador: los principales y, en "Ver más…",
+ * el resto. Para agregar uno nuevo, se suma aquí y aparece en la ventana "Elegir banco".
  */
 export const BANCOS: readonly string[] = [
-  'Banco Guayaquil',
+  ...BANCOS_PRINCIPALES,
+  'Banco Amazonas',
+  'Produbanco',
+  'BanEcuador',
+  'Banco de Machala',
+  'Banco de Loja',
+  'Banco del Austro',
+  'Banco Internacional',
+  'Citibank Ecuador',
+  'Banco Diners Club del Ecuador',
+  'Banco Solidario',
+  'Banco Coopnacional',
+  'Banco Comercial de Manabí',
+  'Banco General Rumiñahui (BGR)',
 ];

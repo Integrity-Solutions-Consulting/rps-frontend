@@ -60,7 +60,7 @@
             <label for="buscar-colaborador">Colaborador</label>
             <input id="buscar-colaborador" name="colaborador" type="text" class="input" autocomplete="off"
                    placeholder="Busca por nombre…" [class.is-invalid]="errorContratoDe('colaborador')"
-                   [ngModel]="busquedaColaborador()" (ngModelChange)="buscarColaborador($event)"
+                   [ngModel]="busquedaColaborador()" (ngModelChange)="buscarColaborador($event)" (beforeinput)="soloLetras($event)"
                    (focus)="listaColaboradorAbierta.set(true)" (blur)="cerrarListaColaboradorConRetraso(); marcarTocadoContrato('colaborador')" />
             @if (listaColaboradorAbierta()) {
               <ul class="combo__lista" role="listbox">
@@ -189,7 +189,6 @@
             <label for="referencia">Referencia (opcional)</label>
             <input id="referencia" name="referencia" class="input" maxlength="100" placeholder="Ej. CT-2026-031"
                    [ngModel]="referenciaForm()" (ngModelChange)="referenciaForm.set($event)" />
-            @if (modoFormulario() !== 'editar') { <span class="field__hint">El número o código con el que Contabilidad archiva este documento.</span> }
           </div>
           <div class="field campo-ancho">
             <label for="observaciones">Observaciones (opcional)</label>
@@ -293,10 +292,14 @@
         </div>
         <div class="field">
           <label for="banco">Banco</label>
-          <select id="banco" name="banco" class="select" [ngModel]="bancoForm()" (ngModelChange)="bancoForm.set($event)">
+          <select #listaBancos id="banco" name="banco" class="select" [ngModel]="bancoForm()" (ngModelChange)="cambiarBanco($event, listaBancos)">
             <option value="">Elige el banco</option>
             @for (b of bancos(); track b) { <option [value]="b">{{ b }}</option> }
+            <option [value]="VER_MAS_BANCOS">Ver más…</option>
           </select>
+          @if (dialogoBancoAbierto()) {
+            <app-dialogo-elegir-banco [actual]="bancoForm()" (cancelar)="dialogoBancoAbierto.set(false)" (elegido)="usarBancoElegido($event)" />
+          }
         </div>
         <div class="field">
           <label for="tipo-cuenta">Tipo de cuenta</label>
@@ -314,8 +317,6 @@
                  [ngModel]="numeroCuentaForm()" (ngModelChange)="numeroCuentaForm.set($event)" (blur)="marcarTocadoContrato('numeroCuenta')" />
           @if (errorContratoDe('numeroCuenta'); as e) {
             <span class="field__error">{{ e }}</span>
-          } @else if (cuentaEnmascarada(); as c) {
-            <span class="field__hint">Registrada: {{ c }}. Déjalo vacío para mantenerla.</span>
           }
         </div>
         }

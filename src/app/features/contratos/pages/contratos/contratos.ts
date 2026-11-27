@@ -14,12 +14,13 @@ import { Modalidad } from '../../../honorarios/models/honorario.models';
 import { HonorariosService } from '../../../honorarios/services/honorarios.service';
 import { ColaboradoresService } from '../../../colaboradores/services/colaboradores.service';
 import {
-  BANCOS, Clasificacion, ColaboradorDetalle, ETIQUETA_CLASIFICACION, ETIQUETA_FRECUENCIA, Frecuencia,
+  BANCOS_PRINCIPALES, Clasificacion, ColaboradorDetalle, ETIQUETA_CLASIFICACION, ETIQUETA_FRECUENCIA, Frecuencia,
 } from '../../../colaboradores/models/colaborador.models';
 import { leerErrorApi } from '../../../../core/http/error-api';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { Icon } from '../../../../shared/components/icon/icon';
 import { SoloNumeros } from '../../../../shared/directives/solo-numeros.directive';
+import { DialogoElegirBanco } from '../../components/dialogo-elegir-banco/dialogo-elegir-banco';
 import { EstadoChip, TonoChip } from '../../../../shared/components/estado-chip/estado-chip';
 import { periodoActual, periodoSiguiente, primerDia } from '../../../../shared/utils/periodo';
 import { conservarDatosAlRecargar, estaActualizando } from '../../../../shared/utils/carga';
@@ -59,7 +60,7 @@ function cargaDe<T>(obs: Observable<T>): Observable<Carga<T>> {
 @Component({
   selector: 'app-contratos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CurrencyPipe, DatePipe, FormsModule, Icon, EstadoChip, SoloNumeros],
+  imports: [CurrencyPipe, DatePipe, FormsModule, Icon, EstadoChip, SoloNumeros, DialogoElegirBanco],
   templateUrl: './contratos.html',
   styleUrl: './contratos.scss',
 })
@@ -245,12 +246,15 @@ export class Contratos {
 
   // Paso 5: datos bancarios (opcional, se puede completar después desde aquí mismo).
   protected readonly bancoForm = signal('');
-  /** Lista de bancos (BANCOS). Si la cuenta ya registrada es de un banco que no está en la lista,
-   * se agrega a las opciones para no perderlo al editar. */
+  /** Bancos que salen directo en la lista (los 4 más usados). Si el banco elegido es otro (desde "Ver más…"
+   * o el de una cuenta ya registrada), se agrega a las opciones para que se vea y no se pierda al editar. */
   protected readonly bancos = computed(() => {
     const actual = this.bancoForm().trim();
-    return actual && !BANCOS.includes(actual) ? [...BANCOS, actual] : BANCOS;
+    return actual && !BANCOS_PRINCIPALES.includes(actual) ? [...BANCOS_PRINCIPALES, actual] : BANCOS_PRINCIPALES;
   });
+  /** Ventana "Elegir banco" con todos los bancos y buscador. */
+  protected readonly dialogoBancoAbierto = signal(false);
+  protected readonly VER_MAS_BANCOS = '__ver_mas__';
   protected readonly tipoCuentaForm = signal('');
   protected readonly numeroCuentaForm = signal('');
   /** Número de la cuenta activa, enmascarado (el backend nunca devuelve el número completo). */
@@ -477,6 +481,26 @@ export class Contratos {
     const vigente = colaborador?.frecuenciaVigente ?? null;
     this.frecuenciaActual.set(vigente ? { frecuencia: vigente.frecuencia, vigenteDesdeMes: vigente.vigenteDesdeMes } : null);
     this.frecuenciaForm.set(vigente?.frecuencia ?? '');
+  }
+
+  /** En el buscador de colaborador solo se escriben letras (con tildes y ñ) y espacios: nada de números ni símbolos. */
+  protected soloLetras(evento: InputEvent): void {
+    // Borrar y las teclas de acento (composición) siempre se permiten.
+    if (!evento.inputType.startsWith('insert') || evento.inputType === 'insertCompositionText') return;
+    const texto = evento.data ?? evento.dataTransfer?.getData('text/plain') ?? '';
+    if (!/^[\p{L}\p{M} ]*$/u.test(texto)) evento.preventDefault();
+  }
+
+  /** "Ver más…" no es un banco: abre la ventana y la lista vuelve a mostrar el banco que ya estaba. */
+  protected cambiarBanco(valor: string, lista: HTMLSelectElement): void {
+    if (valor !== this.VER_MAS_BANCOS) { this.bancoForm.set(valor); return; }
+    lista.value = this.bancoForm();
+    this.dialogoBancoAbierto.set(true);
+  }
+
+  protected usarBancoElegido(banco: string): void {
+    this.bancoForm.set(banco);
+    this.dialogoBancoAbierto.set(false);
   }
 
   /** El cuadro es a la vez buscador y selector: escribir filtra, y limpia la elección anterior. */
